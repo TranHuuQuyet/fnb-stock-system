@@ -21,7 +21,7 @@ export class IngredientsController {
   async create(@CurrentUser() user: JwtUser, @Body() dto: CreateIngredientDto) {
     return {
       data: await this.ingredientsService.create(user.userId, dto),
-      message: 'Ingredient created successfully'
+      message: 'Tạo nguyên liệu thành công'
     };
   }
 
@@ -45,7 +45,7 @@ export class IngredientsController {
   ) {
     return {
       data: await this.ingredientsService.update(user.userId, id, dto),
-      message: 'Ingredient updated successfully'
+      message: 'Cập nhật nguyên liệu thành công'
     };
   }
 
@@ -53,7 +53,7 @@ export class IngredientsController {
   async disable(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     return {
       data: await this.ingredientsService.disable(user.userId, id),
-      message: 'Ingredient disabled successfully'
+      message: 'Vô hiệu hóa nguyên liệu thành công'
     };
   }
 }

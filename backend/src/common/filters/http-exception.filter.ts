@@ -79,7 +79,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       success: false,
       error: {
         code: ERROR_CODES.ERROR_INTERNAL_SERVER,
-        message: 'Internal server error'
+        message: 'Lỗi máy chủ nội bộ'
       },
       meta: {
         requestId,

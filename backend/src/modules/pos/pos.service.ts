@@ -82,7 +82,7 @@ export class PosService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.POS_IMPORT_ERROR,
-        'POS product not found'
+        'Không tìm thấy sản phẩm POS'
       );
     }
 
@@ -195,7 +195,7 @@ export class PosService {
         throw appException(
           HttpStatus.BAD_REQUEST,
           ERROR_CODES.POS_IMPORT_ERROR,
-          `Product code ${record.productCode} not found`
+          `Không tìm thấy mã sản phẩm ${record.productCode}`
         );
       }
 
@@ -242,7 +242,7 @@ export class PosService {
       throw appException(
         HttpStatus.FORBIDDEN,
         ERROR_CODES.AUTH_FORBIDDEN,
-        'Store scope is invalid'
+        'Phạm vi cửa hàng không hợp lệ'
       );
     }
 

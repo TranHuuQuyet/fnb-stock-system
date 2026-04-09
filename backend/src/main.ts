@@ -39,8 +39,8 @@ async function bootstrap() {
   );
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('FNB Stock Control API')
-    .setDescription('Batch-based ingredient usage control API')
+    .setTitle('API quản lý tồn kho F&B')
+    .setDescription('API kiểm soát sử dụng nguyên liệu theo lô')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

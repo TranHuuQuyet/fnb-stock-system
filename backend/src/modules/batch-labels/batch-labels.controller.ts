@@ -18,7 +18,7 @@ export class BatchLabelsController {
   async generateQr(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     return {
       data: await this.batchLabelsService.generateQr(user.userId, id),
-      message: 'QR generated successfully'
+      message: 'Tạo mã QR thành công'
     };
   }
 

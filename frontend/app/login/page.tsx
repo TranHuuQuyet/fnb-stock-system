@@ -50,7 +50,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md space-y-6">
         <div className="space-y-2 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand-700">
-            FNB Stock Control
+            Quản lý tồn kho F&B
           </p>
           <h1 className="text-3xl font-semibold text-brand-900">Đăng nhập vận hành</h1>
           <p className="text-sm text-slate-500">

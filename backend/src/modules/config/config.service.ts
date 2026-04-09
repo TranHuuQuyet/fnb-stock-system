@@ -26,7 +26,7 @@ export class ConfigService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_CONFIG_NOT_FOUND,
-        'App config not found'
+        'Không tìm thấy cấu hình hệ thống'
       );
     }
 
@@ -65,7 +65,7 @@ export class ConfigService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
-        'Store not found'
+        'Không tìm thấy cửa hàng'
       );
     }
 

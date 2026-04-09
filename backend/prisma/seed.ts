@@ -37,7 +37,7 @@ async function main() {
     prisma.user.upsert({
       where: { username: 'admin' },
       update: {
-        fullName: 'System Admin',
+        fullName: 'Quản trị hệ thống',
         role: UserRole.ADMIN,
         storeId: store.id,
         passwordHash,
@@ -45,7 +45,7 @@ async function main() {
       },
       create: {
         username: 'admin',
-        fullName: 'System Admin',
+        fullName: 'Quản trị hệ thống',
         role: UserRole.ADMIN,
         storeId: store.id,
         passwordHash,
@@ -55,7 +55,7 @@ async function main() {
     prisma.user.upsert({
       where: { username: 'manager1' },
       update: {
-        fullName: 'Store Manager 1',
+        fullName: 'Quản lý cửa hàng 1',
         role: UserRole.MANAGER,
         storeId: store.id,
         passwordHash,
@@ -63,7 +63,7 @@ async function main() {
       },
       create: {
         username: 'manager1',
-        fullName: 'Store Manager 1',
+        fullName: 'Quản lý cửa hàng 1',
         role: UserRole.MANAGER,
         storeId: store.id,
         passwordHash,
@@ -73,7 +73,7 @@ async function main() {
     prisma.user.upsert({
       where: { username: 'staff1' },
       update: {
-        fullName: 'Staff Active 1',
+        fullName: 'Nhân viên đang hoạt động 1',
         role: UserRole.STAFF,
         storeId: store.id,
         passwordHash,
@@ -81,7 +81,7 @@ async function main() {
       },
       create: {
         username: 'staff1',
-        fullName: 'Staff Active 1',
+        fullName: 'Nhân viên đang hoạt động 1',
         role: UserRole.STAFF,
         storeId: store.id,
         passwordHash,
@@ -91,7 +91,7 @@ async function main() {
     prisma.user.upsert({
       where: { username: 'staff2' },
       update: {
-        fullName: 'Staff Must Change',
+        fullName: 'Nhân viên cần đổi mật khẩu',
         role: UserRole.STAFF,
         storeId: store.id,
         passwordHash,
@@ -99,7 +99,7 @@ async function main() {
       },
       create: {
         username: 'staff2',
-        fullName: 'Staff Must Change',
+        fullName: 'Nhân viên cần đổi mật khẩu',
         role: UserRole.STAFF,
         storeId: store.id,
         passwordHash,
@@ -520,7 +520,19 @@ async function main() {
       ]
     }
   });
-  if (!existingFraud) {
+  if (existingFraud) {
+    await prisma.fraudAttemptLog.update({
+      where: { id: existingFraud.id },
+      data: {
+        storeId: store.id,
+        userId: staff1.id,
+        deviceId: 'demo-device-2',
+        ipAddress: '10.0.0.2',
+        attemptType: 'NETWORK_RESTRICTED',
+        detail: 'Bản ghi mẫu: thiết bị dùng mạng không hợp lệ'
+      }
+    });
+  } else {
     await prisma.fraudAttemptLog.create({
       data: {
         storeId: store.id,

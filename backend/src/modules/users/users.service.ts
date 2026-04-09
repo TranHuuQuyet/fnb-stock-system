@@ -60,7 +60,7 @@ export class UsersService {
         throw appException(
           HttpStatus.NOT_FOUND,
           ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
-          'Store not found'
+          'Không tìm thấy cửa hàng'
         );
       }
     }
@@ -153,7 +153,7 @@ export class UsersService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_USER_NOT_FOUND,
-        'User not found'
+        'Không tìm thấy người dùng'
       );
     }
 
@@ -166,7 +166,7 @@ export class UsersService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_USER_NOT_FOUND,
-        'User not found'
+        'Không tìm thấy người dùng'
       );
     }
 
@@ -176,7 +176,7 @@ export class UsersService {
         throw appException(
           HttpStatus.NOT_FOUND,
           ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
-          'Store not found'
+          'Không tìm thấy cửa hàng'
         );
       }
     }
@@ -220,7 +220,7 @@ export class UsersService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_USER_NOT_FOUND,
-        'User not found'
+        'Không tìm thấy người dùng'
       );
     }
 
@@ -264,7 +264,7 @@ export class UsersService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_USER_NOT_FOUND,
-        'User not found'
+        'Không tìm thấy người dùng'
       );
     }
 

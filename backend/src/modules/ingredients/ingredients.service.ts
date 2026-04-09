@@ -76,7 +76,7 @@ export class IngredientsService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_INGREDIENT_NOT_FOUND,
-        'Ingredient not found'
+        'Không tìm thấy nguyên liệu'
       );
     }
 

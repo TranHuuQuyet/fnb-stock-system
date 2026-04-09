@@ -37,14 +37,14 @@ export class BatchesService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_INGREDIENT_NOT_FOUND,
-        'Ingredient not found'
+        'Không tìm thấy nguyên liệu'
       );
     }
     if (!store) {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
-        'Store not found'
+        'Không tìm thấy cửa hàng'
       );
     }
 
@@ -95,7 +95,7 @@ export class BatchesService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_BATCH_NOT_FOUND,
-        'Batch not found'
+        'Không tìm thấy lô hàng'
       );
     }
 

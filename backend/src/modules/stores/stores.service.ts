@@ -25,7 +25,7 @@ export class StoresService {
       throw appException(
         HttpStatus.CONFLICT,
         ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
-        'Store code already exists'
+        'Mã cửa hàng đã tồn tại'
       );
     }
 
@@ -87,7 +87,7 @@ export class StoresService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
-        'Store not found'
+        'Không tìm thấy cửa hàng'
       );
     }
 

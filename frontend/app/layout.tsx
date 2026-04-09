@@ -5,8 +5,8 @@ import { Providers } from '@/components/providers';
 import { PwaBootstrap } from '@/components/pwa-bootstrap';
 
 export const metadata: Metadata = {
-  title: 'FNB Stock Control',
-  description: 'Batch-based ingredient control for F&B stores',
+  title: 'Quản lý tồn kho F&B',
+  description: 'Kiểm soát nguyên liệu theo lô cho cửa hàng F&B',
   manifest: '/manifest.json'
 };
 

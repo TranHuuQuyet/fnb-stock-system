@@ -25,7 +25,7 @@ export class DashboardService {
       throw appException(
         HttpStatus.FORBIDDEN,
         ERROR_CODES.AUTH_FORBIDDEN,
-        'Store scope is invalid'
+        'Phạm vi cửa hàng không hợp lệ'
       );
     }
 

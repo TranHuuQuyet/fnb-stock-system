@@ -18,7 +18,7 @@ export class AuthController {
   async login(@Body() dto: LoginDto) {
     return {
       data: await this.authService.login(dto),
-      message: 'Login successful'
+      message: 'Đăng nhập thành công'
     };
   }
 
@@ -47,7 +47,7 @@ export class AuthController {
   ) {
     return {
       data: await this.authService.changePassword(user, dto),
-      message: 'Password changed successfully'
+      message: 'Đổi mật khẩu thành công'
     };
   }
 }

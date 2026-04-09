@@ -75,7 +75,7 @@ export function useOfflineSync() {
         const pendingAgain = await getScansByStatus(['syncing']);
         await Promise.all(
           pendingAgain.map((item) =>
-            updateOfflineScanStatus(item.clientEventId, 'failed', 'Sync failed')
+            updateOfflineScanStatus(item.clientEventId, 'failed', 'Đồng bộ thất bại')
           )
         );
         setState('SYNC_ERROR');

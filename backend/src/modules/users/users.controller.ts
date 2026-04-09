@@ -22,7 +22,7 @@ export class UsersController {
   async create(@CurrentUser() user: JwtUser, @Body() dto: CreateUserDto) {
     return {
       data: await this.usersService.create(user.userId, dto),
-      message: 'User created successfully'
+      message: 'Tạo người dùng thành công'
     };
   }
 
@@ -46,7 +46,7 @@ export class UsersController {
   ) {
     return {
       data: await this.usersService.update(user.userId, id, dto),
-      message: 'User updated successfully'
+      message: 'Cập nhật người dùng thành công'
     };
   }
 
@@ -54,7 +54,7 @@ export class UsersController {
   async lock(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     return {
       data: await this.usersService.lock(user.userId, id),
-      message: 'User locked successfully'
+      message: 'Khóa người dùng thành công'
     };
   }
 
@@ -62,7 +62,7 @@ export class UsersController {
   async unlock(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     return {
       data: await this.usersService.unlock(user.userId, id),
-      message: 'User unlocked successfully'
+      message: 'Mở khóa người dùng thành công'
     };
   }
 
@@ -74,7 +74,7 @@ export class UsersController {
   ) {
     return {
       data: await this.usersService.resetPassword(user.userId, id, dto),
-      message: 'Password reset successfully'
+      message: 'Đặt lại mật khẩu thành công'
     };
   }
 }

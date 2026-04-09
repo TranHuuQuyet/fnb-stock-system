@@ -27,7 +27,7 @@ export class StockAdjustmentsService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_BATCH_NOT_FOUND,
-        'Batch not found'
+        'Không tìm thấy lô hàng'
       );
     }
 

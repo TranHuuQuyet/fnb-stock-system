@@ -21,7 +21,7 @@ export class StoresController {
   async create(@CurrentUser() user: JwtUser, @Body() dto: CreateStoreDto) {
     return {
       data: await this.storesService.create(user.userId, dto),
-      message: 'Store created successfully'
+      message: 'Tạo cửa hàng thành công'
     };
   }
 
@@ -45,7 +45,7 @@ export class StoresController {
   ) {
     return {
       data: await this.storesService.update(user.userId, id, dto),
-      message: 'Store updated successfully'
+      message: 'Cập nhật cửa hàng thành công'
     };
   }
 }

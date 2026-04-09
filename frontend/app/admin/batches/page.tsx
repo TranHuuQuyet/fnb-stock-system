@@ -76,7 +76,7 @@ export default function AdminBatchesPage() {
         return generateBatchQr(id);
       }
       if (action === 'lock') {
-        return softLockBatch(id, 'Manual soft lock by admin');
+        return softLockBatch(id, 'Khóa mềm thủ công bởi quản trị viên');
       }
       return unlockBatch(id);
     },

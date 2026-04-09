@@ -30,7 +30,7 @@ export class BatchesController {
   async create(@CurrentUser() user: JwtUser, @Body() dto: CreateBatchDto) {
     return {
       data: await this.batchesService.create(user.userId, dto),
-      message: 'Batch created successfully'
+      message: 'Tạo lô hàng thành công'
     };
   }
 
@@ -57,7 +57,7 @@ export class BatchesController {
   ) {
     return {
       data: await this.batchesService.update(user.userId, id, dto),
-      message: 'Batch updated successfully'
+      message: 'Cập nhật lô hàng thành công'
     };
   }
 
@@ -70,7 +70,7 @@ export class BatchesController {
   ) {
     return {
       data: await this.batchesService.softLock(user.userId, id, dto.reason),
-      message: 'Batch soft locked successfully'
+      message: 'Khóa mềm lô hàng thành công'
     };
   }
 
@@ -79,7 +79,7 @@ export class BatchesController {
   async unlock(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     return {
       data: await this.batchesService.unlock(user.userId, id),
-      message: 'Batch unlocked successfully'
+      message: 'Mở khóa lô hàng thành công'
     };
   }
 }

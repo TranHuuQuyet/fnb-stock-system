@@ -41,7 +41,7 @@ export class ConfigController {
   ) {
     return {
       data: await this.configService.updateConfig(user.userId, dto),
-      message: 'Config updated successfully'
+      message: 'Cập nhật cấu hình thành công'
     };
   }
 
@@ -52,7 +52,7 @@ export class ConfigController {
   ) {
     return {
       data: await this.configService.createWhitelist(user.userId, dto),
-      message: 'Whitelist created successfully'
+      message: 'Thêm mạng được phép thành công'
     };
   }
 
@@ -69,7 +69,7 @@ export class ConfigController {
   ) {
     return {
       data: await this.configService.updateWhitelist(user.userId, id, dto),
-      message: 'Whitelist updated successfully'
+      message: 'Cập nhật mạng được phép thành công'
     };
   }
 
@@ -77,7 +77,7 @@ export class ConfigController {
   async deleteWhitelist(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     return {
       data: await this.configService.deleteWhitelist(user.userId, id),
-      message: 'Whitelist deleted successfully'
+      message: 'Xóa mạng được phép thành công'
     };
   }
 }

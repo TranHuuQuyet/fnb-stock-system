@@ -354,7 +354,7 @@ export class ScanService {
     params: ProcessScanParams,
     storeId: string
   ): Promise<ProcessScanResult> {
-    const detail = `IP ${params.ipAddress} không nằm trong whitelist`;
+    const detail = `IP ${params.ipAddress} không nằm trong danh sách mạng được phép`;
 
     return this.prisma.$transaction(async (tx) => {
       await tx.fraudAttemptLog.create({

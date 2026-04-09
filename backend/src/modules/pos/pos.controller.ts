@@ -27,7 +27,7 @@ export class PosController {
   ) {
     return {
       data: await this.posService.createProduct(user.userId, dto),
-      message: 'POS product created successfully'
+      message: 'Tạo sản phẩm POS thành công'
     };
   }
 
@@ -46,7 +46,7 @@ export class PosController {
   ) {
     return {
       data: await this.posService.updateProduct(user.userId, id, dto),
-      message: 'POS product updated successfully'
+      message: 'Cập nhật sản phẩm POS thành công'
     };
   }
 
@@ -55,7 +55,7 @@ export class PosController {
   async createRecipe(@CurrentUser() user: JwtUser, @Body() dto: CreateRecipeDto) {
     return {
       data: await this.posService.createRecipe(user.userId, dto),
-      message: 'Recipe created successfully'
+      message: 'Tạo công thức thành công'
     };
   }
 
@@ -84,7 +84,7 @@ export class PosController {
   ) {
     return {
       data: await this.posService.replaceRecipe(user.userId, productId, dto),
-      message: 'Recipe replaced successfully'
+      message: 'Cập nhật công thức thành công'
     };
   }
 
@@ -93,7 +93,7 @@ export class PosController {
   async importSales(@CurrentUser() user: JwtUser, @Body() dto: ImportPosSalesDto) {
     return {
       data: await this.posService.importSales(user.userId, dto),
-      message: 'POS sales imported successfully'
+      message: 'Nhập dữ liệu bán POS thành công'
     };
   }
 

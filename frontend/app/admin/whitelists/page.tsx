@@ -65,10 +65,10 @@ export default function AdminWhitelistsPage() {
   }>;
 
   return (
-    <ProtectedPage title="Whitelist mạng" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Mạng được phép" allowedRoles={['ADMIN']}>
       <div className="grid gap-4 xl:grid-cols-[420px,1fr]">
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo whitelist</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Thêm mạng được phép</h2>
           <form
             className="space-y-4"
             onSubmit={handleSubmit((values) => createMutation.mutate(values))}
@@ -93,13 +93,13 @@ export default function AdminWhitelistsPage() {
             </label>
             <Input label="Giá trị" error={errors.value?.message} {...register('value')} />
             <Button type="submit" fullWidth disabled={createMutation.isPending}>
-              Tạo whitelist
+              Thêm mục
             </Button>
           </form>
         </Card>
 
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sách whitelist</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sách mạng được phép</h2>
           <SimpleTable
             columns={['Cửa hàng', 'Loại', 'Giá trị', 'Trạng thái', 'Thao tác']}
             rows={whitelists.map((item) => [

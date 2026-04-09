@@ -23,7 +23,7 @@ export class StockAdjustmentsController {
   ) {
     return {
       data: await this.stockAdjustmentsService.create(user.userId, id, dto),
-      message: 'Stock adjustment created successfully'
+      message: 'Tạo phiếu điều chỉnh tồn thành công'
     };
   }
 

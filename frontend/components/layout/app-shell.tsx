@@ -23,7 +23,7 @@ const links: Array<{ href: string; label: string; roles: Role[] }> = [
   { href: '/admin/batch-adjustments', label: 'Điều chỉnh tồn', roles: ['ADMIN'] },
   { href: '/admin/recipes', label: 'Công thức & POS', roles: ['ADMIN'] },
   { href: '/admin/config', label: 'Cấu hình', roles: ['ADMIN'] },
-  { href: '/admin/whitelists', label: 'Whitelist mạng', roles: ['ADMIN'] },
+  { href: '/admin/whitelists', label: 'Mạng được phép', roles: ['ADMIN'] },
   { href: '/admin/audit-logs', label: 'Nhật ký hệ thống', roles: ['ADMIN'] }
 ] as const;
 
