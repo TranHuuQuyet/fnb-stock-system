@@ -87,7 +87,7 @@ export default function AdminRecipesPage() {
   const salesMutation = useMutation({
     mutationFn: (values: z.infer<typeof saleSchema>) => importPosSales([values]),
     onSuccess: () => {
-      setSalesMessage('POS sales imported successfully');
+      setSalesMessage('Đã nhập dữ liệu bán hàng POS thành công');
       salesForm.reset();
     }
   });
@@ -110,32 +110,32 @@ export default function AdminRecipesPage() {
   }>;
 
   return (
-    <ProtectedPage title="Recipes & POS" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Công thức & POS" allowedRoles={['ADMIN']}>
       <div className="grid gap-4 xl:grid-cols-3">
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo POS product</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo sản phẩm POS</h2>
           <form
             className="space-y-4"
             onSubmit={productForm.handleSubmit((values) => productMutation.mutate(values))}
           >
-            <Input label="Code" error={productForm.formState.errors.code?.message} {...productForm.register('code')} />
-            <Input label="Name" error={productForm.formState.errors.name?.message} {...productForm.register('name')} />
+            <Input label="Mã sản phẩm" error={productForm.formState.errors.code?.message} {...productForm.register('code')} />
+            <Input label="Tên sản phẩm" error={productForm.formState.errors.name?.message} {...productForm.register('name')} />
             <Button type="submit" fullWidth disabled={productMutation.isPending}>
-              Create product
+              Tạo sản phẩm
             </Button>
           </form>
         </Card>
 
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Thêm recipe item</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Thêm thành phần công thức</h2>
           <form
             className="space-y-4"
             onSubmit={recipeForm.handleSubmit((values) => recipeMutation.mutate(values))}
           >
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Product</span>
+              <span className="text-sm font-medium text-brand-900">Sản phẩm</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...recipeForm.register('productId')}>
-                <option value="">Select product</option>
+                <option value="">Chọn sản phẩm</option>
                 {products.map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.code} - {product.name}
@@ -144,9 +144,9 @@ export default function AdminRecipesPage() {
               </select>
             </label>
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Ingredient</span>
+              <span className="text-sm font-medium text-brand-900">Nguyên liệu</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...recipeForm.register('ingredientId')}>
-                <option value="">Select ingredient</option>
+                <option value="">Chọn nguyên liệu</option>
                 {ingredients.map((ingredient) => (
                   <option key={ingredient.id} value={ingredient.id}>
                     {ingredient.name}
@@ -154,23 +154,23 @@ export default function AdminRecipesPage() {
                 ))}
               </select>
             </label>
-            <Input label="Qty per unit" type="number" step="0.001" error={recipeForm.formState.errors.qtyPerUnit?.message} {...recipeForm.register('qtyPerUnit')} />
+            <Input label="Định lượng mỗi đơn vị" type="number" step="0.001" error={recipeForm.formState.errors.qtyPerUnit?.message} {...recipeForm.register('qtyPerUnit')} />
             <Button type="submit" fullWidth disabled={recipeMutation.isPending}>
-              Add recipe
+              Thêm công thức
             </Button>
           </form>
         </Card>
 
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Import POS sales mẫu</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Nhập dữ liệu bán POS mẫu</h2>
           <form
             className="space-y-4"
             onSubmit={salesForm.handleSubmit((values) => salesMutation.mutate(values))}
           >
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Store</span>
+              <span className="text-sm font-medium text-brand-900">Cửa hàng</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...salesForm.register('storeId')}>
-                <option value="">Select store</option>
+                <option value="">Chọn cửa hàng</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}
@@ -178,11 +178,11 @@ export default function AdminRecipesPage() {
                 ))}
               </select>
             </label>
-            <Input label="Product code" error={salesForm.formState.errors.productCode?.message} {...salesForm.register('productCode')} />
-            <Input label="Business date" type="date" error={salesForm.formState.errors.businessDate?.message} {...salesForm.register('businessDate')} />
-            <Input label="Qty sold" type="number" error={salesForm.formState.errors.qtySold?.message} {...salesForm.register('qtySold')} />
+            <Input label="Mã sản phẩm" error={salesForm.formState.errors.productCode?.message} {...salesForm.register('productCode')} />
+            <Input label="Ngày kinh doanh" type="date" error={salesForm.formState.errors.businessDate?.message} {...salesForm.register('businessDate')} />
+            <Input label="Số lượng bán" type="number" error={salesForm.formState.errors.qtySold?.message} {...salesForm.register('qtySold')} />
             <Button type="submit" fullWidth disabled={salesMutation.isPending}>
-              Import sale
+              Nhập dữ liệu bán
             </Button>
             {salesMessage ? <p className="text-sm text-success">{salesMessage}</p> : null}
           </form>
@@ -190,9 +190,9 @@ export default function AdminRecipesPage() {
       </div>
 
       <Card>
-        <h2 className="mb-4 text-xl font-semibold text-brand-900">Recipe mapping</h2>
+        <h2 className="mb-4 text-xl font-semibold text-brand-900">Bảng công thức</h2>
         <SimpleTable
-          columns={['Product', 'Ingredient', 'Qty / unit']}
+          columns={['Sản phẩm', 'Nguyên liệu', 'Định lượng / đơn vị']}
           rows={recipes.map((recipe) => [
             `${recipe.product.code} - ${recipe.product.name}`,
             recipe.ingredient.name,

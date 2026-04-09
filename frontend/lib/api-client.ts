@@ -1,6 +1,7 @@
 "use client";
 
 import { clearSession, getAccessToken } from './auth';
+import { localizeApiError } from './localization';
 
 type SuccessEnvelope<T> = {
   success: true;
@@ -72,10 +73,12 @@ export async function apiClient<T>(
       clearSession();
     }
     const errorPayload = payload as ErrorEnvelope;
+    const code = errorPayload.error?.code ?? 'ERROR_INTERNAL_SERVER';
+    const fallbackMessage = errorPayload.error?.message ?? 'Có lỗi không mong muốn xảy ra';
     throw new ApiError(
       response.status,
-      errorPayload.error?.code ?? 'ERROR_INTERNAL_SERVER',
-      errorPayload.error?.message ?? 'Unexpected error',
+      code,
+      localizeApiError(code, fallbackMessage),
       errorPayload.error?.details
     );
   }

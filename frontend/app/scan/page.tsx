@@ -14,12 +14,13 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getDeviceId, getSession } from '@/lib/auth';
 import { queueOfflineScan } from '@/lib/indexeddb';
+import { localizeResultCode, localizeSyncState } from '@/lib/localization';
 import { useOfflineSync } from '@/hooks/use-offline-sync';
 import { submitManualScan, submitScan } from '@/services/scan';
 
 const schema = z.object({
-  batchCode: z.string().min(1, 'Batch code is required'),
-  quantityUsed: z.coerce.number().positive('Quantity must be greater than 0')
+  batchCode: z.string().min(1, 'Vui lòng nhập mã lô'),
+  quantityUsed: z.coerce.number().positive('Số lượng phải lớn hơn 0')
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -61,8 +62,8 @@ export default function ScanPage() {
     message: string;
   }>({
     tone: 'idle',
-    title: 'Ready',
-    message: 'Quét QR batch hoặc nhập batch code thủ công.'
+    title: 'Sẵn sàng',
+    message: 'Quét mã QR của lô hoặc nhập mã lô thủ công.'
   });
   const [manualMode, setManualMode] = useState(false);
 
@@ -115,7 +116,7 @@ export default function ScanPage() {
         return {
           resultStatus: 'SUCCESS',
           resultCode: 'OFFLINE_QUEUED',
-          message: 'Scan đã được lưu offline, sẽ tự sync khi có mạng.'
+          message: 'Lượt quét đã được lưu ngoại tuyến và sẽ tự đồng bộ khi có mạng.'
         };
       }
 
@@ -133,7 +134,7 @@ export default function ScanPage() {
           return {
             resultStatus: 'SUCCESS',
             resultCode: 'OFFLINE_QUEUED',
-            message: 'Mạng vừa mất, scan đã được lưu offline.'
+            message: 'Mạng vừa mất, lượt quét đã được lưu ngoại tuyến.'
           };
         }
 
@@ -144,7 +145,7 @@ export default function ScanPage() {
       if (data.resultCode === 'OFFLINE_QUEUED') {
         setFeedback({
           tone: 'offline',
-          title: 'Offline queued',
+          title: 'Đã lưu ngoại tuyến',
           message: data.message
         });
         return;
@@ -153,7 +154,7 @@ export default function ScanPage() {
       if (data.resultStatus === 'WARNING') {
         setFeedback({
           tone: 'warning',
-          title: data.resultCode,
+          title: localizeResultCode(data.resultCode),
           message: data.message
         });
         return;
@@ -162,26 +163,26 @@ export default function ScanPage() {
       await playSuccessBeep();
       setFeedback({
         tone: 'success',
-        title: data.resultCode,
+        title: localizeResultCode(data.resultCode),
         message: data.message
       });
     },
     onError: (error: Error) => {
       setFeedback({
         tone: 'error',
-        title: 'Scan rejected',
+        title: 'Từ chối quét',
         message: error.message
       });
     }
   });
 
   return (
-    <ProtectedPage title="Scan" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
+    <ProtectedPage title="Quét nguyên liệu" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
       <div className={`rounded-3xl bg-gradient-to-br ${backgroundClass} p-4 md:p-6`}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <Badge label={isOnline ? 'Online' : 'Offline mode'} tone={isOnline ? 'success' : 'neutral'} />
+          <Badge label={isOnline ? 'Trực tuyến' : 'Chế độ ngoại tuyến'} tone={isOnline ? 'success' : 'neutral'} />
           <Badge
-            label={syncState}
+            label={localizeSyncState(syncState)}
             tone={
               syncState === 'SYNCED'
                 ? 'success'
@@ -193,7 +194,7 @@ export default function ScanPage() {
             }
           />
           <Button variant="secondary" onClick={() => setManualMode((value) => !value)}>
-            {manualMode ? 'Dùng camera scan' : 'Manual fallback'}
+            {manualMode ? 'Dùng camera quét' : 'Nhập tay khi camera lỗi'}
           </Button>
         </div>
 
@@ -207,15 +208,15 @@ export default function ScanPage() {
 
         {!manualMode ? (
           <Card className="mb-4">
-            <h3 className="mb-3 text-lg font-semibold text-brand-900">Camera scan</h3>
+            <h3 className="mb-3 text-lg font-semibold text-brand-900">Quét bằng camera</h3>
             <QrScanner
               onDetected={(value) => {
                 const parsed = parseBatchQr(value);
                 if (!parsed) {
                   setFeedback({
                     tone: 'error',
-                    title: 'QR invalid',
-                    message: 'QR không đúng định dạng FNBBATCH:<batch_code>'
+                    title: 'QR không hợp lệ',
+                    message: 'Mã QR không đúng định dạng FNBBATCH:<batch_code>'
                   });
                   return;
                 }
@@ -223,8 +224,8 @@ export default function ScanPage() {
                 setValue('batchCode', parsed);
                 setFeedback({
                   tone: 'idle',
-                  title: 'Batch detected',
-                  message: `Đã đọc batch ${parsed}. Nhập quantity rồi bấm submit.`
+                  title: 'Đã nhận diện lô',
+                  message: `Đã đọc lô ${parsed}. Nhập số lượng rồi bấm gửi.`
                 });
               }}
             />
@@ -239,13 +240,13 @@ export default function ScanPage() {
             )}
           >
             <Input
-              label="Batch code"
+              label="Mã lô"
               placeholder="BATCH-TRA-001"
               error={errors.batchCode?.message}
               {...register('batchCode')}
             />
             <Input
-              label="Quantity used"
+              label="Số lượng sử dụng"
               type="number"
               step="0.001"
               error={errors.quantityUsed?.message}
@@ -253,10 +254,10 @@ export default function ScanPage() {
             />
             <Button type="submit" fullWidth disabled={scanMutation.isPending}>
               {scanMutation.isPending
-                ? 'Đang gửi scan...'
+                ? 'Đang gửi lượt quét...'
                 : manualMode
-                  ? 'Submit manual scan'
-                  : 'Submit scan'}
+                  ? 'Gửi phiếu quét thủ công'
+                  : 'Gửi kết quả quét'}
             </Button>
           </form>
         </Card>

@@ -6,24 +6,25 @@ import { ReactNode } from 'react';
 import clsx from 'clsx';
 
 import { clearSession, getSession, Role } from '@/lib/auth';
+import { localizeSyncState } from '@/lib/localization';
 import { useOfflineSync } from '@/hooks/use-offline-sync';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 
 const links: Array<{ href: string; label: string; roles: Role[] }> = [
-  { href: '/scan', label: 'Scan', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
-  { href: '/scan-logs', label: 'Scan Logs', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
-  { href: '/dashboard', label: 'Dashboard', roles: ['MANAGER', 'ADMIN'] },
-  { href: '/profile', label: 'Profile', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
-  { href: '/admin/users', label: 'Users', roles: ['ADMIN'] },
-  { href: '/admin/stores', label: 'Stores', roles: ['ADMIN'] },
-  { href: '/admin/ingredients', label: 'Ingredients', roles: ['ADMIN'] },
-  { href: '/admin/batches', label: 'Batches', roles: ['ADMIN'] },
-  { href: '/admin/batch-adjustments', label: 'Adjustments', roles: ['ADMIN'] },
-  { href: '/admin/recipes', label: 'Recipes', roles: ['ADMIN'] },
-  { href: '/admin/config', label: 'Config', roles: ['ADMIN'] },
-  { href: '/admin/whitelists', label: 'Whitelists', roles: ['ADMIN'] },
-  { href: '/admin/audit-logs', label: 'Audit', roles: ['ADMIN'] }
+  { href: '/scan', label: 'Quét nguyên liệu', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
+  { href: '/scan-logs', label: 'Lịch sử quét', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
+  { href: '/dashboard', label: 'Bảng điều khiển', roles: ['MANAGER', 'ADMIN'] },
+  { href: '/profile', label: 'Tài khoản', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
+  { href: '/admin/users', label: 'Người dùng', roles: ['ADMIN'] },
+  { href: '/admin/stores', label: 'Cửa hàng', roles: ['ADMIN'] },
+  { href: '/admin/ingredients', label: 'Nguyên liệu', roles: ['ADMIN'] },
+  { href: '/admin/batches', label: 'Lô hàng', roles: ['ADMIN'] },
+  { href: '/admin/batch-adjustments', label: 'Điều chỉnh tồn', roles: ['ADMIN'] },
+  { href: '/admin/recipes', label: 'Công thức & POS', roles: ['ADMIN'] },
+  { href: '/admin/config', label: 'Cấu hình', roles: ['ADMIN'] },
+  { href: '/admin/whitelists', label: 'Whitelist mạng', roles: ['ADMIN'] },
+  { href: '/admin/audit-logs', label: 'Nhật ký hệ thống', roles: ['ADMIN'] }
 ] as const;
 
 export function AppShell({
@@ -45,14 +46,14 @@ export function AppShell({
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 md:flex-row">
         <aside className="w-full rounded-3xl bg-brand-900 p-4 text-white md:sticky md:top-4 md:w-72 md:self-start">
           <div className="mb-6 space-y-2">
-            <p className="text-xs uppercase tracking-[0.25em] text-brand-100">FNB Control</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-brand-100">FNB CONTROL</p>
             <h1 className="text-xl font-semibold">{title}</h1>
             <p className="text-sm text-brand-100">{session?.user.fullName}</p>
           </div>
 
           <div className="mb-4">
             <Badge
-              label={syncState}
+              label={localizeSyncState(syncState)}
               tone={
                 syncState === 'SYNCED'
                   ? 'success'
@@ -93,7 +94,7 @@ export function AppShell({
               router.replace('/login');
             }}
           >
-            Logout
+            Đăng xuất
           </Button>
         </aside>
 

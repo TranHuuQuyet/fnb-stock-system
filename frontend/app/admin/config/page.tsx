@@ -36,9 +36,9 @@ export default function AdminConfigPage() {
   const config = configQuery.data as { allowFifoBypass: boolean; anomalyThreshold: number } | undefined;
 
   return (
-    <ProtectedPage title="Config" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Cấu hình" allowedRoles={['ADMIN']}>
       <Card>
-        <h2 className="mb-4 text-xl font-semibold text-brand-900">App config</h2>
+        <h2 className="mb-4 text-xl font-semibold text-brand-900">Cấu hình hệ thống</h2>
         {config ? (
           <form
             className="space-y-4"
@@ -46,17 +46,17 @@ export default function AdminConfigPage() {
           >
             <label className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
               <input type="checkbox" defaultChecked={config.allowFifoBypass} {...register('allowFifoBypass')} />
-              <span>Allow FIFO bypass</span>
+              <span>Cho phép bỏ qua FIFO</span>
             </label>
             <Input
-              label="Anomaly threshold"
+              label="Ngưỡng cảnh báo bất thường"
               type="number"
               step="0.01"
               defaultValue={config.anomalyThreshold}
               {...register('anomalyThreshold')}
             />
             <Button type="submit" disabled={mutation.isPending}>
-              Save config
+              Lưu cấu hình
             </Button>
           </form>
         ) : null}

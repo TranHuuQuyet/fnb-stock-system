@@ -6,6 +6,7 @@ import { ProtectedPage } from '@/components/layout/protected-page';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { SimpleTable } from '@/components/ui/table';
+import { localizeResultStatus } from '@/lib/localization';
 import { listScanLogs } from '@/services/scan';
 
 export default function ScanLogsPage() {
@@ -30,7 +31,7 @@ export default function ScanLogsPage() {
       item.quantityUsed,
       <Badge
         key={item.id}
-        label={item.resultStatus}
+        label={localizeResultStatus(item.resultStatus)}
         tone={
           item.resultStatus === 'SUCCESS'
             ? 'success'
@@ -44,11 +45,11 @@ export default function ScanLogsPage() {
     ]);
 
   return (
-    <ProtectedPage title="Scan Logs" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
+    <ProtectedPage title="Lịch sử quét" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
       <Card>
-        <h2 className="mb-4 text-xl font-semibold text-brand-900">Scan logs</h2>
+        <h2 className="mb-4 text-xl font-semibold text-brand-900">Lịch sử quét</h2>
         <SimpleTable
-          columns={['Batch', 'User', 'Qty', 'Status', 'Message', 'Created at']}
+          columns={['Lô', 'Nhân viên', 'Số lượng', 'Trạng thái', 'Thông báo', 'Thời gian']}
           rows={rows}
         />
       </Card>

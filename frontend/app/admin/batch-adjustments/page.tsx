@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/table';
+import { localizeAdjustmentType } from '@/lib/localization';
 import {
   createAdjustment,
   listAdjustments,
@@ -74,7 +75,7 @@ export default function AdminBatchAdjustmentsPage() {
   }>;
 
   return (
-    <ProtectedPage title="Batch Adjustments" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Điều chỉnh tồn kho" allowedRoles={['ADMIN']}>
       <div className="grid gap-4 xl:grid-cols-[420px,1fr]">
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo điều chỉnh tồn</h2>
@@ -83,13 +84,13 @@ export default function AdminBatchAdjustmentsPage() {
             onSubmit={handleSubmit((values) => mutation.mutate(values))}
           >
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Batch</span>
+              <span className="text-sm font-medium text-brand-900">Lô hàng</span>
               <select
                 className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3"
                 {...register('batchId')}
                 onChange={(event) => setSelectedBatchId(event.target.value)}
               >
-                <option value="">Select batch</option>
+                <option value="">Chọn lô</option>
                 {batches.map((batch) => (
                   <option key={batch.id} value={batch.id}>
                     {batch.batchCode} - {batch.ingredient.name}
@@ -98,16 +99,16 @@ export default function AdminBatchAdjustmentsPage() {
               </select>
             </label>
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Adjustment type</span>
+              <span className="text-sm font-medium text-brand-900">Loại điều chỉnh</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...register('adjustmentType')}>
-                <option value="DECREASE">DECREASE</option>
-                <option value="INCREASE">INCREASE</option>
+                <option value="DECREASE">Giảm</option>
+                <option value="INCREASE">Tăng</option>
               </select>
             </label>
-            <Input label="Quantity" type="number" step="0.001" error={errors.quantity?.message} {...register('quantity')} />
-            <Input label="Reason" error={errors.reason?.message} {...register('reason')} />
+            <Input label="Số lượng" type="number" step="0.001" error={errors.quantity?.message} {...register('quantity')} />
+            <Input label="Lý do" error={errors.reason?.message} {...register('reason')} />
             <Button type="submit" fullWidth disabled={mutation.isPending}>
-              {mutation.isPending ? 'Creating...' : 'Create adjustment'}
+              {mutation.isPending ? 'Đang tạo...' : 'Tạo phiếu điều chỉnh'}
             </Button>
           </form>
         </Card>
@@ -115,9 +116,9 @@ export default function AdminBatchAdjustmentsPage() {
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Lịch sử điều chỉnh</h2>
           <SimpleTable
-            columns={['Type', 'Qty', 'Reason', 'Created by', 'Created at']}
+            columns={['Loại', 'Số lượng', 'Lý do', 'Người tạo', 'Thời gian']}
             rows={adjustments.map((item) => [
-              item.adjustmentType,
+              localizeAdjustmentType(item.adjustmentType),
               item.quantity,
               item.reason,
               item.createdByUser?.fullName ?? '-',

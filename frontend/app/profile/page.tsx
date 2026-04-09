@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ProtectedPage } from '@/components/layout/protected-page';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { localizeRole, localizeUserStatus } from '@/lib/localization';
 import { fetchMe } from '@/services/auth';
 
 export default function ProfilePage() {
@@ -23,7 +24,7 @@ export default function ProfilePage() {
     | undefined;
 
   return (
-    <ProtectedPage title="Profile">
+    <ProtectedPage title="Tài khoản">
       <Card>
         <h2 className="mb-4 text-xl font-semibold text-brand-900">Thông tin cá nhân</h2>
         {query.isLoading ? <p>Đang tải...</p> : null}
@@ -34,17 +35,17 @@ export default function ProfilePage() {
               <p>{profile.fullName}</p>
             </div>
             <div>
-              <p className="font-medium">Username</p>
+              <p className="font-medium">Tên đăng nhập</p>
               <p>{profile.username}</p>
             </div>
             <div>
               <p className="font-medium">Vai trò</p>
-              <Badge label={profile.role} tone="neutral" />
+              <Badge label={localizeRole(profile.role)} tone="neutral" />
             </div>
             <div>
               <p className="font-medium">Trạng thái</p>
               <Badge
-                label={profile.status}
+                label={localizeUserStatus(profile.status)}
                 tone={profile.status === 'ACTIVE' ? 'success' : 'warning'}
               />
             </div>

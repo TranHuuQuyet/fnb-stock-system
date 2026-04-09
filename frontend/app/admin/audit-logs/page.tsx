@@ -23,11 +23,11 @@ export default function AdminAuditLogsPage() {
   }>;
 
   return (
-    <ProtectedPage title="Audit Logs" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Nhật ký hệ thống" allowedRoles={['ADMIN']}>
       <Card>
-        <h2 className="mb-4 text-xl font-semibold text-brand-900">Audit logs</h2>
+        <h2 className="mb-4 text-xl font-semibold text-brand-900">Nhật ký hệ thống</h2>
         <SimpleTable
-          columns={['Action', 'Entity', 'Entity ID', 'Actor', 'Created at']}
+          columns={['Hành động', 'Đối tượng', 'Mã đối tượng', 'Người thực hiện', 'Thời gian']}
           rows={logs.map((item) => [
             item.action,
             item.entityType,

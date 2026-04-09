@@ -14,12 +14,12 @@ import { changePassword } from '@/services/auth';
 
 const schema = z
   .object({
-    currentPassword: z.string().min(6),
-    newPassword: z.string().min(6),
-    confirmPassword: z.string().min(6)
+    currentPassword: z.string().min(6, 'Mật khẩu hiện tại phải có ít nhất 6 ký tự'),
+    newPassword: z.string().min(6, 'Mật khẩu mới phải có ít nhất 6 ký tự'),
+    confirmPassword: z.string().min(6, 'Vui lòng nhập lại mật khẩu mới')
   })
   .refine((value) => value.newPassword === value.confirmPassword, {
-    message: 'Confirm password does not match',
+    message: 'Mật khẩu nhập lại không khớp',
     path: ['confirmPassword']
   });
 
@@ -72,18 +72,21 @@ export default function ChangePasswordPage() {
           <Input
             type="password"
             label="Mật khẩu hiện tại"
+            autoComplete="current-password"
             error={errors.currentPassword?.message}
             {...register('currentPassword')}
           />
           <Input
             type="password"
             label="Mật khẩu mới"
+            autoComplete="new-password"
             error={errors.newPassword?.message}
             {...register('newPassword')}
           />
           <Input
             type="password"
             label="Nhập lại mật khẩu mới"
+            autoComplete="new-password"
             error={errors.confirmPassword?.message}
             {...register('confirmPassword')}
           />

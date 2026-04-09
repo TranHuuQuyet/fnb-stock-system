@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/table';
+import { localizeUserStatus } from '@/lib/localization';
 import {
   createIngredient,
   disableIngredient,
@@ -56,7 +57,7 @@ export default function AdminIngredientsPage() {
   }>;
 
   return (
-    <ProtectedPage title="Admin Ingredients" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Quản lý nguyên liệu" allowedRoles={['ADMIN']}>
       <div className="grid gap-4 xl:grid-cols-[380px,1fr]">
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo nguyên liệu</h2>
@@ -64,11 +65,11 @@ export default function AdminIngredientsPage() {
             className="space-y-4"
             onSubmit={handleSubmit((values) => createMutation.mutate(values))}
           >
-            <Input label="Code" error={errors.code?.message} {...register('code')} />
-            <Input label="Name" error={errors.name?.message} {...register('name')} />
-            <Input label="Unit" error={errors.unit?.message} {...register('unit')} />
+            <Input label="Mã nguyên liệu" error={errors.code?.message} {...register('code')} />
+            <Input label="Tên nguyên liệu" error={errors.name?.message} {...register('name')} />
+            <Input label="Đơn vị" error={errors.unit?.message} {...register('unit')} />
             <Button type="submit" fullWidth disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Creating...' : 'Create ingredient'}
+              {createMutation.isPending ? 'Đang tạo...' : 'Tạo nguyên liệu'}
             </Button>
           </form>
         </Card>
@@ -76,14 +77,14 @@ export default function AdminIngredientsPage() {
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sách nguyên liệu</h2>
           <SimpleTable
-            columns={['Code', 'Name', 'Unit', 'Status', 'Actions']}
+            columns={['Mã', 'Tên', 'Đơn vị', 'Trạng thái', 'Thao tác']}
             rows={ingredients.map((ingredient) => [
               ingredient.code,
               ingredient.name,
               ingredient.unit,
               <Badge
                 key={ingredient.id}
-                label={ingredient.isActive ? 'ACTIVE' : 'INACTIVE'}
+                label={localizeUserStatus(ingredient.isActive ? 'ACTIVE' : 'INACTIVE')}
                 tone={ingredient.isActive ? 'success' : 'warning'}
               />,
               ingredient.isActive ? (
@@ -92,10 +93,10 @@ export default function AdminIngredientsPage() {
                   variant="danger"
                   onClick={() => disableMutation.mutate(ingredient.id)}
                 >
-                  Disable
+                  Vô hiệu hóa
                 </Button>
               ) : (
-                'Disabled'
+                'Đã vô hiệu hóa'
               )
             ])}
           />

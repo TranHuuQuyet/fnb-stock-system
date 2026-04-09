@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/table';
+import { localizeBatchStatus } from '@/lib/localization';
 import { listIngredients } from '@/services/admin/ingredients';
 import { listStores } from '@/services/admin/stores';
 import {
@@ -98,18 +99,18 @@ export default function AdminBatchesPage() {
   }>;
 
   return (
-    <ProtectedPage title="Admin Batches" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Quản lý lô hàng" allowedRoles={['ADMIN']}>
       <div className="grid gap-4 xl:grid-cols-[420px,1fr]">
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo batch</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo lô hàng</h2>
           <form
             className="space-y-4"
             onSubmit={handleSubmit((values) => createMutation.mutate(values))}
           >
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Store</span>
+              <span className="text-sm font-medium text-brand-900">Cửa hàng</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...register('storeId')}>
-                <option value="">Select store</option>
+                <option value="">Chọn cửa hàng</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}
@@ -118,9 +119,9 @@ export default function AdminBatchesPage() {
               </select>
             </label>
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Ingredient</span>
+              <span className="text-sm font-medium text-brand-900">Nguyên liệu</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...register('ingredientId')}>
-                <option value="">Select ingredient</option>
+                <option value="">Chọn nguyên liệu</option>
                 {ingredients.map((ingredient) => (
                   <option key={ingredient.id} value={ingredient.id}>
                     {ingredient.name}
@@ -128,20 +129,20 @@ export default function AdminBatchesPage() {
                 ))}
               </select>
             </label>
-            <Input label="Batch code" error={errors.batchCode?.message} {...register('batchCode')} />
-            <Input label="Received at" type="datetime-local" error={errors.receivedAt?.message} {...register('receivedAt')} />
-            <Input label="Expired at" type="datetime-local" {...register('expiredAt')} />
-            <Input label="Initial qty" type="number" step="0.001" error={errors.initialQty?.message} {...register('initialQty')} />
+            <Input label="Mã lô" error={errors.batchCode?.message} {...register('batchCode')} />
+            <Input label="Ngày nhập" type="datetime-local" error={errors.receivedAt?.message} {...register('receivedAt')} />
+            <Input label="Ngày hết hạn" type="datetime-local" {...register('expiredAt')} />
+            <Input label="Số lượng ban đầu" type="number" step="0.001" error={errors.initialQty?.message} {...register('initialQty')} />
             <Button type="submit" fullWidth disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Creating...' : 'Create batch'}
+              {createMutation.isPending ? 'Đang tạo...' : 'Tạo lô'}
             </Button>
           </form>
         </Card>
 
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sách batch</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sách lô hàng</h2>
           <SimpleTable
-            columns={['Batch', 'Ingredient', 'Store', 'Remaining', 'Status', 'Actions']}
+            columns={['Mã lô', 'Nguyên liệu', 'Cửa hàng', 'Tồn còn lại', 'Trạng thái', 'Thao tác']}
             rows={batches.map((batch) => [
               batch.batchCode,
               batch.ingredient.name,
@@ -149,7 +150,7 @@ export default function AdminBatchesPage() {
               batch.remainingQty,
               <Badge
                 key={batch.id}
-                label={batch.status}
+                label={localizeBatchStatus(batch.status)}
                 tone={
                   batch.status === 'ACTIVE'
                     ? 'success'
@@ -163,24 +164,24 @@ export default function AdminBatchesPage() {
                   variant="secondary"
                   onClick={() => actionMutation.mutate({ id: batch.id, action: 'generate' })}
                 >
-                  Generate QR
+                  Tạo QR
                 </Button>
                 <Link href={`/admin/batches/${batch.id}/label`}>
-                  <Button variant="secondary">Print label</Button>
+                  <Button variant="secondary">In tem</Button>
                 </Link>
                 {batch.status === 'SOFT_LOCKED' ? (
                   <Button
                     variant="secondary"
                     onClick={() => actionMutation.mutate({ id: batch.id, action: 'unlock' })}
                   >
-                    Unlock
+                    Mở khóa
                   </Button>
                 ) : (
                   <Button
                     variant="danger"
                     onClick={() => actionMutation.mutate({ id: batch.id, action: 'lock' })}
                   >
-                    Soft lock
+                    Khóa mềm
                   </Button>
                 )}
               </div>

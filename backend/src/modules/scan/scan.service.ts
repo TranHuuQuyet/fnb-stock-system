@@ -163,7 +163,7 @@ export class ScanService {
         clientEventId: params.dto.clientEventId,
         resultStatus: ScanResultStatus.ERROR,
         resultCode: ERROR_CODES.AUTH_FORBIDDEN,
-        message: 'Store scope is required',
+        message: 'Thiếu phạm vi cửa hàng để xử lý lượt quét',
         batchCode: params.dto.batchCode
       };
     }
@@ -210,7 +210,7 @@ export class ScanService {
       const olderBatch = await this.batchesService.findOlderActiveBatch(freshBatch);
       let resultStatus: ScanResultStatus = ScanResultStatus.SUCCESS;
       let resultCode = ERROR_CODES.SCAN_OK as string;
-      let message = 'Scan recorded successfully';
+      let message = 'Đã ghi nhận lượt quét thành công';
 
       if (olderBatch) {
         if (!config.allowFifoBypass) {
@@ -218,13 +218,13 @@ export class ScanService {
             storeId,
             batchId: freshBatch.id,
             resultCode: ERROR_CODES.ERROR_FIFO,
-            message: 'Older batch is available. FIFO is enforced.'
+            message: 'Đang còn lô cũ hơn. Hệ thống bắt buộc xuất theo FIFO.'
           });
         }
 
         resultStatus = ScanResultStatus.WARNING;
         resultCode = ERROR_CODES.WARNING_FIFO;
-        message = 'FIFO warning: older batch is still available';
+        message = 'Cảnh báo FIFO: vẫn còn lô cũ hơn chưa được sử dụng hết';
       }
 
       const nextQty = freshBatch.remainingQty - params.dto.quantityUsed;
@@ -293,7 +293,7 @@ export class ScanService {
         storeId: storeId!,
         batchId: null,
         resultCode: ERROR_CODES.ERROR_BATCH_NOT_FOUND,
-        message: 'Batch not found'
+        message: 'Không tìm thấy lô nguyên liệu'
       });
     }
 
@@ -304,7 +304,7 @@ export class ScanService {
         storeId: storeId!,
         batchId: batch.id,
         resultCode: ERROR_CODES.ERROR_BATCH_EXPIRED,
-        message: 'Batch is expired'
+        message: 'Lô nguyên liệu đã hết hạn'
       });
     }
 
@@ -313,7 +313,7 @@ export class ScanService {
         storeId: storeId!,
         batchId: batch.id,
         resultCode: ERROR_CODES.ERROR_SOFT_LOCKED,
-        message: 'Batch is soft locked'
+        message: 'Lô nguyên liệu đang bị khóa mềm'
       });
     }
 
@@ -322,7 +322,7 @@ export class ScanService {
         storeId: storeId!,
         batchId: batch.id,
         resultCode: ERROR_CODES.ERROR_BATCH_DEPLETED,
-        message: 'Batch is depleted'
+        message: 'Lô nguyên liệu đã hết số lượng'
       });
     }
 
@@ -331,7 +331,7 @@ export class ScanService {
         storeId: storeId!,
         batchId: batch.id,
         resultCode: ERROR_CODES.ERROR_INSUFFICIENT_QTY,
-        message: 'Insufficient batch quantity'
+        message: 'Số lượng còn lại của lô không đủ'
       });
     }
 
@@ -342,7 +342,7 @@ export class ScanService {
           storeId: storeId!,
           batchId: batch.id,
           resultCode: ERROR_CODES.ERROR_FIFO,
-          message: 'Older batch is available. FIFO is enforced.'
+          message: 'Đang còn lô cũ hơn. Hệ thống bắt buộc xuất theo FIFO.'
         });
       }
     }
@@ -354,7 +354,7 @@ export class ScanService {
     params: ProcessScanParams,
     storeId: string
   ): Promise<ProcessScanResult> {
-    const detail = `IP ${params.ipAddress} is not in whitelist`;
+    const detail = `IP ${params.ipAddress} không nằm trong whitelist`;
 
     return this.prisma.$transaction(async (tx) => {
       await tx.fraudAttemptLog.create({
@@ -385,7 +385,7 @@ export class ScanService {
           ssid: params.dto.ssid,
           resultStatus: ScanResultStatus.ERROR,
           resultCode: ERROR_CODES.ERROR_NETWORK_RESTRICTED,
-          message: 'Scan rejected due to network restriction'
+          message: 'Lượt quét bị từ chối vì mạng hiện tại chưa được cho phép'
         }
       });
 
@@ -394,7 +394,7 @@ export class ScanService {
         clientEventId: params.dto.clientEventId,
         resultStatus: ScanResultStatus.ERROR,
         resultCode: ERROR_CODES.ERROR_NETWORK_RESTRICTED,
-        message: 'Scan rejected due to network restriction',
+        message: 'Lượt quét bị từ chối vì mạng hiện tại chưa được cho phép',
         batchCode: params.dto.batchCode,
         batchId: null,
         scanLogId: scanLog.id

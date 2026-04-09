@@ -27,11 +27,11 @@ export default function BatchLabelPage({ params }: { params: { id: string } }) {
     | undefined;
 
   return (
-    <ProtectedPage title="Batch Label" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Tem nhãn lô hàng" allowedRoles={['ADMIN']}>
       <div className="space-y-4">
         <div className="no-print">
           <Button variant="secondary" onClick={() => window.print()}>
-            Print label
+            In tem
           </Button>
         </div>
 
@@ -39,23 +39,23 @@ export default function BatchLabelPage({ params }: { params: { id: string } }) {
           <Card className="mx-auto max-w-sm rounded-[24px] border border-slate-200 p-6">
             <div className="space-y-2 text-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-700">
-                Ingredient batch label
+                Tem lô nguyên liệu
               </p>
               <h2 className="text-xl font-semibold text-brand-900">{label.ingredientName}</h2>
-              <p>Batch: {label.batchCode}</p>
-              <p>Store: {label.storeName}</p>
-              <p>Received: {new Date(label.receivedAt).toLocaleString('vi-VN')}</p>
+              <p>Mã lô: {label.batchCode}</p>
+              <p>Cửa hàng: {label.storeName}</p>
+              <p>Ngày nhập: {new Date(label.receivedAt).toLocaleString('vi-VN')}</p>
               <p>
-                Expired:{' '}
+                Hết hạn:{' '}
                 {label.expiredAt
                   ? new Date(label.expiredAt).toLocaleString('vi-VN')
-                  : 'N/A'}
+                  : 'Không có'}
               </p>
               <p>
-                Label created:{' '}
+                Ngày tạo tem:{' '}
                 {label.labelCreatedAt
                   ? new Date(label.labelCreatedAt).toLocaleString('vi-VN')
-                  : 'N/A'}
+                  : 'Không có'}
               </p>
             </div>
             <div className="mt-6 flex justify-center">

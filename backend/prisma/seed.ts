@@ -21,13 +21,13 @@ async function main() {
   const store = await prisma.store.upsert({
     where: { code: 'STORE-HCM-01' },
     update: {
-      name: 'FNB Demo Store',
+      name: 'Cửa hàng demo FNB',
       timezone: 'Asia/Ho_Chi_Minh',
       isActive: true
     },
     create: {
       code: 'STORE-HCM-01',
-      name: 'FNB Demo Store',
+      name: 'Cửa hàng demo FNB',
       timezone: 'Asia/Ho_Chi_Minh',
       isActive: true
     }
@@ -111,18 +111,18 @@ async function main() {
   const [tea, milk, sugar] = await Promise.all([
     prisma.ingredient.upsert({
       where: { code: 'TEA-LEAF' },
-      update: { name: 'Tea Leaf', unit: 'kg', isActive: true },
-      create: { code: 'TEA-LEAF', name: 'Tea Leaf', unit: 'kg', isActive: true }
+      update: { name: 'Trà lá', unit: 'kg', isActive: true },
+      create: { code: 'TEA-LEAF', name: 'Trà lá', unit: 'kg', isActive: true }
     }),
     prisma.ingredient.upsert({
       where: { code: 'MILK' },
-      update: { name: 'Fresh Milk', unit: 'liter', isActive: true },
-      create: { code: 'MILK', name: 'Fresh Milk', unit: 'liter', isActive: true }
+      update: { name: 'Sữa tươi', unit: 'lít', isActive: true },
+      create: { code: 'MILK', name: 'Sữa tươi', unit: 'lít', isActive: true }
     }),
     prisma.ingredient.upsert({
       where: { code: 'SUGAR' },
-      update: { name: 'Sugar Syrup', unit: 'liter', isActive: true },
-      create: { code: 'SUGAR', name: 'Sugar Syrup', unit: 'liter', isActive: true }
+      update: { name: 'Nước đường', unit: 'lít', isActive: true },
+      create: { code: 'SUGAR', name: 'Nước đường', unit: 'lít', isActive: true }
     })
   ]);
 
@@ -204,7 +204,7 @@ async function main() {
       initialQty: 30,
       remainingQty: 30,
       status: BatchStatus.SOFT_LOCKED,
-      softLockReason: 'Packaging damaged',
+      softLockReason: 'Bao bì bị hỏng',
       qrCodeValue: batchQr('BATCH-SUA-LOCK-001'),
       qrGeneratedAt: new Date()
     },
@@ -217,7 +217,7 @@ async function main() {
       initialQty: 30,
       remainingQty: 30,
       status: BatchStatus.SOFT_LOCKED,
-      softLockReason: 'Packaging damaged',
+      softLockReason: 'Bao bì bị hỏng',
       qrCodeValue: batchQr('BATCH-SUA-LOCK-001'),
       qrGeneratedAt: new Date()
     }
@@ -347,13 +347,13 @@ async function main() {
 
   const milkTea = await prisma.posProduct.upsert({
     where: { code: 'MILK-TEA' },
-    update: { name: 'Milk Tea', isActive: true },
-    create: { code: 'MILK-TEA', name: 'Milk Tea', isActive: true }
+    update: { name: 'Trà sữa', isActive: true },
+    create: { code: 'MILK-TEA', name: 'Trà sữa', isActive: true }
   });
   const blackTea = await prisma.posProduct.upsert({
     where: { code: 'BLACK-TEA' },
-    update: { name: 'Black Tea', isActive: true },
-    create: { code: 'BLACK-TEA', name: 'Black Tea', isActive: true }
+    update: { name: 'Trà đen', isActive: true },
+    create: { code: 'BLACK-TEA', name: 'Trà đen', isActive: true }
   });
 
   const recipeEntries = [
@@ -418,7 +418,7 @@ async function main() {
     },
     update: {
       quantity: 5,
-      reason: 'Opening stock correction'
+      reason: 'Điều chỉnh tồn đầu kỳ'
     },
     create: {
       id: 'stock-adjustment-sample',
@@ -426,7 +426,7 @@ async function main() {
       batchId: batchTeaNew.id,
       adjustmentType: StockAdjustmentType.INCREASE,
       quantity: 5,
-      reason: 'Opening stock correction',
+      reason: 'Điều chỉnh tồn đầu kỳ',
       createdByUserId: admin.id
     }
   });
@@ -435,7 +435,11 @@ async function main() {
     where: {
       clientEventId: '11111111-1111-4111-8111-111111111111'
     },
-    update: {},
+    update: {
+      resultStatus: ScanResultStatus.SUCCESS,
+      resultCode: 'SCAN_OK',
+      message: 'Bản ghi quét thành công mẫu'
+    },
     create: {
       clientEventId: '11111111-1111-4111-8111-111111111111',
       storeId: store.id,
@@ -450,7 +454,7 @@ async function main() {
       ipAddress: '127.0.0.1',
       resultStatus: ScanResultStatus.SUCCESS,
       resultCode: 'SCAN_OK',
-      message: 'Seed successful scan'
+      message: 'Bản ghi quét thành công mẫu'
     }
   });
 
@@ -458,7 +462,11 @@ async function main() {
     where: {
       clientEventId: '22222222-2222-4222-8222-222222222222'
     },
-    update: {},
+    update: {
+      resultStatus: ScanResultStatus.WARNING,
+      resultCode: 'WARNING_FIFO',
+      message: 'Bản ghi quét cảnh báo FIFO mẫu'
+    },
     create: {
       clientEventId: '22222222-2222-4222-8222-222222222222',
       storeId: store.id,
@@ -473,7 +481,7 @@ async function main() {
       ipAddress: '127.0.0.1',
       resultStatus: ScanResultStatus.WARNING,
       resultCode: 'WARNING_FIFO',
-      message: 'Seed FIFO warning scan'
+      message: 'Bản ghi quét cảnh báo FIFO mẫu'
     }
   });
 
@@ -481,7 +489,11 @@ async function main() {
     where: {
       clientEventId: '33333333-3333-4333-8333-333333333333'
     },
-    update: {},
+    update: {
+      resultStatus: ScanResultStatus.ERROR,
+      resultCode: 'ERROR_NETWORK_RESTRICTED',
+      message: 'Bản ghi quét bị từ chối do mạng mẫu'
+    },
     create: {
       clientEventId: '33333333-3333-4333-8333-333333333333',
       storeId: store.id,
@@ -496,13 +508,16 @@ async function main() {
       ipAddress: '10.0.0.2',
       resultStatus: ScanResultStatus.ERROR,
       resultCode: 'ERROR_NETWORK_RESTRICTED',
-      message: 'Seed network rejected scan'
+      message: 'Bản ghi quét bị từ chối do mạng mẫu'
     }
   });
 
   const existingFraud = await prisma.fraudAttemptLog.findFirst({
     where: {
-      detail: 'Seeded invalid network attempt'
+      OR: [
+        { detail: 'Bản ghi mẫu: thiết bị dùng mạng không hợp lệ' },
+        { detail: 'Seeded invalid network attempt' }
+      ]
     }
   });
   if (!existingFraud) {
@@ -513,7 +528,7 @@ async function main() {
         deviceId: 'demo-device-2',
         ipAddress: '10.0.0.2',
         attemptType: 'NETWORK_RESTRICTED',
-        detail: 'Seeded invalid network attempt'
+        detail: 'Bản ghi mẫu: thiết bị dùng mạng không hợp lệ'
       }
     });
   }
@@ -531,7 +546,7 @@ async function main() {
       actualQty: 0,
       ratio: 0,
       severity: AlertSeverity.HIGH,
-      message: 'Actual usage is below threshold for Fresh Milk',
+      message: 'Mức sử dụng thực tế của Sữa tươi đang thấp hơn ngưỡng cảnh báo',
       status: AlertStatus.OPEN
     },
     create: {
@@ -542,7 +557,7 @@ async function main() {
       actualQty: 0,
       ratio: 0,
       severity: AlertSeverity.HIGH,
-      message: 'Actual usage is below threshold for Fresh Milk',
+      message: 'Mức sử dụng thực tế của Sữa tươi đang thấp hơn ngưỡng cảnh báo',
       status: AlertStatus.OPEN
     }
   });

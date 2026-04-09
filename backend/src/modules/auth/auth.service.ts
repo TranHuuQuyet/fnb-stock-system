@@ -27,7 +27,7 @@ export class AuthService {
       throw appException(
         HttpStatus.UNAUTHORIZED,
         ERROR_CODES.AUTH_INVALID_CREDENTIALS,
-        'Invalid username or password'
+        'Sai tên đăng nhập hoặc mật khẩu'
       );
     }
 
@@ -35,7 +35,7 @@ export class AuthService {
       throw appException(
         HttpStatus.UNAUTHORIZED,
         ERROR_CODES.AUTH_ACCOUNT_LOCKED,
-        'Account is locked'
+        'Tài khoản đã bị khóa'
       );
     }
 
@@ -43,7 +43,7 @@ export class AuthService {
       throw appException(
         HttpStatus.UNAUTHORIZED,
         ERROR_CODES.AUTH_ACCOUNT_INACTIVE,
-        'Account is inactive'
+        'Tài khoản đang bị vô hiệu hóa'
       );
     }
 
@@ -52,7 +52,7 @@ export class AuthService {
       throw appException(
         HttpStatus.UNAUTHORIZED,
         ERROR_CODES.AUTH_INVALID_CREDENTIALS,
-        'Invalid username or password'
+        'Sai tên đăng nhập hoặc mật khẩu'
       );
     }
 
@@ -104,7 +104,7 @@ export class AuthService {
       throw appException(
         HttpStatus.BAD_REQUEST,
         ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
-        'Confirm password does not match'
+        'Mật khẩu xác nhận không khớp'
       );
     }
 
@@ -113,7 +113,7 @@ export class AuthService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.AUTH_UNAUTHORIZED,
-        'User not found'
+        'Không tìm thấy người dùng'
       );
     }
 
@@ -122,7 +122,7 @@ export class AuthService {
       throw appException(
         HttpStatus.BAD_REQUEST,
         ERROR_CODES.AUTH_INVALID_CREDENTIALS,
-        'Current password is incorrect'
+        'Mật khẩu hiện tại không đúng'
       );
     }
 

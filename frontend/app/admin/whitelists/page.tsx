@@ -65,7 +65,7 @@ export default function AdminWhitelistsPage() {
   }>;
 
   return (
-    <ProtectedPage title="Whitelists" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Whitelist mạng" allowedRoles={['ADMIN']}>
       <div className="grid gap-4 xl:grid-cols-[420px,1fr]">
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo whitelist</h2>
@@ -74,9 +74,9 @@ export default function AdminWhitelistsPage() {
             onSubmit={handleSubmit((values) => createMutation.mutate(values))}
           >
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Store</span>
+              <span className="text-sm font-medium text-brand-900">Cửa hàng</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...register('storeId')}>
-                <option value="">Select store</option>
+                <option value="">Chọn cửa hàng</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}
@@ -85,15 +85,15 @@ export default function AdminWhitelistsPage() {
               </select>
             </label>
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Type</span>
+              <span className="text-sm font-medium text-brand-900">Loại</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...register('type')}>
                 <option value="IP">IP</option>
                 <option value="SSID">SSID</option>
               </select>
             </label>
-            <Input label="Value" error={errors.value?.message} {...register('value')} />
+            <Input label="Giá trị" error={errors.value?.message} {...register('value')} />
             <Button type="submit" fullWidth disabled={createMutation.isPending}>
-              Create whitelist
+              Tạo whitelist
             </Button>
           </form>
         </Card>
@@ -101,14 +101,14 @@ export default function AdminWhitelistsPage() {
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sách whitelist</h2>
           <SimpleTable
-            columns={['Store', 'Type', 'Value', 'Status', 'Actions']}
+            columns={['Cửa hàng', 'Loại', 'Giá trị', 'Trạng thái', 'Thao tác']}
             rows={whitelists.map((item) => [
               item.store.name,
               item.type,
               item.value,
               <Badge
                 key={item.id}
-                label={item.isActive ? 'ACTIVE' : 'INACTIVE'}
+                label={item.isActive ? 'Hoạt động' : 'Ngưng hoạt động'}
                 tone={item.isActive ? 'success' : 'warning'}
               />,
               <Button
@@ -116,7 +116,7 @@ export default function AdminWhitelistsPage() {
                 variant="danger"
                 onClick={() => deleteMutation.mutate(item.id)}
               >
-                Delete
+                Xóa
               </Button>
             ])}
           />

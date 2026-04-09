@@ -13,8 +13,8 @@ import { setSession } from '@/lib/auth';
 import { login } from '@/services/auth';
 
 const schema = z.object({
-  username: z.string().min(1, 'Username is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters')
+  username: z.string().min(1, 'Vui lòng nhập tên đăng nhập'),
+  password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự')
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -63,15 +63,17 @@ export default function LoginPage() {
           onSubmit={handleSubmit((values) => mutation.mutate(values))}
         >
           <Input
-            label="Username"
+            label="Tên đăng nhập"
             placeholder="admin"
+            autoComplete="username"
             error={errors.username?.message}
             {...register('username')}
           />
           <Input
-            label="Password"
+            label="Mật khẩu"
             type="password"
             placeholder="123456"
+            autoComplete="current-password"
             error={errors.password?.message}
             {...register('password')}
           />

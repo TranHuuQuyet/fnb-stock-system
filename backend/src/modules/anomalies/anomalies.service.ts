@@ -22,7 +22,7 @@ export class AnomaliesService {
       throw appException(
         HttpStatus.FORBIDDEN,
         ERROR_CODES.AUTH_FORBIDDEN,
-        'Store scope is invalid'
+        'Phạm vi cửa hàng không hợp lệ'
       );
     }
 
@@ -57,7 +57,7 @@ export class AnomaliesService {
                 : item.ratio < 0.7
                   ? AlertSeverity.MEDIUM
                   : AlertSeverity.LOW,
-            message: `Actual usage is below threshold for ${item.ingredientName}`
+            message: `Mức sử dụng thực tế của ${item.ingredientName} đang thấp hơn ngưỡng cảnh báo`
           }))
         });
       }

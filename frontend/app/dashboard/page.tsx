@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SimpleTable } from '@/components/ui/table';
 import { getSession } from '@/lib/auth';
+import { localizeResultStatus } from '@/lib/localization';
 import { getDashboardSummary, runAnomalies } from '@/services/dashboard';
 
 const today = new Intl.DateTimeFormat('en-CA', {
@@ -65,18 +66,20 @@ export default function DashboardPage() {
     | undefined;
 
   return (
-    <ProtectedPage title="Dashboard" allowedRoles={['MANAGER', 'ADMIN']}>
+    <ProtectedPage title="Bảng điều khiển" allowedRoles={['MANAGER', 'ADMIN']}>
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="md:col-span-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-brand-900">Tổng quan ngày {today}</h2>
               <p className="text-sm text-slate-500">
-                Dữ liệu lấy trực tiếp từ scan logs, fraud logs và POS reconciliation.
+                Dữ liệu lấy trực tiếp từ lịch sử quét, cảnh báo gian lận và đối soát POS.
               </p>
             </div>
             <Button onClick={() => anomalyMutation.mutate()} disabled={anomalyMutation.isPending}>
-              {anomalyMutation.isPending ? 'Đang chạy anomaly...' : 'Run anomaly detection'}
+              {anomalyMutation.isPending
+                ? 'Đang phân tích bất thường...'
+                : 'Chạy phát hiện bất thường'}
             </Button>
           </div>
         </Card>
@@ -84,12 +87,12 @@ export default function DashboardPage() {
         {summary ? (
           <>
             {[
-              ['Total scans', summary.summary.totalScans],
-              ['Success', summary.summary.success],
-              ['Warning', summary.summary.warning],
-              ['Error', summary.summary.error],
-              ['Fraud attempts', summary.summary.fraudAttempts],
-              ['Anomaly alerts', summary.summary.anomalyAlerts]
+              ['Tổng lượt quét', summary.summary.totalScans],
+              ['Thành công', summary.summary.success],
+              ['Cảnh báo', summary.summary.warning],
+              ['Lỗi', summary.summary.error],
+              ['Nghi vấn gian lận', summary.summary.fraudAttempts],
+              ['Cảnh báo bất thường', summary.summary.anomalyAlerts]
             ].map(([label, value]) => (
               <Card key={label}>
                 <p className="text-sm text-slate-500">{label}</p>
@@ -103,9 +106,9 @@ export default function DashboardPage() {
       {summary ? (
         <>
           <Card>
-            <h3 className="mb-4 text-lg font-semibold text-brand-900">Reconciliation</h3>
+            <h3 className="mb-4 text-lg font-semibold text-brand-900">Đối soát</h3>
             <SimpleTable
-              columns={['Ingredient', 'Expected', 'Actual', 'Ratio', 'Hint']}
+              columns={['Nguyên liệu', 'Dự kiến', 'Thực tế', 'Tỷ lệ', 'Gợi ý']}
               rows={summary.reconciliation.map((item: any) => [
                 item.ingredientName,
                 item.expectedQty,
@@ -115,14 +118,14 @@ export default function DashboardPage() {
                   label={`${Math.round(item.ratio * 100)}%`}
                   tone={item.belowThreshold ? 'danger' : 'success'}
                 />,
-                item.belowThreshold ? 'Check camera / scan discipline' : 'Normal'
+                item.belowThreshold ? 'Kiểm tra camera hoặc quy trình quét' : 'Bình thường'
               ])}
             />
           </Card>
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Card>
-              <h3 className="mb-4 text-lg font-semibold text-brand-900">Recent fraud attempts</h3>
+              <h3 className="mb-4 text-lg font-semibold text-brand-900">Nghi vấn gian lận gần đây</h3>
               <div className="space-y-3 text-sm">
                 {summary.recentFraudAttempts.map((item: any) => (
                   <div key={item.id} className="rounded-2xl bg-rose-50 p-3">
@@ -134,14 +137,14 @@ export default function DashboardPage() {
             </Card>
 
             <Card>
-              <h3 className="mb-4 text-lg font-semibold text-brand-900">Recent scan logs</h3>
+              <h3 className="mb-4 text-lg font-semibold text-brand-900">Lịch sử quét gần đây</h3>
               <div className="space-y-3 text-sm">
                 {summary.recentScanLogs.map((item: any) => (
                   <div key={item.id} className="rounded-2xl bg-slate-50 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium">{item.batch?.batchCode ?? 'Unknown batch'}</p>
+                      <p className="font-medium">{item.batch?.batchCode ?? 'Không rõ mã lô'}</p>
                       <Badge
-                        label={item.resultStatus}
+                        label={localizeResultStatus(item.resultStatus)}
                         tone={
                           item.resultStatus === 'SUCCESS'
                             ? 'success'
@@ -158,13 +161,13 @@ export default function DashboardPage() {
             </Card>
 
             <Card>
-              <h3 className="mb-4 text-lg font-semibold text-brand-900">Recent alerts</h3>
+              <h3 className="mb-4 text-lg font-semibold text-brand-900">Cảnh báo gần đây</h3>
               <div className="space-y-3 text-sm">
                 {summary.recentAlerts.map((item: any) => (
                   <div key={item.id} className="rounded-2xl bg-amber-50 p-3">
                     <p className="font-medium">{item.ingredient.name}</p>
                     <p>{item.message}</p>
-                    <p className="text-xs text-slate-500">Ratio: {item.ratio}</p>
+                    <p className="text-xs text-slate-500">Tỷ lệ: {item.ratio}</p>
                   </div>
                 ))}
               </div>

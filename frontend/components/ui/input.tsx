@@ -1,4 +1,4 @@
-import { InputHTMLAttributes } from 'react';
+import React, { forwardRef, InputHTMLAttributes } from 'react';
 import clsx from 'clsx';
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
@@ -6,11 +6,15 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
   error?: string;
 };
 
-export function Input({ label, error, className, ...props }: Props) {
+export const Input = forwardRef<HTMLInputElement, Props>(function Input(
+  { label, error, className, ...props },
+  ref
+) {
   return (
     <label className="block space-y-2">
       {label ? <span className="text-sm font-medium text-brand-900">{label}</span> : null}
       <input
+        ref={ref}
         className={clsx(
           'w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900 shadow-sm outline-none ring-0 placeholder:text-slate-400 focus:border-brand-500',
           error && 'border-danger',
@@ -21,4 +25,4 @@ export function Input({ label, error, className, ...props }: Props) {
       {error ? <span className="text-xs text-danger">{error}</span> : null}
     </label>
   );
-}
+});

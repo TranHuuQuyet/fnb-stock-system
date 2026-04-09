@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/table';
+import { localizeUserStatus } from '@/lib/localization';
 import { createStore, listStores, updateStore } from '@/services/admin/stores';
 
 const schema = z.object({
@@ -58,19 +59,19 @@ export default function AdminStoresPage() {
   }>;
 
   return (
-    <ProtectedPage title="Admin Stores" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Quản lý cửa hàng" allowedRoles={['ADMIN']}>
       <div className="grid gap-4 xl:grid-cols-[380px,1fr]">
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo store</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo cửa hàng</h2>
           <form
             className="space-y-4"
             onSubmit={handleSubmit((values) => createMutation.mutate(values))}
           >
-            <Input label="Code" error={errors.code?.message} {...register('code')} />
-            <Input label="Name" error={errors.name?.message} {...register('name')} />
-            <Input label="Timezone" error={errors.timezone?.message} {...register('timezone')} />
+            <Input label="Mã cửa hàng" error={errors.code?.message} {...register('code')} />
+            <Input label="Tên cửa hàng" error={errors.name?.message} {...register('name')} />
+            <Input label="Múi giờ" error={errors.timezone?.message} {...register('timezone')} />
             <Button type="submit" fullWidth disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Creating...' : 'Create store'}
+              {createMutation.isPending ? 'Đang tạo...' : 'Tạo cửa hàng'}
             </Button>
           </form>
         </Card>
@@ -78,14 +79,14 @@ export default function AdminStoresPage() {
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sách cửa hàng</h2>
           <SimpleTable
-            columns={['Code', 'Name', 'Timezone', 'Status', 'Actions']}
+            columns={['Mã', 'Tên', 'Múi giờ', 'Trạng thái', 'Thao tác']}
             rows={stores.map((store) => [
               store.code,
               store.name,
               store.timezone,
               <Badge
                 key={store.id}
-                label={store.isActive ? 'ACTIVE' : 'INACTIVE'}
+                label={localizeUserStatus(store.isActive ? 'ACTIVE' : 'INACTIVE')}
                 tone={store.isActive ? 'success' : 'warning'}
               />,
               <Button
@@ -93,7 +94,7 @@ export default function AdminStoresPage() {
                 variant="secondary"
                 onClick={() => toggleMutation.mutate({ id: store.id, isActive: store.isActive })}
               >
-                {store.isActive ? 'Disable' : 'Enable'}
+                {store.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
               </Button>
             ])}
           />

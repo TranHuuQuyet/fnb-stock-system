@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/table';
+import { localizeRole, localizeUserStatus } from '@/lib/localization';
 import { createUser, listUsers, lockUser, resetPassword, unlockUser } from '@/services/admin/users';
 import { listStores } from '@/services/admin/stores';
 
@@ -69,27 +70,27 @@ export default function AdminUsersPage() {
   }>;
 
   return (
-    <ProtectedPage title="Admin Users" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Quản lý người dùng" allowedRoles={['ADMIN']}>
       <div className="grid gap-4 xl:grid-cols-[420px,1fr]">
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo user mới</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo người dùng mới</h2>
           <form
             className="space-y-4"
             onSubmit={handleSubmit((values) => createMutation.mutate(values))}
           >
-            <Input label="Username" error={errors.username?.message} {...register('username')} />
-            <Input label="Full name" error={errors.fullName?.message} {...register('fullName')} />
+            <Input label="Tên đăng nhập" error={errors.username?.message} {...register('username')} />
+            <Input label="Họ tên" error={errors.fullName?.message} {...register('fullName')} />
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Role</span>
+              <span className="text-sm font-medium text-brand-900">Vai trò</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...register('role')}>
-                <option value="STAFF">STAFF</option>
-                <option value="MANAGER">MANAGER</option>
+                <option value="STAFF">Nhân viên</option>
+                <option value="MANAGER">Quản lý</option>
               </select>
             </label>
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Store</span>
+              <span className="text-sm font-medium text-brand-900">Cửa hàng</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...register('storeId')}>
-                <option value="">Select store</option>
+                <option value="">Chọn cửa hàng</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}
@@ -98,13 +99,13 @@ export default function AdminUsersPage() {
               </select>
             </label>
             <Input
-              label="Temporary password"
+              label="Mật khẩu tạm thời"
               type="password"
               error={errors.temporaryPassword?.message}
               {...register('temporaryPassword')}
             />
             <Button type="submit" fullWidth disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Creating...' : 'Create user'}
+              {createMutation.isPending ? 'Đang tạo...' : 'Tạo người dùng'}
             </Button>
           </form>
         </Card>
@@ -112,14 +113,14 @@ export default function AdminUsersPage() {
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sách tài khoản</h2>
           <SimpleTable
-            columns={['Username', 'Full name', 'Role', 'Status', 'Store', 'Actions']}
+            columns={['Tên đăng nhập', 'Họ tên', 'Vai trò', 'Trạng thái', 'Cửa hàng', 'Thao tác']}
             rows={users.map((user) => [
               user.username,
               user.fullName,
-              user.role,
+              localizeRole(user.role),
               <Badge
                 key={`${user.id}-status`}
-                label={user.status}
+                label={localizeUserStatus(user.status)}
                 tone={user.status === 'ACTIVE' ? 'success' : 'warning'}
               />,
               user.store?.name ?? '-',
@@ -128,21 +129,21 @@ export default function AdminUsersPage() {
                   variant="secondary"
                   onClick={() => actionMutation.mutate({ id: user.id, action: 'reset' })}
                 >
-                  Reset
+                  Đặt lại mật khẩu
                 </Button>
                 {user.status === 'LOCKED' ? (
                   <Button
                     variant="secondary"
                     onClick={() => actionMutation.mutate({ id: user.id, action: 'unlock' })}
                   >
-                    Unlock
+                    Mở khóa
                   </Button>
                 ) : (
                   <Button
                     variant="danger"
                     onClick={() => actionMutation.mutate({ id: user.id, action: 'lock' })}
                   >
-                    Lock
+                    Khóa
                   </Button>
                 )}
               </div>
