@@ -1,0 +1,83 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { UserRole } from '@prisma/client';
+
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import type { JwtUser } from '../../common/types/request-with-user';
+import { ConfigService } from './config.service';
+import { CreateWhitelistDto } from './dto/create-whitelist.dto';
+import { QueryWhitelistsDto } from './dto/query-whitelists.dto';
+import { UpdateConfigDto } from './dto/update-config.dto';
+import { UpdateWhitelistDto } from './dto/update-whitelist.dto';
+
+@ApiTags('Config')
+@ApiBearerAuth()
+@Controller('admin')
+@Roles(UserRole.ADMIN)
+export class ConfigController {
+  constructor(private readonly configService: ConfigService) {}
+
+  @Get('config')
+  async getConfig() {
+    return {
+      data: await this.configService.getConfig()
+    };
+  }
+
+  @Patch('config')
+  async updateConfig(
+    @CurrentUser() user: JwtUser,
+    @Body() dto: UpdateConfigDto
+  ) {
+    return {
+      data: await this.configService.updateConfig(user.userId, dto),
+      message: 'Config updated successfully'
+    };
+  }
+
+  @Post('network-whitelists')
+  async createWhitelist(
+    @CurrentUser() user: JwtUser,
+    @Body() dto: CreateWhitelistDto
+  ) {
+    return {
+      data: await this.configService.createWhitelist(user.userId, dto),
+      message: 'Whitelist created successfully'
+    };
+  }
+
+  @Get('network-whitelists')
+  async listWhitelists(@Query() query: QueryWhitelistsDto) {
+    return this.configService.listWhitelists(query);
+  }
+
+  @Patch('network-whitelists/:id')
+  async updateWhitelist(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateWhitelistDto
+  ) {
+    return {
+      data: await this.configService.updateWhitelist(user.userId, id, dto),
+      message: 'Whitelist updated successfully'
+    };
+  }
+
+  @Delete('network-whitelists/:id')
+  async deleteWhitelist(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    return {
+      data: await this.configService.deleteWhitelist(user.userId, id),
+      message: 'Whitelist deleted successfully'
+    };
+  }
+}

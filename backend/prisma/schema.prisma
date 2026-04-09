@@ -1,0 +1,335 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+  MUST_CHANGE_PASSWORD
+}
+
+enum NetworkWhitelistType {
+  IP
+  SSID
+}
+
+enum BatchStatus {
+  ACTIVE
+  SOFT_LOCKED
+  DEPLETED
+  EXPIRED
+}
+
+enum StockAdjustmentType {
+  INCREASE
+  DECREASE
+}
+
+enum ScanSource {
+  ONLINE
+  OFFLINE_SYNC
+  MANUAL_ENTRY
+}
+
+enum ScanResultStatus {
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum ScanEntryMethod {
+  CAMERA
+  MANUAL
+}
+
+enum FraudAttemptType {
+  NETWORK_RESTRICTED
+  INVALID_QR
+  UNKNOWN_BATCH
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model User {
+  id            String       @id @default(cuid())
+  username      String       @unique
+  fullName      String
+  passwordHash  String
+  role          UserRole
+  storeId       String?
+  status        UserStatus   @default(MUST_CHANGE_PASSWORD)
+  lastLoginAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  store         Store?       @relation(fields: [storeId], references: [id])
+  devices       Device[]
+  scanLogs      ScanLog[]
+  fraudAttempts FraudAttemptLog[]
+  adjustments   StockAdjustment[]
+  audits        AuditLog[]
+
+  @@index([storeId])
+  @@index([createdAt])
+}
+
+model Store {
+  id                String                  @id @default(cuid())
+  code              String                  @unique
+  name              String
+  timezone          String                  @default("Asia/Ho_Chi_Minh")
+  isActive          Boolean                 @default(true)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  users             User[]
+  networkWhitelists StoreNetworkWhitelist[]
+  devices           Device[]
+  batches           IngredientBatch[]
+  adjustments       StockAdjustment[]
+  scanLogs          ScanLog[]
+  fraudAttempts     FraudAttemptLog[]
+  posSales          PosSale[]
+  anomalyAlerts     AnomalyAlert[]
+
+  @@index([createdAt])
+}
+
+model StoreNetworkWhitelist {
+  id        String               @id @default(cuid())
+  storeId   String
+  type      NetworkWhitelistType
+  value     String
+  isActive  Boolean              @default(true)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  store     Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, type, value])
+  @@index([storeId, type])
+}
+
+model Device {
+  id          String   @id @default(cuid())
+  deviceId    String   @unique
+  userId      String?
+  storeId     String
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [userId], references: [id])
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@index([userId])
+}
+
+model Ingredient {
+  id        String            @id @default(cuid())
+  code      String            @unique
+  name      String
+  unit      String
+  isActive  Boolean           @default(true)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  batches   IngredientBatch[]
+  recipes   Recipe[]
+  alerts    AnomalyAlert[]
+
+  @@index([createdAt])
+}
+
+model IngredientBatch {
+  id             String           @id @default(cuid())
+  ingredientId   String
+  storeId        String
+  batchCode      String
+  receivedAt     DateTime
+  expiredAt      DateTime?
+  initialQty     Float
+  remainingQty   Float
+  status         BatchStatus      @default(ACTIVE)
+  softLockReason String?
+  qrCodeValue    String?
+  qrGeneratedAt  DateTime?
+  labelCreatedAt DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  ingredient     Ingredient       @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  store          Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  adjustments    StockAdjustment[]
+  scanLogs       ScanLog[]
+
+  @@unique([storeId, batchCode])
+  @@index([storeId, status, receivedAt])
+  @@index([ingredientId, storeId, receivedAt])
+  @@index([createdAt])
+}
+
+model StockAdjustment {
+  id              String              @id @default(cuid())
+  storeId         String
+  batchId         String
+  adjustmentType  StockAdjustmentType
+  quantity        Float
+  reason          String
+  createdByUserId String
+  createdAt       DateTime            @default(now())
+  store           Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  batch           IngredientBatch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  createdByUser   User                @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([storeId, createdAt])
+  @@index([batchId, createdAt])
+}
+
+model ScanLog {
+  id            String           @id @default(cuid())
+  clientEventId String           @unique
+  storeId       String
+  userId        String
+  deviceId      String
+  batchId       String?
+  quantityUsed  Float
+  scannedAt     DateTime
+  receivedAt    DateTime
+  source        ScanSource
+  entryMethod   ScanEntryMethod  @default(CAMERA)
+  ipAddress     String
+  ssid          String?
+  resultStatus  ScanResultStatus
+  resultCode    String
+  message       String
+  duplicated    Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  store         Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  batch         IngredientBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, createdAt])
+  @@index([userId, createdAt])
+  @@index([batchId])
+  @@index([scannedAt])
+}
+
+model FraudAttemptLog {
+  id          String           @id @default(cuid())
+  storeId     String
+  userId      String?
+  deviceId    String?
+  ipAddress   String
+  ssid        String?
+  attemptType FraudAttemptType
+  detail      String
+  createdAt   DateTime         @default(now())
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model PosProduct {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  name      String
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  recipes   Recipe[]
+  sales     PosSale[]
+
+  @@index([createdAt])
+}
+
+model Recipe {
+  id           String     @id @default(cuid())
+  productId    String
+  ingredientId String
+  qtyPerUnit   Float
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  product      PosProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, ingredientId])
+  @@index([productId])
+  @@index([ingredientId])
+}
+
+model PosSale {
+  id           String     @id @default(cuid())
+  storeId      String
+  productId    String
+  businessDate DateTime
+  qtySold      Float
+  createdAt    DateTime   @default(now())
+  store        Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product      PosProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, productId, businessDate])
+  @@index([storeId, businessDate])
+}
+
+model AnomalyAlert {
+  id           String        @id @default(cuid())
+  storeId      String
+  businessDate DateTime
+  ingredientId String
+  expectedQty  Float
+  actualQty    Float
+  ratio        Float
+  severity     AlertSeverity
+  message      String
+  status       AlertStatus   @default(OPEN)
+  createdAt    DateTime      @default(now())
+  store        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient    @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, businessDate, ingredientId])
+  @@index([storeId, businessDate])
+}
+
+model AppConfig {
+  id               String   @id @default("default")
+  allowFifoBypass  Boolean  @default(true)
+  anomalyThreshold Float    @default(0.7)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String
+  oldData     Json?
+  newData     Json?
+  createdAt   DateTime @default(now())
+  actorUser   User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

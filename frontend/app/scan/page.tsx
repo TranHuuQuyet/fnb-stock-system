@@ -1,0 +1,266 @@
+"use client";
+
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+
+import { ProtectedPage } from '@/components/layout/protected-page';
+import { QrScanner } from '@/components/scan/qr-scanner';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { getDeviceId, getSession } from '@/lib/auth';
+import { queueOfflineScan } from '@/lib/indexeddb';
+import { useOfflineSync } from '@/hooks/use-offline-sync';
+import { submitManualScan, submitScan } from '@/services/scan';
+
+const schema = z.object({
+  batchCode: z.string().min(1, 'Batch code is required'),
+  quantityUsed: z.coerce.number().positive('Quantity must be greater than 0')
+});
+
+type FormValues = z.infer<typeof schema>;
+type ScanResponse = {
+  resultStatus: 'SUCCESS' | 'WARNING' | 'ERROR';
+  resultCode: string;
+  message: string;
+};
+
+type ScanTone = 'idle' | 'success' | 'warning' | 'error' | 'offline';
+
+const parseBatchQr = (value: string) => {
+  if (!value.startsWith('FNBBATCH:')) {
+    return null;
+  }
+
+  return value.replace('FNBBATCH:', '').trim();
+};
+
+const playSuccessBeep = async () => {
+  const audioContext = new AudioContext();
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  oscillator.type = 'sine';
+  oscillator.frequency.value = 880;
+  oscillator.start();
+  gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.15);
+  oscillator.stop(audioContext.currentTime + 0.15);
+};
+
+export default function ScanPage() {
+  const session = getSession();
+  const { syncState, isOnline } = useOfflineSync();
+  const [feedback, setFeedback] = useState<{
+    tone: ScanTone;
+    title: string;
+    message: string;
+  }>({
+    tone: 'idle',
+    title: 'Ready',
+    message: 'Quét QR batch hoặc nhập batch code thủ công.'
+  });
+  const [manualMode, setManualMode] = useState(false);
+
+  const {
+    register,
+    setValue,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      batchCode: '',
+      quantityUsed: 0
+    }
+  });
+
+  const backgroundClass = useMemo(() => {
+    switch (feedback.tone) {
+      case 'success':
+        return 'from-emerald-100 to-emerald-50';
+      case 'warning':
+        return 'from-amber-100 to-amber-50';
+      case 'error':
+        return 'from-rose-100 to-rose-50';
+      case 'offline':
+        return 'from-slate-200 to-slate-50';
+      default:
+        return 'from-brand-50 to-white';
+    }
+  }, [feedback.tone]);
+
+  const scanMutation = useMutation<ScanResponse, Error, FormValues & { manual: boolean }>({
+    mutationFn: async (values: FormValues & { manual: boolean }) => {
+      const payload = {
+        batchCode: values.batchCode,
+        quantityUsed: values.quantityUsed,
+        scannedAt: new Date().toISOString(),
+        deviceId: getDeviceId(),
+        clientEventId: crypto.randomUUID(),
+        storeId: session?.user.store?.id,
+        entryMethod: (values.manual ? 'MANUAL' : 'CAMERA') as 'MANUAL' | 'CAMERA'
+      };
+
+      if (!isOnline) {
+        await queueOfflineScan({
+          ...payload,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        });
+        return {
+          resultStatus: 'SUCCESS',
+          resultCode: 'OFFLINE_QUEUED',
+          message: 'Scan đã được lưu offline, sẽ tự sync khi có mạng.'
+        };
+      }
+
+      try {
+        return values.manual
+          ? ((await submitManualScan(payload)) as ScanResponse)
+          : ((await submitScan(payload)) as ScanResponse);
+      } catch (error) {
+        if (!navigator.onLine) {
+          await queueOfflineScan({
+            ...payload,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+          });
+          return {
+            resultStatus: 'SUCCESS',
+            resultCode: 'OFFLINE_QUEUED',
+            message: 'Mạng vừa mất, scan đã được lưu offline.'
+          };
+        }
+
+        throw error;
+      }
+    },
+    onSuccess: async (data) => {
+      if (data.resultCode === 'OFFLINE_QUEUED') {
+        setFeedback({
+          tone: 'offline',
+          title: 'Offline queued',
+          message: data.message
+        });
+        return;
+      }
+
+      if (data.resultStatus === 'WARNING') {
+        setFeedback({
+          tone: 'warning',
+          title: data.resultCode,
+          message: data.message
+        });
+        return;
+      }
+
+      await playSuccessBeep();
+      setFeedback({
+        tone: 'success',
+        title: data.resultCode,
+        message: data.message
+      });
+    },
+    onError: (error: Error) => {
+      setFeedback({
+        tone: 'error',
+        title: 'Scan rejected',
+        message: error.message
+      });
+    }
+  });
+
+  return (
+    <ProtectedPage title="Scan" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
+      <div className={`rounded-3xl bg-gradient-to-br ${backgroundClass} p-4 md:p-6`}>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <Badge label={isOnline ? 'Online' : 'Offline mode'} tone={isOnline ? 'success' : 'neutral'} />
+          <Badge
+            label={syncState}
+            tone={
+              syncState === 'SYNCED'
+                ? 'success'
+                : syncState === 'SYNCING'
+                  ? 'warning'
+                  : syncState === 'SYNC_ERROR'
+                    ? 'danger'
+                    : 'neutral'
+            }
+          />
+          <Button variant="secondary" onClick={() => setManualMode((value) => !value)}>
+            {manualMode ? 'Dùng camera scan' : 'Manual fallback'}
+          </Button>
+        </div>
+
+        <Card className="mb-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-700">
+            Trạng thái lần quét gần nhất
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-brand-900">{feedback.title}</h2>
+          <p className="mt-2 text-sm text-slate-600">{feedback.message}</p>
+        </Card>
+
+        {!manualMode ? (
+          <Card className="mb-4">
+            <h3 className="mb-3 text-lg font-semibold text-brand-900">Camera scan</h3>
+            <QrScanner
+              onDetected={(value) => {
+                const parsed = parseBatchQr(value);
+                if (!parsed) {
+                  setFeedback({
+                    tone: 'error',
+                    title: 'QR invalid',
+                    message: 'QR không đúng định dạng FNBBATCH:<batch_code>'
+                  });
+                  return;
+                }
+
+                setValue('batchCode', parsed);
+                setFeedback({
+                  tone: 'idle',
+                  title: 'Batch detected',
+                  message: `Đã đọc batch ${parsed}. Nhập quantity rồi bấm submit.`
+                });
+              }}
+            />
+          </Card>
+        ) : null}
+
+        <Card>
+          <form
+            className="space-y-4"
+            onSubmit={handleSubmit((values) =>
+              scanMutation.mutate({ ...values, manual: manualMode })
+            )}
+          >
+            <Input
+              label="Batch code"
+              placeholder="BATCH-TRA-001"
+              error={errors.batchCode?.message}
+              {...register('batchCode')}
+            />
+            <Input
+              label="Quantity used"
+              type="number"
+              step="0.001"
+              error={errors.quantityUsed?.message}
+              {...register('quantityUsed')}
+            />
+            <Button type="submit" fullWidth disabled={scanMutation.isPending}>
+              {scanMutation.isPending
+                ? 'Đang gửi scan...'
+                : manualMode
+                  ? 'Submit manual scan'
+                  : 'Submit scan'}
+            </Button>
+          </form>
+        </Card>
+      </div>
+    </ProtectedPage>
+  );
+}
