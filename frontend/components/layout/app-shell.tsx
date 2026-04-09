@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import clsx from 'clsx';
 
 import { clearSession, getSession, Role } from '@/lib/auth';
@@ -34,6 +34,7 @@ export function AppShell({
   title: string;
   children: ReactNode;
 }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const session = getSession();
   const pathname = usePathname();
   const router = useRouter();
@@ -41,14 +42,59 @@ export function AppShell({
 
   const role = session?.user.role;
 
+  const sidebarClasses = clsx(
+    'rounded-3xl bg-brand-900 p-4 text-white lg:sticky lg:top-4 lg:w-72 lg:self-start lg:h-[calc(100vh-2rem)] lg:min-h-0',
+    sidebarOpen
+      ? 'fixed inset-y-0 left-0 z-50 w-72 h-full overflow-auto shadow-2xl transform translate-x-0 transition-transform duration-300 ease-in-out lg:static lg:top-auto lg:h-[calc(100vh-2rem)] lg:overflow-auto lg:shadow-none lg:translate-x-0'
+      : 'fixed inset-y-0 left-0 z-50 w-72 h-full overflow-auto shadow-2xl transform -translate-x-full transition-transform duration-300 ease-in-out lg:static lg:top-auto lg:h-[calc(100vh-2rem)] lg:overflow-auto lg:shadow-none lg:translate-x-0'
+  );
+
   return (
     <div className="min-h-screen bg-transparent">
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 md:flex-row">
-        <aside className="w-full rounded-3xl bg-brand-900 p-4 text-white md:sticky md:top-4 md:w-72 md:self-start">
-          <div className="mb-6 space-y-2">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-start lg:h-[calc(100vh-2rem)] lg:overflow-hidden">
+        <div className="flex items-center justify-between lg:hidden">
+          <div>
             <p className="text-xs uppercase tracking-[0.25em] text-brand-100">FNB CONTROL</p>
             <h1 className="text-xl font-semibold">{title}</h1>
-            <p className="text-sm text-brand-100">{session?.user.fullName}</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((prev) => !prev)}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20"
+            aria-label={sidebarOpen ? 'Đóng menu' : 'Mở menu'}
+          >
+            <span className="flex h-5 w-5 flex-col justify-between">
+              <span className="block h-[3px] w-full rounded-full bg-black" />
+              <span className="block h-[3px] w-full rounded-full bg-black" />
+              <span className="block h-[3px] w-full rounded-full bg-black" />
+            </span>
+          </button>
+        </div>
+
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        <aside className={sidebarClasses}>
+          <div className="mb-6 flex items-center justify-between lg:block">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-brand-100">FNB CONTROL</p>
+              <h1 className="text-xl font-semibold">{title}</h1>
+              <p className="text-sm text-brand-100">{session?.user.fullName}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20 lg:hidden"
+              aria-label="Đóng menu"
+            >
+              ✕
+            </button>
           </div>
 
           <div className="mb-4">
@@ -66,7 +112,7 @@ export function AppShell({
             />
           </div>
 
-          <nav className="grid gap-2">
+          <nav className="grid gap-2 overflow-y-auto">
             {links
               .filter((item) => role && item.roles.includes(role))
               .map((item) => (
@@ -79,6 +125,7 @@ export function AppShell({
                       ? 'bg-white text-brand-900'
                       : 'text-brand-50 hover:bg-white/10'
                   )}
+                  onClick={() => setSidebarOpen(false)}
                 >
                   {item.label}
                 </Link>
@@ -98,7 +145,7 @@ export function AppShell({
           </Button>
         </aside>
 
-        <main className="flex-1 space-y-4">{children}</main>
+        <main className="flex-1 space-y-4 overflow-y-auto lg:h-[calc(100vh-2rem)] lg:min-h-0">{children}</main>
       </div>
     </div>
   );
