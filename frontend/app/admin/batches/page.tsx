@@ -166,8 +166,13 @@ export default function AdminBatchesPage() {
                 >
                   Tạo QR
                 </Button>
-                <Link href={`/admin/batches/${batch.id}/label`}>
-                  <Button variant="secondary">In tem</Button>
+                <Link
+                  href={`/admin/batches/${batch.id}/print?print=1`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-brand-900 ring-1 ring-brand-100 transition hover:bg-brand-50"
+                >
+                  In tem
                 </Link>
                 {batch.status === 'SOFT_LOCKED' ? (
                   <Button
