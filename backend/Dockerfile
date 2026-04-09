@@ -14,4 +14,4 @@ RUN npm run build
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run db:seed && node dist/src/main.js"]
+CMD ["sh", "-c", "node scripts/wait-for-db.cjs && npx prisma migrate deploy && npm run db:seed && node dist/src/main.js"]
