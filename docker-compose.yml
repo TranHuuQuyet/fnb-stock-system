@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     environment:
       POSTGRES_DB: fnb_stock
       POSTGRES_USER: postgres
@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d fnb_stock']
+      test: [ 'CMD-SHELL', 'pg_isready -U postgres -d fnb_stock' ]
       interval: 5s
       timeout: 5s
       retries: 20
