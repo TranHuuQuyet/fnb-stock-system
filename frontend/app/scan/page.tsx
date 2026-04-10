@@ -40,17 +40,60 @@ const parseBatchQr = (value: string) => {
   return value.replace('FNBBATCH:', '').trim();
 };
 
+type BrowserAudioContext = typeof AudioContext;
+type WindowWithWebkitAudio = Window &
+  typeof globalThis & {
+    webkitAudioContext?: BrowserAudioContext;
+  };
+
+let successAudioContext: AudioContext | null = null;
+
+const getSuccessAudioContext = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const browserWindow = window as WindowWithWebkitAudio;
+  const AudioContextCtor = browserWindow.AudioContext ?? browserWindow.webkitAudioContext;
+  if (!AudioContextCtor) {
+    return null;
+  }
+
+  if (!successAudioContext || successAudioContext.state === 'closed') {
+    successAudioContext = new AudioContextCtor();
+  }
+
+  return successAudioContext;
+};
+
 const playSuccessBeep = async () => {
-  const audioContext = new AudioContext();
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-  oscillator.type = 'sine';
-  oscillator.frequency.value = 880;
-  oscillator.start();
-  gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.15);
-  oscillator.stop(audioContext.currentTime + 0.15);
+  const audioContext = getSuccessAudioContext();
+  if (!audioContext) {
+    return;
+  }
+
+  try {
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 880;
+    gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+    oscillator.start(audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.15);
+    oscillator.stop(audioContext.currentTime + 0.15);
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    };
+  } catch {
+    // Never let the success sound crash the scan screen.
+  }
 };
 
 export default function ScanPage() {
@@ -160,12 +203,12 @@ export default function ScanPage() {
         return;
       }
 
-      await playSuccessBeep();
       setFeedback({
         tone: 'success',
         title: localizeResultCode(data.resultCode),
         message: data.message
       });
+      void playSuccessBeep();
     },
     onError: (error: Error) => {
       setFeedback({
@@ -210,6 +253,14 @@ export default function ScanPage() {
           <Card className="mb-4">
             <h3 className="mb-3 text-lg font-semibold text-brand-900">Quét bằng camera</h3>
             <QrScanner
+              onError={(message) => {
+                setManualMode(true);
+                setFeedback({
+                  tone: 'error',
+                  title: 'Camera quét đang gặp lỗi',
+                  message
+                });
+              }}
               onDetected={(value) => {
                 const parsed = parseBatchQr(value);
                 if (!parsed) {
@@ -221,7 +272,10 @@ export default function ScanPage() {
                   return;
                 }
 
-                setValue('batchCode', parsed);
+                setValue('batchCode', parsed, {
+                  shouldDirty: true,
+                  shouldValidate: true
+                });
                 setFeedback({
                   tone: 'idle',
                   title: 'Đã nhận diện lô',
