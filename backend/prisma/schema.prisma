@@ -167,6 +167,16 @@ model Ingredient {
   @@index([createdAt])
 }
 
+model IngredientUnit {
+  id             String   @id @default(cuid())
+  name           String
+  normalizedName String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
 model IngredientBatch {
   id             String           @id @default(cuid())
   ingredientId   String

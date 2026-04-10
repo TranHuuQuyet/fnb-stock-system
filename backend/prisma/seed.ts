@@ -12,6 +12,7 @@ const toBusinessDate = (date = new Date()) =>
   }).format(date);
 
 const batchQr = (batchCode: string) => `FNBBATCH:${batchCode}`;
+const normalizeUnit = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase();
 
 async function main() {
   const passwordHash = await bcrypt.hash('123456', 10);
@@ -107,6 +108,19 @@ async function main() {
       }
     })
   ]);
+
+  await Promise.all(
+    ['kg', 'lít'].map((unit) =>
+      prisma.ingredientUnit.upsert({
+        where: { normalizedName: normalizeUnit(unit) },
+        update: { name: unit },
+        create: {
+          name: unit,
+          normalizedName: normalizeUnit(unit)
+        }
+      })
+    )
+  );
 
   const [tea, milk, sugar] = await Promise.all([
     prisma.ingredient.upsert({

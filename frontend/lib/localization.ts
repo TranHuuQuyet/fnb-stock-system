@@ -71,6 +71,7 @@ const apiErrorLabels: Record<string, string> = {
   VALIDATION_ERROR: 'Dữ liệu chưa hợp lệ',
   VALIDATION_INVALID_PAYLOAD: 'Dữ liệu gửi lên chưa hợp lệ',
   VALIDATION_INVALID_QUERY: 'Điều kiện tìm kiếm chưa hợp lệ',
+  ADMIN_ERROR_INGREDIENT_UNIT_NOT_FOUND: 'Không tìm thấy đơn vị',
   ERROR_NETWORK_RESTRICTED: 'Thiết bị đang dùng mạng chưa được cho phép',
   ERROR_BATCH_NOT_FOUND: 'Không tìm thấy lô nguyên liệu',
   ERROR_BATCH_EXPIRED: 'Lô nguyên liệu đã hết hạn',

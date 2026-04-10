@@ -1,6 +1,40 @@
 import { apiClient, unwrapData } from '@/lib/api-client';
 
+export type IngredientUnitOption = {
+  id: string;
+  name: string;
+  usageCount: number;
+};
+
 export const listIngredients = (query = '') => apiClient(`/admin/ingredients${query}`);
+
+export const listIngredientUnits = () =>
+  unwrapData(
+    apiClient<IngredientUnitOption[]>('/admin/ingredients/units')
+  );
+
+export const createIngredientUnit = (payload: { name: string }) =>
+  unwrapData(
+    apiClient<IngredientUnitOption>('/admin/ingredients/units', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  );
+
+export const updateIngredientUnit = (id: string, payload: { name: string }) =>
+  unwrapData(
+    apiClient<IngredientUnitOption>(`/admin/ingredients/units/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+
+export const deleteIngredientUnit = (id: string) =>
+  unwrapData(
+    apiClient<IngredientUnitOption>(`/admin/ingredients/units/${id}`, {
+      method: 'DELETE'
+    })
+  );
 
 export const createIngredient = (payload: unknown) =>
   unwrapData(
