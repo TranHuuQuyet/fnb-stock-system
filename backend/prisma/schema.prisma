@@ -85,6 +85,7 @@ model User {
   role          UserRole
   storeId       String?
   status        UserStatus   @default(MUST_CHANGE_PASSWORD)
+  permissions   String[]     @default([])
   lastLoginAt   DateTime?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt

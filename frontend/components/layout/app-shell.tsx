@@ -5,27 +5,35 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useState } from 'react';
 import clsx from 'clsx';
 
-import { clearSession, getSession, Role } from '@/lib/auth';
+import { clearSession, getSession, Role, Permission } from '@/lib/auth';
 import { localizeSyncState } from '@/lib/localization';
 import { useOfflineSync } from '@/hooks/use-offline-sync';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 
-const links: Array<{ href: string; label: string; roles: Role[] }> = [
-  { href: '/scan', label: 'Quét nguyên liệu', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
-  { href: '/scan-logs', label: 'Lịch sử quét', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
-  { href: '/dashboard', label: 'Bảng điều khiển', roles: ['MANAGER', 'ADMIN'] },
-  { href: '/profile', label: 'Tài khoản', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
-  { href: '/admin/users', label: 'Người dùng', roles: ['ADMIN'] },
-  { href: '/admin/stores', label: 'Cửa hàng', roles: ['ADMIN'] },
-  { href: '/admin/ingredients', label: 'Nguyên liệu', roles: ['ADMIN'] },
-  { href: '/admin/batches', label: 'Lô hàng', roles: ['ADMIN'] },
-  { href: '/admin/batch-adjustments', label: 'Điều chỉnh tồn', roles: ['ADMIN'] },
-  { href: '/admin/recipes', label: 'Công thức & POS', roles: ['ADMIN'] },
-  { href: '/admin/config', label: 'Cấu hình', roles: ['ADMIN'] },
-  { href: '/admin/whitelists', label: 'Mạng được phép', roles: ['ADMIN'] },
-  { href: '/admin/audit-logs', label: 'Nhật ký hệ thống', roles: ['ADMIN'] }
+const links: Array<{ href: string; label: string; roles: Role[]; permission?: Permission }> = [
+  { href: '/scan', label: 'Quét nguyên liệu', roles: ['STAFF', 'MANAGER', 'ADMIN'], permission: 'view_scan' },
+  { href: '/scan-logs', label: 'Lịch sử quét', roles: ['STAFF', 'MANAGER', 'ADMIN'], permission: 'view_scan_logs' },
+  { href: '/dashboard', label: 'Bảng điều khiển', roles: ['MANAGER', 'ADMIN'], permission: 'view_dashboard' },
+  { href: '/profile', label: 'Tài khoản', roles: ['STAFF', 'MANAGER', 'ADMIN'], permission: 'view_profile' },
+  { href: '/admin/users', label: 'Người dùng', roles: ['ADMIN'], permission: 'manage_users' },
+  { href: '/admin/stores', label: 'Cửa hàng', roles: ['ADMIN'], permission: 'manage_stores' },
+  { href: '/admin/ingredients', label: 'Nguyên liệu', roles: ['ADMIN'], permission: 'manage_ingredients' },
+  { href: '/admin/batches', label: 'Lô hàng', roles: ['ADMIN'], permission: 'manage_batches' },
+  { href: '/admin/batch-adjustments', label: 'Điều chỉnh tồn', roles: ['ADMIN'], permission: 'manage_adjustments' },
+  { href: '/admin/recipes', label: 'Công thức & POS', roles: ['ADMIN'], permission: 'manage_recipes' },
+  { href: '/admin/config', label: 'Cấu hình', roles: ['ADMIN'], permission: 'manage_config' },
+  { href: '/admin/whitelists', label: 'Mạng được phép', roles: ['ADMIN'], permission: 'manage_whitelists' },
+  { href: '/admin/audit-logs', label: 'Nhật ký hệ thống', roles: ['ADMIN'], permission: 'view_audit_logs' }
 ] as const;
+
+export const routePermissions: Record<string, Permission | undefined> = Object.fromEntries(
+  links.map((item) => [item.href, item.permission])
+) as Record<string, Permission | undefined>;
+
+export function getRoutePermission(pathname: string) {
+  return routePermissions[pathname];
+}
 
 export function AppShell({
   title,
@@ -41,6 +49,13 @@ export function AppShell({
   const { syncState } = useOfflineSync();
 
   const role = session?.user.role;
+  const permissions = session?.user.permissions ?? [];
+
+  const hasPermission = (requiredPermission?: Permission): boolean => {
+    if (!requiredPermission) return true;
+    if (role === 'ADMIN') return true;
+    return permissions.includes(requiredPermission);
+  };
 
   const sidebarClasses = clsx(
     'rounded-3xl bg-brand-900 p-4 text-white lg:sticky lg:top-4 lg:w-72 lg:self-start lg:h-[calc(100vh-2rem)] lg:min-h-0',
@@ -114,7 +129,12 @@ export function AppShell({
 
           <nav className="grid gap-2 overflow-y-auto">
             {links
-              .filter((item) => role && item.roles.includes(role))
+              .filter((item) => {
+                if (!item.permission) {
+                  return role && item.roles.includes(role);
+                }
+                return role === 'ADMIN' || permissions.includes(item.permission);
+              })
               .map((item) => (
                 <Link
                   key={item.href}

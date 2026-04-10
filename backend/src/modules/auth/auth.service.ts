@@ -19,7 +19,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly auditService: AuditService,
     private readonly prisma: PrismaService
-  ) {}
+  ) { }
 
   async login(dto: LoginDto) {
     const user = await this.usersService.findByUsername(dto.username);
@@ -79,6 +79,7 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         status: user.status,
+        permissions: user.permissions,
         store: user.store
       },
       mustChangePassword: user.status === UserStatus.MUST_CHANGE_PASSWORD

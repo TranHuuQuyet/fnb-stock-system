@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useEffect, useState } from 'react';
 
 import { ProtectedPage } from '@/components/layout/protected-page';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +21,36 @@ const schema = z.object({
   fullName: z.string().min(1),
   role: z.enum(['MANAGER', 'STAFF']),
   storeId: z.string().min(1),
-  temporaryPassword: z.string().min(6)
+  temporaryPassword: z.string().min(6),
+  permissions: z.array(z.string()).default([])
 });
 
 type FormValues = z.infer<typeof schema>;
 
+
+const AVAILABLE_PERMISSIONS = [
+  { value: 'view_scan', label: 'Quét nguyên liệu' },
+  { value: 'view_profile', label: 'Tài khoản' },
+  { value: 'view_scan_logs', label: 'Lịch sử quét' },
+  { value: 'view_dashboard', label: 'Bảng điều khiển' },
+  { value: 'manage_users', label: 'Người dùng' },
+  { value: 'manage_stores', label: 'Cửa hàng' },
+  { value: 'manage_ingredients', label: 'Nguyên liệu' },
+  { value: 'manage_batches', label: 'Lô hàng' },
+  { value: 'manage_adjustments', label: 'Điều chỉnh tồn' },
+  { value: 'manage_recipes', label: 'Công thức & POS' },
+  { value: 'manage_config', label: 'Cấu hình' },
+  { value: 'manage_whitelists', label: 'Mạng được phép' },
+  { value: 'view_audit_logs', label: 'Nhật ký hệ thống' }
+];
+
+const DEFAULT_PERMISSIONS_BY_ROLE: Record<'STAFF' | 'MANAGER', string[]> = {
+  STAFF: ['view_scan', 'view_profile'],
+  MANAGER: ['view_scan', 'view_profile', 'view_scan_logs', 'view_dashboard']
+};
+
 export default function AdminUsersPage() {
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const storesQuery = useQuery({
     queryKey: ['stores-selector'],
     queryFn: () => listStores('')
@@ -35,17 +60,25 @@ export default function AdminUsersPage() {
     queryFn: () => listUsers('')
   });
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      role: 'STAFF'
+      role: 'STAFF',
+      permissions: []
     }
   });
 
+  const role = watch('role');
+
+  useEffect(() => {
+    setSelectedPermissions(DEFAULT_PERMISSIONS_BY_ROLE[role]);
+  }, [role]);
+
   const createMutation = useMutation({
-    mutationFn: createUser,
+    mutationFn: (data: FormValues) => createUser({ ...data, permissions: selectedPermissions }),
     onSuccess: () => {
       reset();
+      setSelectedPermissions([]);
       usersQuery.refetch();
     }
   });
@@ -87,6 +120,28 @@ export default function AdminUsersPage() {
                 <option value="MANAGER">Quản lý</option>
               </select>
             </label>
+            <div className="block space-y-2">
+              <span className="text-sm font-medium text-brand-900">Thêm quyền truy cập</span>
+              <div className="space-y-2 rounded-xl border border-brand-100 bg-white p-3">
+                {AVAILABLE_PERMISSIONS.map((permission) => (
+                  <label key={permission.value} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedPermissions.includes(permission.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedPermissions([...selectedPermissions, permission.value]);
+                        } else {
+                          setSelectedPermissions(selectedPermissions.filter((p) => p !== permission.value));
+                        }
+                      }}
+                      className="rounded border-brand-100"
+                    />
+                    <span className="text-sm text-brand-900">{permission.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
             <label className="block space-y-2">
               <span className="text-sm font-medium text-brand-900">Cửa hàng</span>
               <select className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3" {...register('storeId')}>

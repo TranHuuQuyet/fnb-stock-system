@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -26,6 +26,8 @@ const schema = z
     batchCode: z.string().min(1, 'Vui lòng nhập mã lô'),
     quantityUsed: z.coerce.number().int('Số lượng phải là số nguyên').positive('Số lượng phải lớn hơn 0'),
     operationType: z.enum(['STORE_USAGE', 'TRANSFER']),
+    storeId: z.string().optional(),
+    sourceStoreId: z.string().optional(),
     destinationStoreId: z.string().optional()
   })
   .superRefine((value, ctx) => {
@@ -120,6 +122,26 @@ export default function ScanPageContent() {
   });
   const [manualMode, setManualMode] = useState(false);
 
+  // Load persisted store selections
+  const getPersistedStoreId = (key: string, defaultValue: string | undefined) => {
+    if (typeof window === 'undefined') return defaultValue;
+    try {
+      const stored = localStorage.getItem(`scan-${key}`);
+      return stored || defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  };
+
+  const persistStoreId = (key: string, value: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(`scan-${key}`, value);
+    } catch {
+      // Ignore storage errors
+    }
+  };
+
   const {
     register,
     setValue,
@@ -132,15 +154,32 @@ export default function ScanPageContent() {
       batchCode: '',
       quantityUsed: 1,
       operationType: 'STORE_USAGE',
-      destinationStoreId: ''
+      storeId: getPersistedStoreId('usage-store', session?.user.store?.id),
+      sourceStoreId: getPersistedStoreId('transfer-source', session?.user.store?.id),
+      destinationStoreId: getPersistedStoreId('transfer-destination', '')
     }
   });
 
   const operationType = watch('operationType');
   const destinationStoreId = watch('destinationStoreId');
+  const storeId = watch('storeId');
+  const sourceStoreId = watch('sourceStoreId');
+
+  // Persist store selections when they change
+  useEffect(() => {
+    if (storeId) persistStoreId('usage-store', storeId);
+  }, [storeId]);
+
+  useEffect(() => {
+    if (sourceStoreId) persistStoreId('transfer-source', sourceStoreId);
+  }, [sourceStoreId]);
+
+  useEffect(() => {
+    if (destinationStoreId) persistStoreId('transfer-destination', destinationStoreId);
+  }, [destinationStoreId]);
 
   const storesQuery = useQuery({
-    queryKey: ['scan-transfer-stores'],
+    queryKey: ['scan-stores'],
     queryFn: () => listStores(''),
     enabled: isAdmin
   });
@@ -182,6 +221,16 @@ export default function ScanPageContent() {
     return stores.find((store) => store.id === destinationStoreId)?.name ?? '';
   }, [destinationStoreId, storesQuery.data]);
 
+  const selectedUsageStoreName = useMemo(() => {
+    const stores = (storesQuery.data?.data ?? []) as Array<{ id: string; name: string }>;
+    return stores.find((store) => store.id === storeId)?.name ?? '';
+  }, [storeId, storesQuery.data]);
+
+  const selectedSourceStoreName = useMemo(() => {
+    const stores = (storesQuery.data?.data ?? []) as Array<{ id: string; name: string }>;
+    return stores.find((store) => store.id === sourceStoreId)?.name ?? '';
+  }, [sourceStoreId, storesQuery.data]);
+
   const backgroundClass = useMemo(() => {
     switch (feedback.tone) {
       case 'success':
@@ -205,7 +254,7 @@ export default function ScanPageContent() {
         scannedAt: new Date().toISOString(),
         deviceId: getDeviceId(),
         clientEventId: crypto.randomUUID(),
-        storeId: session?.user.store?.id,
+        storeId: values.operationType === 'STORE_USAGE' ? values.storeId : values.sourceStoreId,
         destinationStoreId:
           values.operationType === 'TRANSFER' ? values.destinationStoreId : undefined,
         operationType: values.operationType,
@@ -270,8 +319,10 @@ export default function ScanPageContent() {
         title: localizeResultCode(data.resultCode),
         message:
           variables.operationType === 'TRANSFER' && selectedDestinationStoreName
-            ? `${data.message} Chi nhánh nhận: ${selectedDestinationStoreName}.`
-            : data.message
+            ? `${data.message} Chi nhánh nhận: ${selectedDestinationStoreName}. ${selectedSourceStoreName && selectedSourceStoreName !== session?.user.store?.name ? `Chi nhánh gửi: ${selectedSourceStoreName}.` : ''}`
+            : variables.operationType === 'STORE_USAGE' && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name
+              ? `${data.message} Chi nhánh sử dụng: ${selectedUsageStoreName}.`
+              : data.message
       });
       void playSuccessBeep();
       if (variables.operationType === 'TRANSFER' && variables.destinationStoreId) {
@@ -340,8 +391,8 @@ export default function ScanPageContent() {
           </div>
           <p className="mt-3 text-sm text-slate-600">
             {operationType === 'TRANSFER'
-              ? `Chi nhánh thực hiện: ${session?.user.store?.name ?? 'Chưa xác định'}. Sau khi quét, hệ thống sẽ trừ tồn ở chi nhánh này và cộng sang chi nhánh nhận.`
-              : 'Quét để ghi nhận nguyên liệu vừa được sử dụng tại quầy.'}
+              ? `Chi nhánh thực hiện: ${session?.user.store?.name ?? 'Chưa xác định'}. ${isAdmin && selectedSourceStoreName && selectedSourceStoreName !== session?.user.store?.name ? `Chi nhánh gửi: ${selectedSourceStoreName}. ` : ''}Sau khi quét, hệ thống sẽ trừ tồn ở chi nhánh gửi và cộng sang chi nhánh nhận.`
+              : `Quét để ghi nhận nguyên liệu vừa được sử dụng tại quầy. ${isAdmin && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name ? `Chi nhánh sử dụng: ${selectedUsageStoreName}.` : ''}`}
           </p>
         </Card>
 
@@ -377,8 +428,8 @@ export default function ScanPageContent() {
                   title: 'Đã nhận diện lô',
                   message:
                     operationType === 'TRANSFER'
-                      ? `Đã đọc lô ${parsed.batchCode}. Chọn chi nhánh nhận và số lượng rồi bấm chuyển kho.`
-                      : `Đã đọc lô ${parsed.batchCode}. Nhập số lượng rồi bấm ghi nhận.`
+                      ? `Đã đọc lô ${parsed.batchCode}. ${isAdmin && selectedSourceStoreName && selectedSourceStoreName !== session?.user.store?.name ? `Chi nhánh gửi: ${selectedSourceStoreName}. ` : ''}Chọn chi nhánh nhận và số lượng rồi bấm chuyển kho.`
+                      : `Đã đọc lô ${parsed.batchCode}. ${isAdmin && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name ? `Chi nhánh sử dụng: ${selectedUsageStoreName}. ` : ''}Nhập số lượng rồi bấm ghi nhận.`
                 });
               }}
             />
@@ -400,26 +451,68 @@ export default function ScanPageContent() {
                 {...register('batchCode')}
               />
 
-              {isAdmin && operationType === 'TRANSFER' ? (
+              {isAdmin && operationType === 'STORE_USAGE' ? (
                 <label className="block space-y-2">
-                  <span className="text-sm font-medium text-brand-900">Chi nhánh nhận</span>
+                  <span className="text-sm font-medium text-brand-900">Chi nhánh sử dụng</span>
                   <select
                     className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
-                    {...register('destinationStoreId')}
+                    {...register('storeId')}
                   >
-                    <option value="">Chọn chi nhánh nhận</option>
-                    {stores
-                      .filter((store) => store.id !== session?.user.store?.id)
-                      .map((store) => (
-                        <option key={store.id} value={store.id}>
-                          {store.name}
-                        </option>
-                      ))}
+                    <option value="">Chọn chi nhánh sử dụng</option>
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
                   </select>
-                  {errors.destinationStoreId ? (
-                    <span className="text-xs text-danger">{errors.destinationStoreId.message}</span>
+                  {errors.storeId ? (
+                    <span className="text-xs text-danger">{errors.storeId.message}</span>
                   ) : null}
                 </label>
+              ) : null}
+
+              {isAdmin && operationType === 'TRANSFER' ? (
+                <>
+                  <label className="block space-y-2">
+                    <span className="text-sm font-medium text-brand-900">Chi nhánh gửi</span>
+                    <select
+                      className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
+                      {...register('sourceStoreId')}
+                    >
+                      <option value="">Chọn chi nhánh gửi</option>
+                      {stores
+                        .filter((store) => store.id !== destinationStoreId)
+                        .map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))}
+                    </select>
+                    {errors.sourceStoreId ? (
+                      <span className="text-xs text-danger">{errors.sourceStoreId.message}</span>
+                    ) : null}
+                  </label>
+
+                  <label className="block space-y-2">
+                    <span className="text-sm font-medium text-brand-900">Chi nhánh nhận</span>
+                    <select
+                      className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
+                      {...register('destinationStoreId')}
+                    >
+                      <option value="">Chọn chi nhánh nhận</option>
+                      {stores
+                        .filter((store) => store.id !== sourceStoreId)
+                        .map((store) => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}
+                          </option>
+                        ))}
+                    </select>
+                    {errors.destinationStoreId ? (
+                      <span className="text-xs text-danger">{errors.destinationStoreId.message}</span>
+                    ) : null}
+                  </label>
+                </>
               ) : null}
 
               <Input

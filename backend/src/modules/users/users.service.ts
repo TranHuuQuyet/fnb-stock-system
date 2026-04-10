@@ -22,7 +22,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService
-  ) {}
+  ) { }
 
   async findByUsername(username: string) {
     return this.prisma.user.findUnique({
@@ -73,7 +73,8 @@ export class UsersService {
         role: dto.role,
         storeId: dto.storeId ?? null,
         passwordHash,
-        status: UserStatus.MUST_CHANGE_PASSWORD
+        status: UserStatus.MUST_CHANGE_PASSWORD,
+        permissions: dto.permissions ?? []
       },
       include: {
         store: true
@@ -108,21 +109,21 @@ export class UsersService {
       ...(query.storeId ? { storeId: query.storeId } : {}),
       ...(query.keyword
         ? {
-            OR: [
-              {
-                username: {
-                  contains: query.keyword,
-                  mode: 'insensitive'
-                }
-              },
-              {
-                fullName: {
-                  contains: query.keyword,
-                  mode: 'insensitive'
-                }
+          OR: [
+            {
+              username: {
+                contains: query.keyword,
+                mode: 'insensitive'
               }
-            ]
-          }
+            },
+            {
+              fullName: {
+                contains: query.keyword,
+                mode: 'insensitive'
+              }
+            }
+          ]
+        }
         : {})
     };
 

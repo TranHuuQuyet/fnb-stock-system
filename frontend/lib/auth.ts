@@ -2,6 +2,20 @@
 
 export type Role = 'ADMIN' | 'MANAGER' | 'STAFF';
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'MUST_CHANGE_PASSWORD';
+export type Permission =
+  | 'view_scan'
+  | 'view_profile'
+  | 'view_scan_logs'
+  | 'view_dashboard'
+  | 'manage_users'
+  | 'manage_stores'
+  | 'manage_ingredients'
+  | 'manage_batches'
+  | 'manage_adjustments'
+  | 'manage_recipes'
+  | 'manage_config'
+  | 'manage_whitelists'
+  | 'view_audit_logs';
 
 export type SessionUser = {
   id: string;
@@ -9,6 +23,7 @@ export type SessionUser = {
   fullName: string;
   role: Role;
   status: UserStatus;
+  permissions?: Permission[];
   store?: {
     id: string;
     code: string;

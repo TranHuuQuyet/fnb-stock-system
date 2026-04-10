@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useMemo } from 'react';
 
-import { AppShell } from './app-shell';
+import { AppShell, getRoutePermission } from './app-shell';
 import { getSession, shouldForcePasswordChange } from '@/lib/auth';
 
 export function ProtectedPage({
@@ -16,6 +16,7 @@ export function ProtectedPage({
   allowedRoles?: Array<'ADMIN' | 'MANAGER' | 'STAFF'>;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const session = useMemo(() => getSession(), []);
 
   useEffect(() => {
@@ -29,10 +30,18 @@ export function ProtectedPage({
       return;
     }
 
+    const routePermission = getRoutePermission(pathname ?? '');
+    if (routePermission) {
+      if (session.user.role !== 'ADMIN' && !(session.user.permissions ?? []).includes(routePermission)) {
+        router.replace(session.user.role === 'STAFF' ? '/scan' : '/dashboard');
+      }
+      return;
+    }
+
     if (allowedRoles && !allowedRoles.includes(session.user.role)) {
       router.replace(session.user.role === 'STAFF' ? '/scan' : '/dashboard');
     }
-  }, [allowedRoles, router, session]);
+  }, [allowedRoles, pathname, router, session]);
 
   if (!session) {
     return null;
