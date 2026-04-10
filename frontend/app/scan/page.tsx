@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getDeviceId, getSession } from '@/lib/auth';
+import { parseBatchQrValue } from '@/lib/batch-qr';
 import { queueOfflineScan } from '@/lib/indexeddb';
 import { localizeResultCode, localizeSyncState } from '@/lib/localization';
 import { useOfflineSync } from '@/hooks/use-offline-sync';
@@ -31,14 +32,6 @@ type ScanResponse = {
 };
 
 type ScanTone = 'idle' | 'success' | 'warning' | 'error' | 'offline';
-
-const parseBatchQr = (value: string) => {
-  if (!value.startsWith('FNBBATCH:')) {
-    return null;
-  }
-
-  return value.replace('FNBBATCH:', '').trim();
-};
 
 type BrowserAudioContext = typeof AudioContext;
 type WindowWithWebkitAudio = Window &
@@ -262,24 +255,26 @@ export default function ScanPage() {
                 });
               }}
               onDetected={(value) => {
-                const parsed = parseBatchQr(value);
+                const parsed = parseBatchQrValue(value);
                 if (!parsed) {
                   setFeedback({
                     tone: 'error',
                     title: 'QR không hợp lệ',
-                    message: 'Mã QR không đúng định dạng FNBBATCH:<batch_code>'
+                    message: 'Mã QR không đúng định dạng tem nguyên liệu'
                   });
                   return;
                 }
 
-                setValue('batchCode', parsed, {
+                setValue('batchCode', parsed.batchCode, {
                   shouldDirty: true,
                   shouldValidate: true
                 });
                 setFeedback({
                   tone: 'idle',
                   title: 'Đã nhận diện lô',
-                  message: `Đã đọc lô ${parsed}. Nhập số lượng rồi bấm gửi.`
+                  message: parsed.sequenceNumber
+                    ? `Đã đọc lô ${parsed.batchCode}, tem số ${parsed.sequenceNumber}. Nhập số lượng rồi bấm gửi.`
+                    : `Đã đọc lô ${parsed.batchCode}. Nhập số lượng rồi bấm gửi.`
                 });
               }}
             />

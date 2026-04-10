@@ -1,6 +1,6 @@
-# FNB Stock Control System
+﻿# FNB Stock Control System
 
-Hệ thống kiểm soát sử dụng nguyên liệu theo batch cho chuỗi F&B, gồm backend NestJS + Prisma + PostgreSQL và frontend Next.js PWA có offline queue bằng IndexedDB.
+Hệ thống kiểm soát sử dụng nguyên liệu theo lô cho chuỗi F&B, gồm backend NestJS + Prisma + PostgreSQL và frontend Next.js PWA có offline queue bằng IndexedDB.
 
 ## Tech Stack
 
@@ -15,6 +15,16 @@ backend/     NestJS API + Prisma schema + seed + tests
 frontend/    Next.js PWA + IndexedDB offline queue + admin/dashboard UI
 docs/        Architecture, API overview, operation manual
 ```
+
+## Main Features
+
+- Quản lý lô hàng nguyên liệu theo cửa hàng
+- Quét nguyên liệu bằng camera hoặc nhập tay
+- FIFO validation, soft lock, expired/depleted checks
+- Offline queue bằng IndexedDB và auto sync khi có mạng
+- In tem theo từng lô với `Number` tuần tự
+- Mỗi tem có QR riêng để giảm rủi ro gian lận
+- Mặc định hỗ trợ in `10 tem/trang` và cho phép chỉnh bố cục trên màn in
 
 ## Local Setup
 
@@ -71,26 +81,41 @@ Container boot flow:
 
 ## Test Commands
 
-- Backend unit tests: `cd backend && npm test`
+- Backend unit tests: `cd backend && npm test -- --runInBand`
 - Backend e2e contract tests: `cd backend && npm run test:e2e`
 - Frontend tests: `cd frontend && npm test`
+- Backend build: `cd backend && npm run build`
+- Frontend build: `cd frontend && npm run build`
 
 ## Demo Flow
 
 1. Đăng nhập `admin / 123456`
 2. Vào `Admin > Batches`, tạo batch mới hoặc dùng batch seed
-3. Generate QR và mở label preview để in tem
-4. Mở frontend ở `http://localhost:3001` và đăng nhập `staff1 / 123456`
-5. Vào màn scan, quét QR `FNBBATCH:<batch_code>` hoặc nhập tay batch code
-6. Tắt mạng để thử offline queue, bật lại để auto sync
-7. Đăng nhập `manager1 / 123456`
-8. Mở dashboard, xem reconciliation, fraud attempts và anomaly alerts
+3. Nhập số tem cần in cho lô
+4. Mở màn `In tem`
+5. Bấm `Tạo tem và mở in`
+6. Kiểm tra mỗi tem có `Number` riêng và QR riêng
+7. Mở frontend ở `http://localhost:3001` và đăng nhập `staff1 / 123456`
+8. Vào màn scan, quét QR trên tem vừa in hoặc nhập tay batch code
+9. Tắt mạng để thử offline queue, bật lại để auto sync
+10. Đăng nhập `manager1 / 123456`
+11. Mở dashboard, xem reconciliation, fraud attempts và anomaly alerts
+
+## QR Formats
+
+Hệ thống hiện hỗ trợ cả hai định dạng QR sau:
+
+- Legacy: `FNBBATCH:<batch_code>`
+- Tem đã phát hành: `FNBBATCH:<batch_code>|BATCH:<batch_id>|SEQ:<sequenceNumber>`
+
+Scanner frontend sẽ tự tách `batchCode` từ cả hai định dạng trên.
 
 ## Notes
 
 - SSID trong web browser chỉ là field optional, chống gian lận hiện tại dựa chính vào IP whitelist.
 - Frontend queue scan offline bằng IndexedDB thật, giữ nguyên `clientEventId` để sync idempotent.
-- QR tem batch có format chuẩn `FNBBATCH:<batch_code>`.
+- Tính năng in tem mới phụ thuộc migration thêm field `printedLabelCount` vào `IngredientBatch`.
+- Route frontend preview cũ `/admin/batches/[id]/label` hiện redirect sang màn in mới.
 
 Chi tiết triển khai và vận hành nằm trong:
 

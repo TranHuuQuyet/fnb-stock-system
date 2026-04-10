@@ -1,4 +1,6 @@
-# API Overview
+﻿# API Overview
+
+## Endpoint List
 
 | Method | Path | Role | Description |
 |---|---|---|---|
@@ -29,9 +31,10 @@
 | PATCH | `/api/v1/admin/batches/:id` | ADMIN | Update batch |
 | POST | `/api/v1/admin/batches/:id/soft-lock` | ADMIN | Soft lock batch |
 | POST | `/api/v1/admin/batches/:id/unlock` | ADMIN | Unlock batch |
-| POST | `/api/v1/admin/batches/:id/generate-qr` | ADMIN | Generate or regenerate QR |
-| GET | `/api/v1/admin/batches/:id/qr` | ADMIN | Get QR payload |
-| GET | `/api/v1/admin/batches/:id/label` | ADMIN | Get label preview data |
+| POST | `/api/v1/admin/batches/:id/generate-qr` | ADMIN | Generate or regenerate base batch QR |
+| GET | `/api/v1/admin/batches/:id/qr` | ADMIN | Get base QR payload for the batch |
+| GET | `/api/v1/admin/batches/:id/label` | ADMIN | Get print metadata, label counters, and next Number |
+| POST | `/api/v1/admin/batches/:id/labels/issue` | ADMIN | Issue a sequential label range with unique QR per label |
 | POST | `/api/v1/admin/batches/:id/adjustments` | ADMIN | Create stock adjustment |
 | GET | `/api/v1/admin/batches/:id/adjustments` | ADMIN | List stock adjustments |
 | POST | `/api/v1/scan` | ADMIN, MANAGER, STAFF | Online scan |
@@ -59,3 +62,58 @@
 | GET | `/api/v1/admin/audit-logs` | ADMIN | List audit logs |
 | GET | `/api/v1/health` | Public | Liveness check |
 | GET | `/api/v1/health/ready` | Public | Readiness check with DB check |
+
+## Batch Label API Notes
+
+### `GET /api/v1/admin/batches/:id/label`
+
+Trả metadata để frontend hiển thị màn in tem, gồm các trường quan trọng:
+
+- `batchId`
+- `batchCode`
+- `ingredientName`
+- `storeName`
+- `unit`
+- `initialQty`
+- `printedLabelCount`
+- `maxPrintableLabels`
+- `remainingLabelCount`
+- `nextLabelNumber`
+- `labelCreatedAt`
+- `qrCodeValue`
+
+### `POST /api/v1/admin/batches/:id/labels/issue`
+
+Request body:
+
+```json
+{
+  "quantity": 10
+}
+```
+
+Response data chính:
+
+- `issuedQuantity`: số tem vừa phát hành
+- `issuedFromNumber`: Number bắt đầu của lượt in
+- `issuedToNumber`: Number kết thúc của lượt in
+- `printedLabelCount`: tổng số tem đã phát hành sau khi cập nhật
+- `labels`: danh sách tem vừa cấp
+
+Ví dụ mỗi phần tử trong `labels`:
+
+```json
+{
+  "sequenceNumber": 11,
+  "qrCodeValue": "FNBBATCH:MILK-001|BATCH:clx123|SEQ:11"
+}
+```
+
+## QR Compatibility
+
+Frontend scanner hỗ trợ cả hai định dạng sau:
+
+- Legacy: `FNBBATCH:<batch_code>`
+- Current issued label: `FNBBATCH:<batch_code>|BATCH:<batch_id>|SEQ:<sequenceNumber>`
+
+Trong cả hai trường hợp, frontend đều tách ra `batchCode` trước khi gửi request scan.

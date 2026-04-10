@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -34,7 +35,19 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+const getMaxPrintableLabels = (initialQty: number) => Math.max(0, Math.floor(initialQty));
+const getRequestedPrintQuantity = (value?: string) => {
+  const parsed = Number.parseInt(value ?? '1', 10);
+
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 1;
+  }
+
+  return parsed;
+};
+
 export default function AdminBatchesPage() {
+  const [printQtyByBatch, setPrintQtyByBatch] = useState<Record<string, string>>({});
   const storesQuery = useQuery({
     queryKey: ['stores-options'],
     queryFn: () => listStores('')
@@ -92,7 +105,9 @@ export default function AdminBatchesPage() {
     id: string;
     batchCode: string;
     receivedAt: string;
+    initialQty: number;
     remainingQty: number;
+    printedLabelCount: number;
     status: string;
     ingredient: { name: string };
     store: { name: string };
@@ -159,7 +174,26 @@ export default function AdminBatchesPage() {
                       : 'danger'
                 }
               />,
-              <div key={`${batch.id}-actions`} className="flex flex-wrap gap-2">
+              <div key={`${batch.id}-actions`} className="flex flex-wrap items-start gap-2">
+                <div className="basis-full rounded-xl bg-brand-50 px-3 py-3 text-sm text-slate-600 sm:flex sm:items-center sm:justify-between">
+                  <span>
+                    Tem: {batch.printedLabelCount}/{getMaxPrintableLabels(batch.initialQty)}
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={printQtyByBatch[batch.id] ?? '1'}
+                    onChange={(event) =>
+                      setPrintQtyByBatch((current) => ({
+                        ...current,
+                        [batch.id]: event.target.value
+                      }))
+                    }
+                    className="mt-2 w-24 rounded-lg border border-brand-100 bg-white px-3 py-2 text-sm text-brand-900 outline-none focus:border-brand-500 sm:mt-0"
+                    aria-label={`Số tem cần in cho lô ${batch.batchCode}`}
+                  />
+                </div>
                 <Button
                   variant="secondary"
                   onClick={() => actionMutation.mutate({ id: batch.id, action: 'generate' })}
@@ -167,10 +201,12 @@ export default function AdminBatchesPage() {
                   Tạo QR
                 </Button>
                 <Link
-                  href={`/admin/batches/${batch.id}/print?print=1`}
+                  href={`/admin/batches/${batch.id}/print?qty=${encodeURIComponent(
+                    String(getRequestedPrintQuantity(printQtyByBatch[batch.id]))
+                  )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-brand-900 ring-1 ring-brand-100 transition hover:bg-brand-50"
+                  className="whitespace-nowrap rounded-xl bg-white px-4 py-3 text-sm font-semibold text-brand-900 ring-1 ring-brand-100 transition hover:bg-brand-50"
                 >
                   In tem
                 </Link>

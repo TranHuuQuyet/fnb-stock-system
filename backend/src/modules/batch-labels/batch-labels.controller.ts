@@ -1,10 +1,11 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
+import { IssueBatchLabelsDto } from './dto/issue-batch-labels.dto';
 import { BatchLabelsService } from './batch-labels.service';
 
 @ApiTags('Batch Labels')
@@ -33,6 +34,18 @@ export class BatchLabelsController {
   async getLabel(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     return {
       data: await this.batchLabelsService.getLabel(user.userId, id)
+    };
+  }
+
+  @Post(':id/labels/issue')
+  async issueLabels(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Body() dto: IssueBatchLabelsDto
+  ) {
+    return {
+      data: await this.batchLabelsService.issueLabels(user.userId, id, dto.quantity),
+      message: 'Phát hành tem in thành công'
     };
   }
 }

@@ -1,37 +1,120 @@
-"use client";
+﻿"use client";
 
 import Link from 'next/link';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useForm } from 'react-hook-form';
 import { QRCodeSVG } from 'qrcode.react';
+import { z } from 'zod';
 
-import { getSession, shouldForcePasswordChange } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { getBatchLabel } from '@/services/batches';
+import { Input } from '@/components/ui/input';
+import { getSession, shouldForcePasswordChange } from '@/lib/auth';
+import { buildIssuedLabelQrValue } from '@/lib/batch-qr';
+import { getBatchLabel, issueBatchLabels } from '@/services/batches';
 
 type BatchLabel = {
+  batchId: string;
   ingredientName: string;
   batchCode: string;
   storeName: string;
+  unit: string;
+  initialQty: number;
   receivedAt: string;
   expiredAt?: string | null;
   labelCreatedAt?: string | null;
   qrCodeValue: string | null;
+  printedLabelCount: number;
+  maxPrintableLabels: number;
+  remainingLabelCount: number;
+  nextLabelNumber: number | null;
 };
+
+type IssuedLabel = {
+  sequenceNumber: number;
+  qrCodeValue?: string | null;
+};
+
+type IssuedLabelJob = BatchLabel & {
+  issuedQuantity: number;
+  issuedFromNumber: number;
+  issuedToNumber: number;
+  labels: IssuedLabel[];
+};
+
+type PrintLayout = {
+  columns: number;
+  rows: number;
+};
+
+const DEFAULT_LAYOUT: PrintLayout = {
+  columns: 2,
+  rows: 5
+};
+
+const issueSchema = z.object({
+  quantity: z.coerce.number().int('Số tem phải là số nguyên').min(1, 'Cần in ít nhất 1 tem')
+});
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleString('vi-VN') : 'Không có';
+
+const clampInteger = (value: string, min: number, max: number, fallback: number) => {
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, parsed));
+};
+
+const chunkLabels = <T,>(items: T[], chunkSize: number) => {
+  if (chunkSize <= 0) {
+    return [items];
+  }
+
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+};
 
 export default function BatchPrintPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
   const session = useMemo(() => getSession(), []);
-  const printRequested = searchParams.get('print') === '1';
-  const hasTriggeredPrint = useRef(false);
   const batchId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const qtyParam = searchParams.get('qty');
+  const [issuedJob, setIssuedJob] = useState<IssuedLabelJob | null>(null);
+  const [layout, setLayout] = useState<PrintLayout>(DEFAULT_LAYOUT);
+  const [pendingAutoPrint, setPendingAutoPrint] = useState(false);
+  const initialQuantity = useMemo(() => {
+    const parsed = Number(qtyParam ?? '1');
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return 1;
+    }
+
+    return Math.floor(parsed);
+  }, [qtyParam]);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors }
+  } = useForm<z.infer<typeof issueSchema>>({
+    resolver: zodResolver(issueSchema),
+    defaultValues: {
+      quantity: initialQuantity
+    }
+  });
 
   useEffect(() => {
     if (!session) {
@@ -49,6 +132,10 @@ export default function BatchPrintPage() {
     }
   }, [router, session]);
 
+  useEffect(() => {
+    setValue('quantity', initialQuantity);
+  }, [initialQuantity, setValue]);
+
   const query = useQuery({
     queryKey: ['batch-print', batchId],
     queryFn: () => getBatchLabel(batchId),
@@ -56,16 +143,69 @@ export default function BatchPrintPage() {
   });
 
   const label = query.data as BatchLabel | undefined;
+  const issueMutation = useMutation({
+    mutationFn: (values: z.infer<typeof issueSchema>) => issueBatchLabels(batchId, values),
+    onSuccess: (data) => {
+      setIssuedJob(data as IssuedLabelJob);
+      setPendingAutoPrint(true);
+      void query.refetch();
+    }
+  });
+
+  const labelsPerPage = layout.columns * layout.rows;
+  const issuedLabels = useMemo(() => {
+    if (!issuedJob) {
+      return [] as Array<IssuedLabel & { qrCodeValue: string }>;
+    }
+
+    return issuedJob.labels.map((item) => ({
+      ...item,
+      qrCodeValue:
+        item.qrCodeValue ??
+        buildIssuedLabelQrValue({
+          batchId: issuedJob.batchId,
+          batchCode: issuedJob.batchCode,
+          sequenceNumber: item.sequenceNumber
+        })
+    }));
+  }, [issuedJob]);
+  const printSheets = useMemo(
+    () => chunkLabels(issuedLabels, labelsPerPage),
+    [issuedLabels, labelsPerPage]
+  );
+  const sheetStyle = useMemo(
+    () =>
+      ({
+        ['--print-columns' as string]: String(layout.columns),
+        ['--print-rows' as string]: String(layout.rows)
+      }) as CSSProperties,
+    [layout.columns, layout.rows]
+  );
 
   useEffect(() => {
-    if (!printRequested || !label || hasTriggeredPrint.current) {
+    if (!issuedJob || !pendingAutoPrint) {
       return;
     }
 
-    hasTriggeredPrint.current = true;
-    const timer = window.setTimeout(() => window.print(), 300);
-    return () => window.clearTimeout(timer);
-  }, [label, printRequested]);
+    let firstFrame = 0;
+    let secondFrame = 0;
+    let timeoutId = 0;
+
+    firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        timeoutId = window.setTimeout(() => {
+          window.print();
+          setPendingAutoPrint(false);
+        }, 120);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+      window.clearTimeout(timeoutId);
+    };
+  }, [issuedJob, pendingAutoPrint]);
 
   if (!session) {
     return null;
@@ -73,15 +213,15 @@ export default function BatchPrintPage() {
 
   return (
     <div className="print-page-shell min-h-screen bg-slate-100 px-4 py-6">
-      <div className="mx-auto max-w-3xl space-y-4">
+      <div className="mx-auto max-w-7xl space-y-4">
         <div className="no-print flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-700">
-              Tem in
+              In tem nguyên liệu
             </p>
             <h1 className="text-2xl font-semibold text-brand-900">Tem nhãn lô hàng</h1>
             <p className="text-sm text-slate-500">
-              Trang này chỉ hiển thị nội dung tem để xem trước và in.
+              Mỗi tem có QR riêng theo Number của từng lô. Mặc định 2 cột x 5 hàng = 10 tem/trang.
             </p>
           </div>
 
@@ -92,45 +232,163 @@ export default function BatchPrintPage() {
             >
               Quay lại
             </Link>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!label}
-              onClick={() => window.print()}
-            >
-              In ngay
+            <Button type="button" variant="secondary" disabled={!issuedJob} onClick={() => window.print()}>
+              In lại tem vừa tạo
             </Button>
           </div>
         </div>
 
         {query.isPending ? (
-          <Card className="mx-auto max-w-sm rounded-[24px] border border-slate-200 p-6">
+          <Card className="rounded-[24px] border border-slate-200 p-6">
             <p className="text-sm text-slate-600">Đang tải dữ liệu tem...</p>
           </Card>
         ) : query.isError ? (
-          <Card className="mx-auto max-w-sm rounded-[24px] border border-rose-200 p-6">
+          <Card className="rounded-[24px] border border-rose-200 p-6">
             <p className="font-medium text-rose-700">Không tải được dữ liệu tem</p>
-            <p className="mt-2 text-sm text-slate-600">
-              Vui lòng quay lại danh sách lô và thử lại.
-            </p>
+            <p className="mt-2 text-sm text-slate-600">Vui lòng quay lại danh sách lô và thử lại.</p>
           </Card>
         ) : label ? (
-          <Card className="print-card mx-auto max-w-sm rounded-[24px] border border-slate-200 bg-white p-6">
-            <div className="space-y-2 text-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-700">
-                Tem lô nguyên liệu
-              </p>
-              <h2 className="text-xl font-semibold text-brand-900">{label.ingredientName}</h2>
-              <p>Mã lô: {label.batchCode}</p>
-              <p>Cửa hàng: {label.storeName}</p>
-              <p>Ngày nhập: {formatDate(label.receivedAt)}</p>
-              <p>Hết hạn: {formatDate(label.expiredAt)}</p>
-              <p>Ngày tạo tem: {formatDate(label.labelCreatedAt)}</p>
-            </div>
-            <div className="mt-6 flex justify-center">
-              <QRCodeSVG value={label.qrCodeValue ?? `FNBBATCH:${label.batchCode}`} size={180} />
-            </div>
-          </Card>
+          <>
+            <Card className="no-print rounded-[24px] border border-slate-200 bg-white p-6">
+              <div className="grid gap-6 xl:grid-cols-[1.35fr,1fr]">
+                <div className="space-y-2 text-sm text-slate-600">
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-700">
+                    Thông tin lô
+                  </p>
+                  <h2 className="text-xl font-semibold text-brand-900">{label.ingredientName}</h2>
+                  <p>Mã lô: {label.batchCode}</p>
+                  <p>Cửa hàng: {label.storeName}</p>
+                  <p>Đơn vị: {label.unit}</p>
+                  <p>Ngày nhập: {formatDate(label.receivedAt)}</p>
+                  <p>Hết hạn: {formatDate(label.expiredAt)}</p>
+                  <p>Ngày in gần nhất: {formatDate(label.labelCreatedAt)}</p>
+                  <p>
+                    Đã in: {label.printedLabelCount}/{label.maxPrintableLabels} tem
+                  </p>
+                  <p>Còn lại: {label.remainingLabelCount} tem</p>
+                  <p>Number tiếp theo: {label.nextLabelNumber ?? 'Lô này đã hết dãy Number'}</p>
+                </div>
+
+                <div className="space-y-4 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
+                  <form
+                    className="space-y-4"
+                    onSubmit={handleSubmit((values) => issueMutation.mutate(values))}
+                  >
+                    <Input
+                      label="Số tem muốn in"
+                      type="number"
+                      min={1}
+                      step="1"
+                      error={errors.quantity?.message}
+                      {...register('quantity')}
+                    />
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Input
+                        label="Số cột mỗi trang"
+                        type="number"
+                        min={1}
+                        max={4}
+                        value={layout.columns}
+                        onChange={(event) =>
+                          setLayout((current) => ({
+                            ...current,
+                            columns: clampInteger(event.target.value, 1, 4, current.columns)
+                          }))
+                        }
+                      />
+                      <Input
+                        label="Số hàng mỗi trang"
+                        type="number"
+                        min={1}
+                        max={8}
+                        value={layout.rows}
+                        onChange={(event) =>
+                          setLayout((current) => ({
+                            ...current,
+                            rows: clampInteger(event.target.value, 1, 8, current.rows)
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <p className="text-sm text-slate-500">
+                      Bố cục hiện tại: {layout.columns} cột x {layout.rows} hàng = {labelsPerPage} tem/trang.
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Lần in này sẽ bắt đầu từ Number {label.nextLabelNumber ?? '-'}.
+                    </p>
+                    {issueMutation.isError ? (
+                      <p className="text-sm text-danger">
+                        Không thể tạo tem. Lô này còn tối đa {label.remainingLabelCount} số để cấp.
+                      </p>
+                    ) : null}
+                    <Button
+                      type="submit"
+                      fullWidth
+                      disabled={issueMutation.isPending || label.remainingLabelCount <= 0}
+                    >
+                      {issueMutation.isPending ? 'Đang tạo tem...' : 'Tạo tem và mở in'}
+                    </Button>
+                  </form>
+                </div>
+              </div>
+            </Card>
+
+            {issuedJob ? (
+              <>
+                <div className="no-print rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  Đã tạo {issuedJob.issuedQuantity} tem cho dãy Number {issuedJob.issuedFromNumber} - {issuedJob.issuedToNumber}.
+                </div>
+
+                <div className="space-y-6">
+                  {printSheets.map((sheet, sheetIndex) => (
+                    <section
+                      key={`${issuedJob.batchId}-sheet-${sheetIndex}`}
+                      className="print-sheet rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm"
+                    >
+                      <div className="print-sheet-grid" style={sheetStyle}>
+                        {sheet.map((item) => (
+                          <article
+                            key={`${issuedJob.batchId}-${item.sequenceNumber}`}
+                            className="print-card print-label-card"
+                          >
+                            <div className="label-header-row">
+                              <div>
+                                <p className="label-eyebrow">Tem nguyên liệu</p>
+                                <h2 className="label-title">{issuedJob.ingredientName}</h2>
+                              </div>
+                              <div className="label-number-box">
+                                <p className="label-number-caption">Number</p>
+                                <p className="label-number">{item.sequenceNumber}</p>
+                              </div>
+                            </div>
+
+                            <div className="label-meta">
+                              <p>Mã lô: {issuedJob.batchCode}</p>
+                              <p>Cửa hàng: {issuedJob.storeName}</p>
+                              <p>Đơn vị: {issuedJob.unit}</p>
+                              <p>Ngày nhập: {formatDate(issuedJob.receivedAt)}</p>
+                              <p>Hạn dùng: {formatDate(issuedJob.expiredAt)}</p>
+                            </div>
+
+                            <div className="label-qr">
+                              <QRCodeSVG value={item.qrCodeValue} size={96} level="M" includeMargin />
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <Card className="no-print rounded-[24px] border border-dashed border-slate-300 bg-white/70 p-6 text-sm text-slate-500">
+                Nhập số tem cần in rồi bấm <span className="font-semibold text-brand-900">Tạo tem và mở in</span>.
+                Hệ thống sẽ sinh dãy Number liên tục theo lô hiện tại và mỗi tem sẽ có một QR riêng.
+              </Card>
+            )}
+          </>
         ) : null}
       </div>
     </div>

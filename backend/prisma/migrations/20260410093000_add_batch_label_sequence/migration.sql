@@ -1,0 +1,2 @@
+ALTER TABLE "IngredientBatch"
+ADD COLUMN "printedLabelCount" INTEGER NOT NULL DEFAULT 0;
