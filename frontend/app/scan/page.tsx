@@ -1,3 +1,5 @@
+export { default } from '@/components/scan/scan-page-content';
+/*
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -314,3 +316,4 @@ export default function ScanPage() {
     </ProtectedPage>
   );
 }
+*/

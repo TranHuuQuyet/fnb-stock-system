@@ -1,3 +1,5 @@
+export { default } from '@/components/admin/admin-batches-page-content';
+/*
 "use client";
 
 import Link from 'next/link';
@@ -233,3 +235,4 @@ export default function AdminBatchesPage() {
     </ProtectedPage>
   );
 }
+*/

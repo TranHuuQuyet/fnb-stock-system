@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ScanEntryMethod } from '@prisma/client';
+import { ScanEntryMethod, ScanOperationType } from '@prisma/client';
 import {
   IsDateString,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -17,6 +18,7 @@ export class ScanDto {
 
   @ApiProperty()
   @IsNumber()
+  @IsInt()
   @IsPositive()
   quantityUsed!: number;
 
@@ -42,6 +44,16 @@ export class ScanDto {
   @IsOptional()
   @IsString()
   storeId?: string;
+
+  @ApiPropertyOptional({ enum: ScanOperationType, default: ScanOperationType.STORE_USAGE })
+  @IsOptional()
+  @IsEnum(ScanOperationType)
+  operationType?: ScanOperationType;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  destinationStoreId?: string;
 
   @ApiPropertyOptional({ enum: ScanEntryMethod, default: ScanEntryMethod.CAMERA })
   @IsOptional()

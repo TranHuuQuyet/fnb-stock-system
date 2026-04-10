@@ -12,6 +12,8 @@ export type OfflineScanEvent = {
   deviceId: string;
   ssid?: string;
   storeId?: string;
+  destinationStoreId?: string;
+  operationType?: 'STORE_USAGE' | 'TRANSFER';
   entryMethod: 'CAMERA' | 'MANUAL';
   status: OfflineScanStatus;
   errorMessage?: string;

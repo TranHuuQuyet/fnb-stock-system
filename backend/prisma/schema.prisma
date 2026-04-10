@@ -54,6 +54,11 @@ enum ScanEntryMethod {
   MANUAL
 }
 
+enum ScanOperationType {
+  STORE_USAGE
+  TRANSFER
+}
+
 enum FraudAttemptType {
   NETWORK_RESTRICTED
   INVALID_QR
@@ -107,7 +112,8 @@ model Store {
   devices           Device[]
   batches           IngredientBatch[]
   adjustments       StockAdjustment[]
-  scanLogs          ScanLog[]
+  scanLogs          ScanLog[]               @relation("ScanStore")
+  transferScanLogs  ScanLog[]               @relation("TransferDestinationStore")
   fraudAttempts     FraudAttemptLog[]
   posSales          PosSale[]
   anomalyAlerts     AnomalyAlert[]
@@ -209,6 +215,7 @@ model ScanLog {
   id            String           @id @default(cuid())
   clientEventId String           @unique
   storeId       String
+  destinationStoreId String?
   userId        String
   deviceId      String
   batchId       String?
@@ -217,6 +224,7 @@ model ScanLog {
   receivedAt    DateTime
   source        ScanSource
   entryMethod   ScanEntryMethod  @default(CAMERA)
+  operationType ScanOperationType @default(STORE_USAGE)
   ipAddress     String
   ssid          String?
   resultStatus  ScanResultStatus
@@ -224,14 +232,17 @@ model ScanLog {
   message       String
   duplicated    Boolean          @default(false)
   createdAt     DateTime         @default(now())
-  store         Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store         Store            @relation("ScanStore", fields: [storeId], references: [id], onDelete: Cascade)
+  destinationStore Store?        @relation("TransferDestinationStore", fields: [destinationStoreId], references: [id], onDelete: SetNull)
   user          User             @relation(fields: [userId], references: [id], onDelete: Restrict)
   batch         IngredientBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
 
   @@index([storeId, createdAt])
+  @@index([destinationStoreId, createdAt])
   @@index([userId, createdAt])
   @@index([batchId])
   @@index([scannedAt])
+  @@index([operationType, createdAt])
 }
 
 model FraudAttemptLog {

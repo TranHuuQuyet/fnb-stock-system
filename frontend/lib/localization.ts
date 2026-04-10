@@ -36,9 +36,15 @@ const adjustmentTypeLabels: Record<string, string> = {
   DECREASE: 'Giảm'
 };
 
+const operationTypeLabels: Record<string, string> = {
+  STORE_USAGE: 'Sử dụng tại quán',
+  TRANSFER: 'Chuyển kho'
+};
+
 const resultCodeLabels: Record<string, string> = {
   OFFLINE_QUEUED: 'Đã lưu ngoại tuyến',
   SCAN_OK: 'Quét thành công',
+  TRANSFER_OK: 'Chuyển kho thành công',
   WARNING_FIFO: 'Cảnh báo FIFO',
   ERROR_NETWORK_RESTRICTED: 'Mạng chưa được cho phép',
   ERROR_BATCH_NOT_FOUND: 'Không tìm thấy lô',
@@ -47,6 +53,11 @@ const resultCodeLabels: Record<string, string> = {
   ERROR_SOFT_LOCKED: 'Lô đang bị khóa mềm',
   ERROR_INSUFFICIENT_QTY: 'Số lượng trong lô không đủ',
   ERROR_FIFO: 'Cần xuất theo FIFO',
+  ERROR_TRANSFER_ADMIN_ONLY: 'Chỉ admin được chuyển kho',
+  ERROR_TRANSFER_DESTINATION_REQUIRED: 'Chưa chọn chi nhánh nhận',
+  ERROR_TRANSFER_SAME_STORE: 'Chi nhánh nhận phải khác chi nhánh chuyển',
+  ERROR_TRANSFER_STORE_NOT_FOUND: 'Không tìm thấy chi nhánh nhận',
+  ERROR_TRANSFER_BATCH_CONFLICT: 'Lô nhận bị trùng mã khác nguyên liệu',
   AUTH_FORBIDDEN: 'Không có quyền thao tác'
 };
 
@@ -67,6 +78,11 @@ const apiErrorLabels: Record<string, string> = {
   ERROR_SOFT_LOCKED: 'Lô nguyên liệu đang bị khóa mềm',
   ERROR_INSUFFICIENT_QTY: 'Số lượng còn lại của lô không đủ',
   ERROR_FIFO: 'Cần sử dụng lô cũ hơn trước theo FIFO',
+  ERROR_TRANSFER_ADMIN_ONLY: 'Chỉ quản trị viên mới được chuyển kho',
+  ERROR_TRANSFER_DESTINATION_REQUIRED: 'Vui lòng chọn chi nhánh nhận',
+  ERROR_TRANSFER_SAME_STORE: 'Chi nhánh nhận phải khác chi nhánh chuyển',
+  ERROR_TRANSFER_STORE_NOT_FOUND: 'Không tìm thấy chi nhánh nhận hợp lệ',
+  ERROR_TRANSFER_BATCH_CONFLICT: 'Chi nhánh nhận có lô trùng mã nhưng khác nguyên liệu',
   ERROR_DUPLICATE_CLIENT_EVENT: 'Yêu cầu quét đã được ghi nhận trước đó',
   ERROR_INVALID_QR_FORMAT: 'Mã QR không đúng định dạng',
   POS_IMPORT_ERROR: 'Không thể nhập dữ liệu bán hàng POS',
@@ -96,6 +112,9 @@ export const localizeBatchStatus = (value: string) =>
 
 export const localizeAdjustmentType = (value: string) =>
   adjustmentTypeLabels[value] ?? fallback(value);
+
+export const localizeOperationType = (value: string) =>
+  operationTypeLabels[value] ?? fallback(value);
 
 export const localizeResultCode = (value: string) =>
   resultCodeLabels[value] ?? fallback(value);

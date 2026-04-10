@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { Prisma, ScanResultStatus, UserRole } from '@prisma/client';
+import { Prisma, ScanOperationType, ScanResultStatus, UserRole } from '@prisma/client';
 
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import type { JwtUser } from '../../common/types/request-with-user';
@@ -289,6 +289,7 @@ export class PosService {
     const logs = await this.prisma.scanLog.findMany({
       where: {
         storeId: scopedStoreId,
+        operationType: ScanOperationType.STORE_USAGE,
         resultStatus: {
           in: [ScanResultStatus.SUCCESS, ScanResultStatus.WARNING]
         }

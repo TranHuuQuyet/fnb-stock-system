@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { ScanResultStatus, UserRole } from '@prisma/client';
+import { ScanOperationType, ScanResultStatus, UserRole } from '@prisma/client';
 
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import type { JwtUser } from '../../common/types/request-with-user';
@@ -36,7 +36,8 @@ export class DashboardService {
     const [scanLogs, fraudAttempts, alerts, reconciliation] = await Promise.all([
       this.prisma.scanLog.findMany({
         where: {
-          storeId: scopedStoreId
+          storeId: scopedStoreId,
+          operationType: ScanOperationType.STORE_USAGE
         },
         include: {
           batch: {

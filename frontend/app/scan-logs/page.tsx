@@ -1,3 +1,5 @@
+export { default } from '@/components/scan/scan-logs-page-content';
+/*
 "use client";
 
 import { useQuery } from '@tanstack/react-query';
@@ -56,3 +58,4 @@ export default function ScanLogsPage() {
     </ProtectedPage>
   );
 }
+*/

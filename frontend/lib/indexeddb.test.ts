@@ -18,9 +18,10 @@ describe('offline scan queue', () => {
     await queueOfflineScan({
       clientEventId: 'event-1',
       batchCode: 'BATCH-TRA-001',
-      quantityUsed: 0.1,
+      quantityUsed: 1,
       scannedAt: new Date().toISOString(),
       deviceId: 'device-1',
+      operationType: 'STORE_USAGE',
       entryMethod: 'CAMERA',
       status: 'pending',
       createdAt: new Date().toISOString()
