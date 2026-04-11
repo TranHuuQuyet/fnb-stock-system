@@ -239,7 +239,7 @@ export class ConfigService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
-        'KhÃ´ng tÃ¬m tháº¥y cá»­a hÃ ng'
+        'Không tìm thấy cửa hàng'
       );
     }
 
@@ -325,7 +325,7 @@ export class ConfigService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
-        'KhÃ´ng tÃ¬m tháº¥y cá»­a hÃ ng'
+        'Không tìm thấy cửa hàng'
       );
     }
 
@@ -340,7 +340,7 @@ export class ConfigService {
         throw appException(
           HttpStatus.BAD_REQUEST,
           ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
-          'Emergency bypass pháº£i cÃ³ thá»i Ä‘iá»ƒm háº¿t hiá»‡u lá»±c'
+          'Emergency bypass phải có thời điểm hết hiệu lực'
         );
       }
 
@@ -349,7 +349,7 @@ export class ConfigService {
         throw appException(
           HttpStatus.BAD_REQUEST,
           ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
-          'Thá»i Ä‘iá»ƒm háº¿t hiá»‡u lá»±c pháº£i náº±m á»Ÿ tÆ°Æ¡ng lai'
+          'Thời điểm hết hiệu lực phải nằm ở tương lai'
         );
       }
 

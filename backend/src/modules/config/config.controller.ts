@@ -94,7 +94,7 @@ export class ConfigController {
   ) {
     return {
       data: await this.configService.updateNetworkBypass(user.userId, storeId, dto),
-      message: 'Cáº­p nháº­t emergency bypass thÃ nh cÃ´ng'
+      message: 'Cập nhật emergency bypass thành công'
     };
   }
 }

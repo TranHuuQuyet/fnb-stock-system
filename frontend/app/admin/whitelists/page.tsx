@@ -155,9 +155,9 @@ export default function AdminWhitelistsPage() {
           <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Thêm mạng được phép</h2>
           <p className="mb-4 text-sm text-slate-600">
-            Dung IP whitelist khi muon chi cho phep nhan vien quet tren dung mang cua quan.
-            Admin nen mo trang nay tren thiet bi dang ket noi vao Wi-Fi cua quan roi bam
-            &nbsp;`Lay IP hien tai`.
+            Dùng IP whitelist khi muốn chỉ cho phép nhân viên quét trên đúng mạng của quán.
+            Admin nên mở trang này trên thiết bị đang kết nối vào Wi-Fi của quán rồi bấm
+            &nbsp;`Lấy IP hiện tại`.
           </p>
           <form
             className="space-y-4"
@@ -189,16 +189,16 @@ export default function AdminWhitelistsPage() {
                   disabled={!selectedStoreId || detectNetworkMutation.isPending}
                   onClick={() => detectNetworkMutation.mutate()}
                 >
-                  {detectNetworkMutation.isPending ? 'Dang lay IP...' : 'Lay IP hien tai'}
+                  {detectNetworkMutation.isPending ? 'Đang lấy IP...' : 'Lấy IP hiện tại'}
                 </Button>
                 <p>
-                  Nut nay lay IP theo cach backend thuc su nhin thay request cua thiet bi admin
-                  hien tai.
+                  Nút này lấy IP theo cách backend thực sự nhìn thấy request của thiết bị admin
+                  hiện tại.
                 </p>
                 {detectNetworkMutation.data ? (
                   <div className="rounded-xl bg-white p-3">
-                    <p>IP backend nhan: {detectNetworkMutation.data.ipAddress}</p>
-                    <p>Gia tri de whitelist: {detectNetworkMutation.data.normalizedIpAddress}</p>
+                    <p>IP backend nhận: {detectNetworkMutation.data.ipAddress}</p>
+                    <p>Giá trị để whitelist: {detectNetworkMutation.data.normalizedIpAddress}</p>
                   </div>
                 ) : null}
                 {detectNetworkMutation.error ? (
@@ -207,17 +207,17 @@ export default function AdminWhitelistsPage() {
                   </p>
                 ) : null}
                 <p>
-                  Staff dung cung mang/router ma backend thay cung IP nay thi quet duoc. O mang
-                  khac thi se bi chan.
+                  Staff dùng cùng mạng/router mà backend thấy cùng IP này thì quét được. Ở mạng
+                  khác thì sẽ bị chặn.
                 </p>
                 <p>
-                  Test bang cung mot may qua localhost hoac Docker thuong se hien IP local/bridge.
+                  Test bằng cùng một máy qua localhost hoặc Docker thường sẽ hiện IP local/bridge.
                 </p>
               </div>
             ) : (
               <p className="text-sm text-slate-500">
-                Tren web browser, SSID khong phai cach kiem tra on dinh. Muon chan theo mang thi
-                nen uu tien IP whitelist.
+                Trên web browser, SSID không phải cách kiểm tra ổn định. Muốn chặn theo mạng thì
+                nên ưu tiên IP whitelist.
               </p>
             )}
             <Button type="submit" fullWidth disabled={createMutation.isPending}>
@@ -236,7 +236,7 @@ export default function AdminWhitelistsPage() {
               item.value,
               <Badge
                 key={item.id}
-                label={item.isActive ? 'Hoạt động' : 'Ngưng hoạt động'}
+                label={item.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
                 tone={item.isActive ? 'success' : 'warning'}
               />,
               <Button
@@ -255,20 +255,20 @@ export default function AdminWhitelistsPage() {
           <Card>
             <h2 className="mb-4 text-xl font-semibold text-brand-900">Emergency bypass</h2>
             <p className="mb-4 text-sm text-slate-600">
-              Chi bat tam khi mang cua chi nhanh doi dot xuat. Bypass se tu het hieu luc
-              theo thoi diem ban dat.
+              Chỉ bật tạm khi mạng của chi nhánh đổi đột xuất. Bypass sẽ tự hết hiệu lực
+              theo thời điểm bạn đặt.
             </p>
             <form
               className="space-y-4"
               onSubmit={handleSubmitBypass((values) => enableBypassMutation.mutate(values))}
             >
               <label className="block space-y-2">
-                <span className="text-sm font-medium text-brand-900">Cua hang</span>
+                <span className="text-sm font-medium text-brand-900">Cửa hàng</span>
                 <select
                   className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3"
                   {...registerBypass('storeId')}
                 >
-                  <option value="">Chon cua hang</option>
+                  <option value="">Chọn cửa hàng</option>
                   {stores.map((store) => (
                     <option key={`bypass-${store.id}`} value={store.id}>
                       {store.name}
@@ -280,39 +280,39 @@ export default function AdminWhitelistsPage() {
                 ) : null}
               </label>
               <Input
-                label="Het hieu luc luc"
+                label="Hết hiệu lực lúc"
                 type="datetime-local"
                 error={bypassErrors.expiresAt?.message}
                 {...registerBypass('expiresAt')}
               />
               <Input
-                label="Ly do"
-                placeholder="VD: ISP doi IP cua chi nhanh"
+                label="Lý do"
+                placeholder="VD: ISP đổi IP của chi nhánh"
                 error={bypassErrors.reason?.message}
                 {...registerBypass('reason')}
               />
               <Button type="submit" fullWidth disabled={enableBypassMutation.isPending}>
-                {enableBypassMutation.isPending ? 'Dang bat bypass...' : 'Bat bypass tam thoi'}
+                {enableBypassMutation.isPending ? 'Đang bật bypass...' : 'Bật bypass tạm thời'}
               </Button>
             </form>
           </Card>
 
           <Card>
             <h2 className="mb-4 text-xl font-semibold text-brand-900">
-              Trang thai bypass theo chi nhanh
+              Trạng thái bypass theo chi nhánh
             </h2>
             <SimpleTable
-              columns={['Cua hang', 'Trang thai', 'Het hieu luc', 'Ly do', 'Thao tac']}
+              columns={['Cửa hàng', 'Trạng thái', 'Hết hiệu lực', 'Lý do', 'Thao tác']}
               rows={networkBypasses.map((item) => [
                 item.name,
                 <Badge
                   key={`${item.id}-status`}
                   label={
                     item.bypassActive
-                      ? 'Dang bat'
+                      ? 'Đang bật'
                       : item.networkBypassEnabled
-                        ? 'Da het han'
-                        : 'Dang tat'
+                        ? 'Đã hết hạn'
+                        : 'Đang tắt'
                   }
                   tone={
                     item.bypassActive
@@ -332,7 +332,7 @@ export default function AdminWhitelistsPage() {
                   disabled={!item.networkBypassEnabled || disableBypassMutation.isPending}
                   onClick={() => disableBypassMutation.mutate(item.id)}
                 >
-                  Tat bypass
+                  Tắt bypass
                 </Button>
               ])}
             />

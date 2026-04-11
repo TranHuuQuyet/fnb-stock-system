@@ -36,7 +36,7 @@ export class BusinessNetworkGuard implements CanActivate {
       throw appException(
         HttpStatus.FORBIDDEN,
         ERROR_CODES.AUTH_FORBIDDEN,
-        'Thiáº¿u pháº¡m vi cá»­a hÃ ng Ä‘á»ƒ kiá»ƒm tra quyá»n truy cáº­p nghiá»‡p vá»¥'
+        'Thiếu phạm vi cửa hàng để kiểm tra quyền truy cập nghiệp vụ'
       );
     }
 
@@ -50,8 +50,8 @@ export class BusinessNetworkGuard implements CanActivate {
     }
 
     const message = networkStatus.hasActiveWhitelist
-      ? 'Báº¡n pháº£i káº¿t ná»‘i Ä‘Ãºng máº¡ng Ä‘Æ°á»£c phÃ©p cá»§a chi nhÃ¡nh Ä‘á»ƒ sá»­ dá»¥ng nghiá»‡p vá»¥ nÃ y'
-      : 'Chi nhÃ¡nh hiá»‡n chÆ°a Ä‘Æ°á»£c cáº¥u hÃ¬nh máº¡ng Ä‘Æ°á»£c phÃ©p hoáº·c emergency bypass há»£p lá»‡';
+      ? 'Bạn phải kết nối đúng mạng được phép của chi nhánh để sử dụng nghiệp vụ này'
+      : 'Chi nhánh hiện chưa được cấu hình mạng được phép hoặc emergency bypass hợp lệ';
 
     throw appException(
       HttpStatus.FORBIDDEN,
