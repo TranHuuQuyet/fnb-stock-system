@@ -84,6 +84,14 @@ export default function DashboardPage() {
           </div>
         </Card>
 
+        {summaryQuery.isError ? (
+          <Card className="md:col-span-3">
+            <p className="rounded-2xl bg-rose-50 p-3 text-sm text-rose-700">
+              {(summaryQuery.error as Error).message}
+            </p>
+          </Card>
+        ) : null}
+
         {summary ? (
           <>
             {[

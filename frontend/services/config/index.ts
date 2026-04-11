@@ -31,4 +31,20 @@ export const deleteWhitelist = (id: string) =>
     })
   );
 
+export const listNetworkBypasses = () => apiClient('/admin/network-bypasses');
+export const updateNetworkBypass = (
+  storeId: string,
+  payload: {
+    enabled: boolean;
+    expiresAt?: string | null;
+    reason?: string | null;
+  }
+) =>
+  unwrapData(
+    apiClient(`/admin/network-bypasses/${storeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  );
+
 export const listAuditLogs = (query = '') => apiClient(`/admin/audit-logs${query}`);

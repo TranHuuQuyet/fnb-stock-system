@@ -21,7 +21,8 @@ describe('ScanService', () => {
   };
   const configService = {
     getConfig: jest.fn(),
-    getActiveWhitelistsByStore: jest.fn()
+    getActiveWhitelistsByStore: jest.fn(),
+    getBusinessNetworkStatus: jest.fn()
   };
   const batchesService = {
     findByBatchCode: jest.fn(),
@@ -78,7 +79,9 @@ describe('ScanService', () => {
   it('returns warning when fifo bypass is enabled and older batch exists', async () => {
     prisma.scanLog.findUnique.mockResolvedValue(null);
     configService.getConfig.mockResolvedValue({ allowFifoBypass: true });
-    configService.getActiveWhitelistsByStore.mockResolvedValue([]);
+    configService.getBusinessNetworkStatus.mockResolvedValue({
+      canAccessBusinessOperations: true
+    });
     batchesService.findByBatchCode.mockResolvedValue({
       id: 'batch-2',
       ingredientId: 'ingredient-1',
@@ -129,5 +132,34 @@ describe('ScanService', () => {
 
     expect(result.resultStatus).toBe(ScanResultStatus.WARNING);
     expect(result.resultCode).toBe('WARNING_FIFO');
+  });
+
+  it('normalizes ipv4-mapped addresses when checking current network status', async () => {
+    configService.getBusinessNetworkStatus.mockResolvedValue({
+      storeId: 'store-1',
+      ipAddress: '::ffff:127.0.0.1',
+      normalizedIpAddress: '127.0.0.1',
+      hasActiveWhitelist: true,
+      isAllowedByWhitelist: true,
+      matchedWhitelistTypes: ['IP'],
+      bypassEnabled: false,
+      bypassActive: false,
+      bypassExpiresAt: null,
+      bypassReason: null,
+      canAccessBusinessOperations: true
+    });
+
+    const result = await service.getNetworkStatus(
+      currentUser,
+      undefined,
+      '::ffff:127.0.0.1'
+    );
+
+    expect(result.storeId).toBe('store-1');
+    expect(result.ipAddress).toBe('::ffff:127.0.0.1');
+    expect(result.normalizedIpAddress).toBe('127.0.0.1');
+    expect(result.hasActiveWhitelist).toBe(true);
+    expect(result.isAllowedByWhitelist).toBe(true);
+    expect(result.matchedWhitelistTypes).toEqual(['IP']);
   });
 });

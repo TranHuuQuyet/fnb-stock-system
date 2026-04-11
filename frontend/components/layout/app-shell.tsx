@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import { clearSession, getSession, Role, Permission } from '@/lib/auth';
 import { localizeSyncState } from '@/lib/localization';
 import { useOfflineSync } from '@/hooks/use-offline-sync';
+import { BusinessNetworkBanner } from './business-network-banner';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 
@@ -50,6 +51,11 @@ export function AppShell({
 
   const role = session?.user.role;
   const permissions = session?.user.permissions ?? [];
+  const routePermission = getRoutePermission(pathname ?? '');
+  const shouldShowBusinessNetworkBanner =
+    role !== 'ADMIN' &&
+    pathname !== '/scan' &&
+    (routePermission === 'view_scan_logs' || routePermission === 'view_dashboard');
 
   const hasPermission = (requiredPermission?: Permission): boolean => {
     if (!requiredPermission) return true;
@@ -165,7 +171,10 @@ export function AppShell({
           </Button>
         </aside>
 
-        <main className="flex-1 space-y-4 overflow-y-auto lg:h-[calc(100vh-2rem)] lg:min-h-0">{children}</main>
+        <main className="flex-1 space-y-4 overflow-y-auto lg:h-[calc(100vh-2rem)] lg:min-h-0">
+          {shouldShowBusinessNetworkBanner ? <BusinessNetworkBanner /> : null}
+          {children}
+        </main>
       </div>
     </div>
   );

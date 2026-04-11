@@ -17,7 +17,7 @@ import { appException } from '../../common/utils/app-exception';
 import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BatchesService } from '../batches/batches.service';
-import { ConfigService } from '../config/config.service';
+import { ConfigService, type BusinessNetworkStatus } from '../config/config.service';
 import { DevicesService } from '../devices/devices.service';
 import { QueryScanLogsDto } from './dto/query-scan-logs.dto';
 import { ScanDto } from './dto/scan.dto';
@@ -168,6 +168,26 @@ export class ScanService {
     };
   }
 
+  async getNetworkStatus(
+    currentUser: JwtUser,
+    requestedStoreId: string | undefined,
+    ipAddress: string,
+    ssid?: string
+  ): Promise<BusinessNetworkStatus> {
+    const storeId =
+      currentUser.role === UserRole.ADMIN ? requestedStoreId : currentUser.storeId;
+
+    if (!storeId) {
+      throw appException(
+        HttpStatus.FORBIDDEN,
+        ERROR_CODES.AUTH_FORBIDDEN,
+        'Thiếu phạm vi cửa hàng để kiểm tra trạng thái mạng'
+      );
+    }
+
+    return this.configService.getBusinessNetworkStatus(storeId, ipAddress);
+  }
+
   private async processScan(params: ProcessScanParams): Promise<ProcessScanResult> {
     const storeId =
       params.currentUser.role === UserRole.ADMIN
@@ -299,10 +319,13 @@ export class ScanService {
       params.currentUser.role === UserRole.ADMIN
         ? params.dto.storeId
         : params.currentUser.storeId;
-    const whitelists = await this.configService.getActiveWhitelistsByStore(storeId!);
-    const networkValid = this.isNetworkValid(whitelists, params.ipAddress, params.dto.ssid);
-    if (!networkValid) {
-      return this.createNetworkRejectedResult(params, storeId!);
+
+    if (params.currentUser.role !== UserRole.ADMIN) {
+      const whitelists = await this.configService.getActiveWhitelistsByStore(storeId!);
+      const networkValid = this.isNetworkValid(whitelists, params.ipAddress, params.dto.ssid);
+      if (!networkValid) {
+        return this.createNetworkRejectedResult(params, storeId!);
+      }
     }
 
     if (!batch) {
@@ -480,22 +503,60 @@ export class ScanService {
     ipAddress: string,
     ssid?: string
   ) {
+    return this.evaluateNetworkAccess(whitelists, ipAddress, ssid).isAllowed;
+  }
+
+  private evaluateNetworkAccess(
+    whitelists: { type: NetworkWhitelistType; value: string }[],
+    ipAddress: string,
+    ssid?: string
+  ) {
+    const normalizedIpAddress = this.normalizeIpAddress(ipAddress);
+    const normalizedSsid = ssid?.trim();
+
     if (whitelists.length === 0) {
-      return true;
+      return {
+        isAllowed: true,
+        normalizedIpAddress,
+        matchedWhitelistTypes: [] as NetworkWhitelistType[]
+      };
     }
 
     const ipWhitelists = whitelists
       .filter((item) => item.type === NetworkWhitelistType.IP)
-      .map((item) => item.value);
+      .map((item) => this.normalizeIpAddress(item.value));
     const ssidWhitelists = whitelists
       .filter((item) => item.type === NetworkWhitelistType.SSID)
-      .map((item) => item.value);
+      .map((item) => item.value.trim());
 
-    const ipValid = ipWhitelists.length === 0 || ipWhitelists.includes(ipAddress);
+    const ipMatched = ipWhitelists.includes(normalizedIpAddress);
+    const ssidMatched = normalizedSsid ? ssidWhitelists.includes(normalizedSsid) : false;
+    const ipValid = ipWhitelists.length === 0 || ipMatched;
     const ssidValid =
-      ssidWhitelists.length === 0 || !ssid || ssidWhitelists.includes(ssid);
+      ssidWhitelists.length === 0 || !normalizedSsid || ssidMatched;
 
-    return ipValid && ssidValid;
+    const matchedWhitelistTypes: NetworkWhitelistType[] = [];
+    if (ipMatched) {
+      matchedWhitelistTypes.push(NetworkWhitelistType.IP);
+    }
+    if (ssidMatched) {
+      matchedWhitelistTypes.push(NetworkWhitelistType.SSID);
+    }
+
+    return {
+      isAllowed: ipValid && ssidValid,
+      normalizedIpAddress,
+      matchedWhitelistTypes
+    };
+  }
+
+  private normalizeIpAddress(value: string | undefined) {
+    if (!value) {
+      return '0.0.0.0';
+    }
+
+    const normalized = value.trim().toLowerCase();
+    return normalized.startsWith('::ffff:') ? normalized.slice(7) : normalized;
   }
 
   private async buildLogWhere(currentUser: JwtUser, query: QueryScanLogsDto) {
@@ -675,10 +736,14 @@ export class ScanService {
       });
     }
 
-    const whitelists = await this.configService.getActiveWhitelistsByStore(storeId);
-    const networkValid = this.isNetworkValid(whitelists, params.ipAddress, params.dto.ssid);
-    if (!networkValid) {
-      return this.createNetworkRejectedResultV2(params, storeId, operationType);
+    if (params.currentUser.role !== UserRole.ADMIN) {
+      const networkStatus = await this.configService.getBusinessNetworkStatus(
+        storeId,
+        params.ipAddress
+      );
+      if (!networkStatus.canAccessBusinessOperations) {
+        return this.createNetworkRejectedResultV2(params, storeId, operationType);
+      }
     }
 
     if (!batch) {

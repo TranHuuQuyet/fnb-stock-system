@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequireBusinessNetwork } from '../../common/decorators/require-business-network.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { CreateBatchDto } from './dto/create-batch.dto';
@@ -18,6 +19,7 @@ export class BatchesController {
   constructor(private readonly batchesService: BatchesService) {}
 
   @Get('batches')
+  @RequireBusinessNetwork()
   async listAccessible(
     @CurrentUser() user: JwtUser,
     @Query() query: QueryBatchesDto

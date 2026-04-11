@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequireBusinessNetwork } from '../../common/decorators/require-business-network.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { CreatePosProductDto } from './dto/create-pos-product.dto';
@@ -99,6 +100,7 @@ export class PosController {
 
   @Get('pos/reconciliation')
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @RequireBusinessNetwork()
   async reconciliation(
     @CurrentUser() user: JwtUser,
     @Query('storeId') storeId: string,

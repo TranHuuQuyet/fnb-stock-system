@@ -222,6 +222,11 @@ export default function ScanLogsPageContent() {
               ? 'Lịch sử nguyên liệu chuyển kho'
               : 'Lịch sử nguyên liệu sử dụng tại quán'}
           </h2>
+          {query.isError ? (
+            <p className="mb-4 rounded-2xl bg-rose-50 p-3 text-sm text-rose-700">
+              {(query.error as Error).message}
+            </p>
+          ) : null}
           <SimpleTable
             columns={
               activeView === 'TRANSFER'

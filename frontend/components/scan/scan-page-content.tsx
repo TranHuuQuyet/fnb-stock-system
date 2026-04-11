@@ -13,7 +13,11 @@ import { queueOfflineScan } from '@/lib/indexeddb';
 import { localizeResultCode, localizeSyncState } from '@/lib/localization';
 import { listStores } from '@/services/admin/stores';
 import { listBatches } from '@/services/batches';
-import { submitManualScan, submitScan } from '@/services/scan';
+import {
+  getScanNetworkStatus,
+  submitManualScan,
+  submitScan
+} from '@/services/scan';
 import { ProtectedPage } from '@/components/layout/protected-page';
 import { QrScanner } from '@/components/scan/qr-scanner';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +49,21 @@ type ScanResponse = {
   resultStatus: 'SUCCESS' | 'WARNING' | 'ERROR';
   resultCode: string;
   message: string;
+};
+
+type NetworkStatus = {
+  storeId: string;
+  ipAddress: string;
+  normalizedIpAddress: string;
+  hasActiveWhitelist: boolean;
+  isAllowed?: boolean;
+  isAllowedByWhitelist: boolean;
+  matchedWhitelistTypes: Array<'IP' | 'SSID'>;
+  bypassEnabled: boolean;
+  bypassActive: boolean;
+  bypassExpiresAt: string | null;
+  bypassReason: string | null;
+  canAccessBusinessOperations: boolean;
 };
 
 type ScanTone = 'idle' | 'success' | 'warning' | 'error' | 'offline';
@@ -164,6 +183,7 @@ export default function ScanPageContent() {
   const destinationStoreId = watch('destinationStoreId');
   const storeId = watch('storeId');
   const sourceStoreId = watch('sourceStoreId');
+  const networkStatusStoreId = operationType === 'TRANSFER' ? sourceStoreId : storeId;
 
   // Persist store selections when they change
   useEffect(() => {
@@ -188,6 +208,19 @@ export default function ScanPageContent() {
     queryKey: ['scan-transfer-destination-batches', destinationStoreId],
     queryFn: () => listBatches(toStoreQuery(destinationStoreId ?? '')),
     enabled: isAdmin && operationType === 'TRANSFER' && Boolean(destinationStoreId)
+  });
+
+  const networkStatusQuery = useQuery<NetworkStatus>({
+    queryKey: ['scan-network-status', isAdmin ? networkStatusStoreId ?? 'no-store' : 'current-store'],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (isAdmin && networkStatusStoreId) {
+        params.set('storeId', networkStatusStoreId);
+      }
+      const query = params.toString();
+      return getScanNetworkStatus(query ? `?${query}` : '');
+    },
+    enabled: isOnline && (!isAdmin || Boolean(networkStatusStoreId))
   });
 
   const destinationInventory = useMemo(() => {
@@ -231,6 +264,223 @@ export default function ScanPageContent() {
     return stores.find((store) => store.id === sourceStoreId)?.name ?? '';
   }, [sourceStoreId, storesQuery.data]);
 
+  const networkStatusStoreName =
+    operationType === 'TRANSFER'
+      ? selectedSourceStoreName || session?.user.store?.name || 'chi nhánh hiện tại'
+      : selectedUsageStoreName || session?.user.store?.name || 'chi nhánh hiện tại';
+
+  const networkStatusBadge = useMemo(() => {
+    if (!isOnline) {
+      return {
+        label: 'Chờ kiểm tra whitelist',
+        tone: 'neutral' as const
+      };
+    }
+
+    if (isAdmin && !networkStatusStoreId) {
+      return {
+        label: 'Chọn chi nhánh để kiểm tra',
+        tone: 'neutral' as const
+      };
+    }
+
+    if (networkStatusQuery.isLoading) {
+      return {
+        label: 'Đang kiểm tra mạng',
+        tone: 'warning' as const
+      };
+    }
+
+    if (networkStatusQuery.isError) {
+      return {
+        label: 'Không kiểm tra được mạng',
+        tone: 'danger' as const
+      };
+    }
+
+    if (!networkStatusQuery.data?.hasActiveWhitelist) {
+      return {
+        label: 'Chưa cấu hình whitelist',
+        tone: 'neutral' as const
+      };
+    }
+
+    return networkStatusQuery.data.isAllowed
+      ? {
+          label: 'Mạng được phép',
+          tone: 'success' as const
+        }
+      : {
+          label: 'Mạng chưa được phép',
+          tone: 'danger' as const
+        };
+  }, [
+    isAdmin,
+    isOnline,
+    networkStatusQuery.data,
+    networkStatusQuery.isError,
+    networkStatusQuery.isLoading,
+    networkStatusStoreId
+  ]);
+
+  const networkStatusMessage = useMemo(() => {
+    if (!isOnline) {
+      return 'Thiết bị đang offline. Whitelist sẽ chỉ được backend kiểm tra khi lượt quét được đồng bộ lại.';
+    }
+
+    if (isAdmin && !networkStatusStoreId) {
+      return 'Hãy chọn chi nhánh nguồn hoặc chi nhánh sử dụng trước để kiểm tra whitelist đúng phạm vi.';
+    }
+
+    if (networkStatusQuery.isLoading) {
+      return 'Đang lấy IP mà backend thực sự nhìn thấy từ request hiện tại.';
+    }
+
+    if (networkStatusQuery.isError) {
+      return 'Chưa lấy được trạng thái whitelist. Bạn vẫn có thể thử quét, nhưng sẽ khó biết trước backend có từ chối vì mạng hay không.';
+    }
+
+    const networkStatus = networkStatusQuery.data;
+    if (!networkStatus) {
+      return 'Chưa có dữ liệu trạng thái mạng.';
+    }
+
+    const matchedBy =
+      networkStatus.matchedWhitelistTypes.length > 0
+        ? ` Khớp theo ${networkStatus.matchedWhitelistTypes.join(' + ')}.`
+        : '';
+
+    if (!networkStatus.hasActiveWhitelist) {
+      return `Chi nhánh ${networkStatusStoreName} chưa có whitelist active. IP backend đang nhận là ${networkStatus.ipAddress}.`;
+    }
+
+    return networkStatus.isAllowed
+      ? `Chi nhánh ${networkStatusStoreName} đang cho phép mạng hiện tại. IP backend đang nhận là ${networkStatus.ipAddress}.${matchedBy}`
+      : `Chi nhánh ${networkStatusStoreName} đang chặn mạng hiện tại. IP backend đang nhận là ${networkStatus.ipAddress}. Nếu quét online bây giờ, backend sẽ từ chối.`;
+  }, [
+    isAdmin,
+    isOnline,
+    networkStatusQuery.data,
+    networkStatusQuery.isError,
+    networkStatusQuery.isLoading,
+    networkStatusStoreId,
+    networkStatusStoreName
+  ]);
+
+  const businessNetworkBadge = useMemo(() => {
+    if (!isOnline) {
+      return {
+        label: 'Offline',
+        tone: 'neutral' as const
+      };
+    }
+
+    if (isAdmin && !networkStatusStoreId) {
+      return {
+        label: 'Chon chi nhanh de kiem tra',
+        tone: 'neutral' as const
+      };
+    }
+
+    if (networkStatusQuery.isLoading) {
+      return {
+        label: 'Dang kiem tra mang',
+        tone: 'warning' as const
+      };
+    }
+
+    if (networkStatusQuery.isError) {
+      return {
+        label: 'Khong kiem tra duoc mang',
+        tone: 'danger' as const
+      };
+    }
+
+    const networkStatus = networkStatusQuery.data;
+    if (!networkStatus?.hasActiveWhitelist) {
+      return {
+        label: 'Chua cau hinh whitelist',
+        tone: 'danger' as const
+      };
+    }
+
+    if (networkStatus.bypassActive) {
+      return {
+        label: 'Emergency bypass dang bat',
+        tone: 'warning' as const
+      };
+    }
+
+    return networkStatus.canAccessBusinessOperations
+      ? {
+          label: 'Mang duoc phep',
+          tone: 'success' as const
+        }
+      : {
+          label: 'Mang chua duoc phep',
+          tone: 'danger' as const
+        };
+  }, [
+    isAdmin,
+    isOnline,
+    networkStatusQuery.data,
+    networkStatusQuery.isError,
+    networkStatusQuery.isLoading,
+    networkStatusStoreId
+  ]);
+
+  const businessNetworkMessage = useMemo(() => {
+    if (!isOnline) {
+      return 'Thiet bi dang offline. Theo chinh sach moi, nghiep vu trong ca lam chi duoc su dung khi mang hop le.';
+    }
+
+    if (isAdmin && !networkStatusStoreId) {
+      return 'Hay chon chi nhanh nguon hoac chi nhanh su dung truoc de kiem tra whitelist dung pham vi.';
+    }
+
+    if (networkStatusQuery.isLoading) {
+      return 'Dang lay IP ma backend thuc su nhin thay tu request hien tai.';
+    }
+
+    if (networkStatusQuery.isError) {
+      return 'Chua lay duoc trang thai whitelist. Hay tai lai trang de kiem tra lai.';
+    }
+
+    const networkStatus = networkStatusQuery.data;
+    if (!networkStatus) {
+      return 'Chua co du lieu trang thai mang.';
+    }
+
+    const matchedBy =
+      networkStatus.matchedWhitelistTypes.length > 0
+        ? ` Khop theo ${networkStatus.matchedWhitelistTypes.join(' + ')}.`
+        : '';
+
+    if (!networkStatus.hasActiveWhitelist) {
+      return `Chi nhanh ${networkStatusStoreName} chua co whitelist active. API nghiep vu se bi chan cho den khi admin cau hinh IP duoc phep hoac bat bypass tam thoi.`;
+    }
+
+    if (networkStatus.bypassActive) {
+      return `Chi nhanh ${networkStatusStoreName} dang duoc mo tam den ${
+        networkStatus.bypassExpiresAt
+          ? new Date(networkStatus.bypassExpiresAt).toLocaleString('vi-VN')
+          : 'mot thoi diem khong xac dinh'
+      }. ${networkStatus.bypassReason ? `Ly do: ${networkStatus.bypassReason}. ` : ''}IP backend dang nhan la ${networkStatus.ipAddress}.`;
+    }
+
+    return networkStatus.canAccessBusinessOperations
+      ? `Chi nhanh ${networkStatusStoreName} dang cho phep mang hien tai. IP backend dang nhan la ${networkStatus.ipAddress}.${matchedBy}`
+      : `Chi nhanh ${networkStatusStoreName} dang chan mang hien tai. IP backend dang nhan la ${networkStatus.ipAddress}. Backend se tu choi nghiep vu neu tiep tuc thao tac.`;
+  }, [
+    isAdmin,
+    isOnline,
+    networkStatusQuery.data,
+    networkStatusQuery.isError,
+    networkStatusQuery.isLoading,
+    networkStatusStoreId,
+    networkStatusStoreName
+  ]);
+
   const backgroundClass = useMemo(() => {
     switch (feedback.tone) {
       case 'success':
@@ -262,6 +512,12 @@ export default function ScanPageContent() {
       };
 
       if (!isOnline) {
+        throw new Error(
+          'Thiết bị đang offline. Theo chính sách hiện tại, bạn phải kết nối đúng mạng chi nhánh mới được quét.'
+        );
+      }
+
+      if (!isOnline) {
         await queueOfflineScan({
           ...payload,
           status: 'pending',
@@ -279,6 +535,12 @@ export default function ScanPageContent() {
           ? ((await submitManualScan(payload)) as ScanResponse)
           : ((await submitScan(payload)) as ScanResponse);
       } catch (error) {
+        if (!navigator.onLine) {
+          throw new Error(
+            'Mạng vừa mất. Hãy kết nối lại đúng mạng chi nhánh rồi quét lại.'
+          );
+        }
+
         if (!navigator.onLine) {
           await queueOfflineScan({
             ...payload,
@@ -361,6 +623,16 @@ export default function ScanPageContent() {
             {manualMode ? 'Dùng camera quét' : 'Nhập tay khi camera lỗi'}
           </Button>
         </div>
+
+        <Card className="mb-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-700">
+              Trang thai mang hien tai
+            </p>
+            <Badge label={businessNetworkBadge.label} tone={businessNetworkBadge.tone} />
+          </div>
+          <p className="mt-2 text-sm text-slate-600">{businessNetworkMessage}</p>
+        </Card>
 
         <Card className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-700">

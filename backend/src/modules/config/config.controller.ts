@@ -18,6 +18,7 @@ import { ConfigService } from './config.service';
 import { CreateWhitelistDto } from './dto/create-whitelist.dto';
 import { QueryWhitelistsDto } from './dto/query-whitelists.dto';
 import { UpdateConfigDto } from './dto/update-config.dto';
+import { UpdateNetworkBypassDto } from './dto/update-network-bypass.dto';
 import { UpdateWhitelistDto } from './dto/update-whitelist.dto';
 
 @ApiTags('Config')
@@ -78,6 +79,22 @@ export class ConfigController {
     return {
       data: await this.configService.deleteWhitelist(user.userId, id),
       message: 'Xóa mạng được phép thành công'
+    };
+  }
+  @Get('network-bypasses')
+  async listNetworkBypasses() {
+    return this.configService.listNetworkBypasses();
+  }
+
+  @Patch('network-bypasses/:storeId')
+  async updateNetworkBypass(
+    @CurrentUser() user: JwtUser,
+    @Param('storeId') storeId: string,
+    @Body() dto: UpdateNetworkBypassDto
+  ) {
+    return {
+      data: await this.configService.updateNetworkBypass(user.userId, storeId, dto),
+      message: 'Cáº­p nháº­t emergency bypass thÃ nh cÃ´ng'
     };
   }
 }

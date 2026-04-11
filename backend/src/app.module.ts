@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { BusinessNetworkGuard } from './common/guards/business-network.guard';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { PrismaModule } from './prisma/prisma.module';
@@ -44,7 +45,8 @@ import { HealthModule } from './modules/health/health.module';
     AuditModule,
     AppConfigModule,
     HealthModule
-  ]
+  ],
+  providers: [BusinessNetworkGuard]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

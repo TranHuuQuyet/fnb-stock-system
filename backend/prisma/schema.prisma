@@ -106,6 +106,9 @@ model Store {
   name              String
   timezone          String                  @default("Asia/Ho_Chi_Minh")
   isActive          Boolean                 @default(true)
+  networkBypassEnabled   Boolean            @default(false)
+  networkBypassExpiresAt DateTime?
+  networkBypassReason    String?
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
   users             User[]
@@ -120,6 +123,7 @@ model Store {
   anomalyAlerts     AnomalyAlert[]
 
   @@index([createdAt])
+  @@index([networkBypassEnabled, networkBypassExpiresAt])
 }
 
 model StoreNetworkWhitelist {

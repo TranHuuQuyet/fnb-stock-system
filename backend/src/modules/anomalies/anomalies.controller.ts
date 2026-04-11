@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequireBusinessNetwork } from '../../common/decorators/require-business-network.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { AnomaliesService } from './anomalies.service';
@@ -15,6 +16,7 @@ export class AnomaliesController {
 
   @Post('run')
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @RequireBusinessNetwork()
   async run(
     @CurrentUser() user: JwtUser,
     @Query('storeId') storeId: string,
@@ -28,6 +30,7 @@ export class AnomaliesController {
 
   @Get('alerts')
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @RequireBusinessNetwork()
   async recent(@CurrentUser() user: JwtUser, @Query('storeId') storeId?: string) {
     return {
       data: await this.anomaliesService.recent(user, storeId)

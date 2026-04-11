@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequireBusinessNetwork } from '../../common/decorators/require-business-network.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { DashboardService } from './dashboard.service';
@@ -15,6 +16,7 @@ export class DashboardController {
 
   @Get('summary')
   @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @RequireBusinessNetwork()
   async getSummary(
     @CurrentUser() user: JwtUser,
     @Query('storeId') storeId: string | undefined,

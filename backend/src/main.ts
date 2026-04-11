@@ -6,6 +6,7 @@ import helmet from 'helmet';
 
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { BusinessNetworkGuard } from './common/guards/business-network.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
@@ -35,7 +36,8 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
   app.useGlobalGuards(
     new JwtAuthGuard(app.get(Reflector)),
-    new RolesGuard(app.get(Reflector))
+    new RolesGuard(app.get(Reflector)),
+    app.get(BusinessNetworkGuard)
   );
 
   const swaggerConfig = new DocumentBuilder()

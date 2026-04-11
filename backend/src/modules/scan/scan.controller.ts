@@ -4,6 +4,7 @@ import { ScanEntryMethod, UserRole } from '@prisma/client';
 import { Request } from 'express';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequireBusinessNetwork } from '../../common/decorators/require-business-network.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { ManualScanDto } from './dto/manual-scan.dto';
@@ -20,6 +21,7 @@ export class ScanController {
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @RequireBusinessNetwork()
   async scan(
     @CurrentUser() user: JwtUser,
     @Body() dto: ScanDto,
@@ -38,6 +40,7 @@ export class ScanController {
 
   @Post('manual')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @RequireBusinessNetwork()
   async manual(
     @CurrentUser() user: JwtUser,
     @Body() dto: ManualScanDto,
@@ -56,6 +59,7 @@ export class ScanController {
 
   @Post('sync')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @RequireBusinessNetwork()
   async sync(
     @CurrentUser() user: JwtUser,
     @Body() dto: SyncScanDto,
@@ -70,8 +74,27 @@ export class ScanController {
     );
   }
 
+  @Get('network-status')
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  async networkStatus(
+    @CurrentUser() user: JwtUser,
+    @Query('storeId') storeId: string | undefined,
+    @Query('ssid') ssid: string | undefined,
+    @Req() request: Request
+  ) {
+    return {
+      data: await this.scanService.getNetworkStatus(
+        user,
+        storeId,
+        request.ip ?? '0.0.0.0',
+        ssid
+      )
+    };
+  }
+
   @Get('logs')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @RequireBusinessNetwork()
   async listLogs(@CurrentUser() user: JwtUser, @Query() query: QueryScanLogsDto) {
     return this.scanService.listLogs(user, query);
   }
