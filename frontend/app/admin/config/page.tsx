@@ -37,7 +37,7 @@ export default function AdminConfigPage() {
 
   return (
     <ProtectedPage title="Cấu hình" allowedRoles={['ADMIN']}>
-      <Card>
+      <Card className="max-w-4xl">
         <h2 className="mb-4 text-xl font-semibold text-brand-900">Cấu hình hệ thống</h2>
         {config ? (
           <form

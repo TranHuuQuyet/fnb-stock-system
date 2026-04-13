@@ -67,8 +67,8 @@ export default function DashboardPage() {
 
   return (
     <ProtectedPage title="Bảng điều khiển" allowedRoles={['MANAGER', 'ADMIN']}>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <Card className="sm:col-span-2 xl:col-span-3 2xl:col-span-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-brand-900">Tổng quan ngày {today}</h2>
@@ -85,7 +85,7 @@ export default function DashboardPage() {
         </Card>
 
         {summaryQuery.isError ? (
-          <Card className="md:col-span-3">
+          <Card className="sm:col-span-2 xl:col-span-3 2xl:col-span-6">
             <p className="rounded-2xl bg-rose-50 p-3 text-sm text-rose-700">
               {(summaryQuery.error as Error).message}
             </p>

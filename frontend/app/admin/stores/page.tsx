@@ -60,7 +60,7 @@ export default function AdminStoresPage() {
 
   return (
     <ProtectedPage title="Quản lý cửa hàng" allowedRoles={['ADMIN']}>
-      <div className="grid gap-4 xl:grid-cols-[380px,1fr]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(300px,380px),minmax(0,1fr)]">
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo cửa hàng</h2>
           <form

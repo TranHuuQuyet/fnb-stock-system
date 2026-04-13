@@ -76,7 +76,7 @@ export default function AdminBatchAdjustmentsPage() {
 
   return (
     <ProtectedPage title="Điều chỉnh tồn kho" allowedRoles={['ADMIN']}>
-      <div className="grid gap-4 xl:grid-cols-[420px,1fr]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px),minmax(0,1fr)]">
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo điều chỉnh tồn</h2>
           <form

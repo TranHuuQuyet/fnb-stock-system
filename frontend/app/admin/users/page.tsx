@@ -104,7 +104,7 @@ export default function AdminUsersPage() {
 
   return (
     <ProtectedPage title="Quản lý người dùng" allowedRoles={['ADMIN']}>
-      <div className="grid gap-4 xl:grid-cols-[420px,1fr]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px),minmax(0,1fr)]">
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo người dùng mới</h2>
           <form
@@ -179,7 +179,7 @@ export default function AdminUsersPage() {
                 tone={user.status === 'ACTIVE' ? 'success' : 'warning'}
               />,
               user.store?.name ?? '-',
-              <div key={`${user.id}-actions`} className="flex gap-2">
+              <div key={`${user.id}-actions`} className="flex flex-wrap gap-2">
                 <Button
                   variant="secondary"
                   onClick={() => actionMutation.mutate({ id: user.id, action: 'reset' })}

@@ -151,7 +151,7 @@ export default function AdminBatchesPageContent() {
 
   return (
     <ProtectedPage title="Quản lý lô hàng" allowedRoles={['ADMIN']}>
-      <div className="grid gap-4 xl:grid-cols-[420px,1fr]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px),minmax(0,1fr)]">
         <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo lô hàng</h2>
           <form
@@ -214,7 +214,7 @@ export default function AdminBatchesPageContent() {
                   Đang xem: {selectedStoreName}
                 </p>
               </div>
-              <label className="block min-w-[240px] space-y-2">
+              <label className="block w-full space-y-2 sm:min-w-[240px] sm:w-auto">
                 <span className="text-sm font-medium text-brand-900">Chọn chi nhánh</span>
                 <select
                   value={selectedListStoreId}

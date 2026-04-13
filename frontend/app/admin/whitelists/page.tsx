@@ -151,7 +151,7 @@ export default function AdminWhitelistsPage() {
   return (
     <ProtectedPage title="Mạng được phép" allowedRoles={['ADMIN']}>
       <div className="space-y-4">
-        <div className="grid gap-4 xl:grid-cols-[420px,1fr]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px),minmax(0,1fr)]">
           <Card>
           <h2 className="mb-4 text-xl font-semibold text-brand-900">Thêm mạng được phép</h2>
           <p className="mb-4 text-sm text-slate-600">
@@ -251,7 +251,7 @@ export default function AdminWhitelistsPage() {
           </Card>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[420px,1fr]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px),minmax(0,1fr)]">
           <Card>
             <h2 className="mb-4 text-xl font-semibold text-brand-900">Emergency bypass</h2>
             <p className="mb-4 text-sm text-slate-600">

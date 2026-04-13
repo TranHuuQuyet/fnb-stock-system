@@ -1,4 +1,4 @@
-import { PrismaClient, AlertSeverity, AlertStatus, BatchStatus, ScanEntryMethod, ScanResultStatus, ScanSource, StockAdjustmentType, UserRole, UserStatus } from '@prisma/client';
+import { PrismaClient, AlertSeverity, AlertStatus, BatchStatus, ScanEntryMethod, ScanResultStatus, ScanSource, StockAdjustmentType, UserRole, UserStatus, WorkEntryType, WorkScheduleStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -42,7 +42,8 @@ async function main() {
         role: UserRole.ADMIN,
         storeId: store.id,
         passwordHash,
-        status: UserStatus.ACTIVE
+        status: UserStatus.ACTIVE,
+        permissions: []
       },
       create: {
         username: 'admin',
@@ -50,7 +51,8 @@ async function main() {
         role: UserRole.ADMIN,
         storeId: store.id,
         passwordHash,
-        status: UserStatus.ACTIVE
+        status: UserStatus.ACTIVE,
+        permissions: []
       }
     }),
     prisma.user.upsert({
@@ -60,7 +62,8 @@ async function main() {
         role: UserRole.MANAGER,
         storeId: store.id,
         passwordHash,
-        status: UserStatus.ACTIVE
+        status: UserStatus.ACTIVE,
+        permissions: ['view_scan', 'view_profile', 'view_scan_logs', 'view_dashboard']
       },
       create: {
         username: 'manager1',
@@ -68,7 +71,8 @@ async function main() {
         role: UserRole.MANAGER,
         storeId: store.id,
         passwordHash,
-        status: UserStatus.ACTIVE
+        status: UserStatus.ACTIVE,
+        permissions: ['view_scan', 'view_profile', 'view_scan_logs', 'view_dashboard']
       }
     }),
     prisma.user.upsert({
@@ -78,7 +82,8 @@ async function main() {
         role: UserRole.STAFF,
         storeId: store.id,
         passwordHash,
-        status: UserStatus.ACTIVE
+        status: UserStatus.ACTIVE,
+        permissions: ['view_scan', 'view_profile']
       },
       create: {
         username: 'staff1',
@@ -86,7 +91,8 @@ async function main() {
         role: UserRole.STAFF,
         storeId: store.id,
         passwordHash,
-        status: UserStatus.ACTIVE
+        status: UserStatus.ACTIVE,
+        permissions: ['view_scan', 'view_profile']
       }
     }),
     prisma.user.upsert({
@@ -96,7 +102,8 @@ async function main() {
         role: UserRole.STAFF,
         storeId: store.id,
         passwordHash,
-        status: UserStatus.MUST_CHANGE_PASSWORD
+        status: UserStatus.MUST_CHANGE_PASSWORD,
+        permissions: ['view_scan', 'view_profile']
       },
       create: {
         username: 'staff2',
@@ -104,7 +111,8 @@ async function main() {
         role: UserRole.STAFF,
         storeId: store.id,
         passwordHash,
-        status: UserStatus.MUST_CHANGE_PASSWORD
+        status: UserStatus.MUST_CHANGE_PASSWORD,
+        permissions: ['view_scan', 'view_profile']
       }
     })
   ]);
@@ -586,6 +594,106 @@ async function main() {
       message: 'Mức sử dụng thực tế của Sữa tươi đang thấp hơn ngưỡng cảnh báo',
       status: AlertStatus.OPEN
     }
+  });
+
+  const [scheduleYear, scheduleMonth] = businessDate.split('-').map((value, index) =>
+    index < 2 ? Number(value) : value
+  ) as [number, number, string];
+
+  const workSchedule = await prisma.workSchedule.upsert({
+    where: {
+      storeId_year_month: {
+        storeId: store.id,
+        year: scheduleYear,
+        month: scheduleMonth
+      }
+    },
+    update: {
+      title: `Bang cham cong thang ${String(scheduleMonth).padStart(2, '0')}/${scheduleYear} - Chi nhanh ${store.name}`,
+      notes: 'T: Thu viec\nC: Chinh thuc',
+      status: WorkScheduleStatus.DRAFT
+    },
+    create: {
+      storeId: store.id,
+      year: scheduleYear,
+      month: scheduleMonth,
+      title: `Bang cham cong thang ${String(scheduleMonth).padStart(2, '0')}/${scheduleYear} - Chi nhanh ${store.name}`,
+      notes: 'T: Thu viec\nC: Chinh thuc',
+      status: WorkScheduleStatus.DRAFT
+    }
+  });
+
+  await prisma.workScheduleEntry.deleteMany({
+    where: {
+      workScheduleEmployee: {
+        workScheduleId: workSchedule.id
+      }
+    }
+  });
+  await prisma.workScheduleEmployee.deleteMany({ where: { workScheduleId: workSchedule.id } });
+  await prisma.workScheduleShift.deleteMany({ where: { workScheduleId: workSchedule.id } });
+
+  const seededShifts = [
+    { key: 'ca-1', code: 'CA1', name: 'Ca 1', startTime: '08:00', endTime: '13:00', durationHours: 5, sortOrder: 0 },
+    { key: 'ca-2', code: 'CA2', name: 'Ca 2', startTime: '13:00', endTime: '18:00', durationHours: 5, sortOrder: 1 },
+    { key: 'ca-3', code: 'CA3', name: 'Ca 3', startTime: '18:00', endTime: '24:00', durationHours: 6.5, sortOrder: 2 }
+  ];
+
+  const shiftMap = new Map<string, string>();
+  for (const shift of seededShifts) {
+    const createdShift = await prisma.workScheduleShift.create({
+      data: {
+        workScheduleId: workSchedule.id,
+        ...shift
+      }
+    });
+    shiftMap.set(shift.key, createdShift.id);
+  }
+
+  const managerScheduleRow = await prisma.workScheduleEmployee.create({
+    data: {
+      workScheduleId: workSchedule.id,
+      userId: manager.id,
+      displayName: manager.fullName,
+      sortOrder: 0,
+      trialHourlyRate: 28000,
+      officialHourlyRate: 32000
+    }
+  });
+  const staff1ScheduleRow = await prisma.workScheduleEmployee.create({
+    data: {
+      workScheduleId: workSchedule.id,
+      userId: staff1.id,
+      displayName: staff1.fullName,
+      sortOrder: 1,
+      trialHourlyRate: 18000,
+      officialHourlyRate: 22000
+    }
+  });
+  const staff2ScheduleRow = await prisma.workScheduleEmployee.create({
+    data: {
+      workScheduleId: workSchedule.id,
+      userId: staff2.id,
+      displayName: staff2.fullName,
+      sortOrder: 2,
+      trialHourlyRate: 18000,
+      officialHourlyRate: 22000
+    }
+  });
+
+  await prisma.workScheduleEntry.createMany({
+    data: [
+      { workScheduleEmployeeId: managerScheduleRow.id, shiftId: shiftMap.get('ca-1')!, day: 1, entryType: WorkEntryType.OFFICIAL },
+      { workScheduleEmployeeId: managerScheduleRow.id, shiftId: shiftMap.get('ca-2')!, day: 1, entryType: WorkEntryType.OFFICIAL },
+      { workScheduleEmployeeId: managerScheduleRow.id, shiftId: shiftMap.get('ca-1')!, day: 3, entryType: WorkEntryType.OFFICIAL },
+      { workScheduleEmployeeId: managerScheduleRow.id, shiftId: shiftMap.get('ca-2')!, day: 5, entryType: WorkEntryType.OFFICIAL },
+      { workScheduleEmployeeId: staff1ScheduleRow.id, shiftId: shiftMap.get('ca-1')!, day: 2, entryType: WorkEntryType.OFFICIAL },
+      { workScheduleEmployeeId: staff1ScheduleRow.id, shiftId: shiftMap.get('ca-3')!, day: 4, entryType: WorkEntryType.OFFICIAL },
+      { workScheduleEmployeeId: staff1ScheduleRow.id, shiftId: shiftMap.get('ca-2')!, day: 6, entryType: WorkEntryType.TRIAL },
+      { workScheduleEmployeeId: staff2ScheduleRow.id, shiftId: shiftMap.get('ca-2')!, day: 2, entryType: WorkEntryType.TRIAL },
+      { workScheduleEmployeeId: staff2ScheduleRow.id, shiftId: shiftMap.get('ca-3')!, day: 3, entryType: WorkEntryType.TRIAL },
+      { workScheduleEmployeeId: staff2ScheduleRow.id, shiftId: shiftMap.get('ca-1')!, day: 7, entryType: WorkEntryType.OFFICIAL }
+    ]
   });
 
   const existingAudit = await prisma.auditLog.findFirst({

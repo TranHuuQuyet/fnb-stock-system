@@ -21,6 +21,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AppConfigModule } from './modules/config/config.module';
 import { HealthModule } from './modules/health/health.module';
+import { WorkSchedulesModule } from './modules/work-schedules/work-schedules.module';
 
 @Module({
   imports: [
@@ -44,7 +45,8 @@ import { HealthModule } from './modules/health/health.module';
     DashboardModule,
     AuditModule,
     AppConfigModule,
-    HealthModule
+    HealthModule,
+    WorkSchedulesModule
   ],
   providers: [BusinessNetworkGuard]
 })

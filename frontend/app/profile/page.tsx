@@ -25,7 +25,7 @@ export default function ProfilePage() {
 
   return (
     <ProtectedPage title="Tài khoản">
-      <Card>
+      <Card className="max-w-4xl">
         <h2 className="mb-4 text-xl font-semibold text-brand-900">Thông tin cá nhân</h2>
         {query.isLoading ? <p>Đang tải...</p> : null}
         {profile ? (

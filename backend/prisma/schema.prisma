@@ -77,6 +77,17 @@ enum AlertStatus {
   RESOLVED
 }
 
+enum WorkScheduleStatus {
+  DRAFT
+  PUBLISHED
+  LOCKED
+}
+
+enum WorkEntryType {
+  TRIAL
+  OFFICIAL
+}
+
 model User {
   id            String       @id @default(cuid())
   username      String       @unique
@@ -95,6 +106,7 @@ model User {
   fraudAttempts FraudAttemptLog[]
   adjustments   StockAdjustment[]
   audits        AuditLog[]
+  workScheduleEmployees WorkScheduleEmployee[]
 
   @@index([storeId])
   @@index([createdAt])
@@ -121,6 +133,7 @@ model Store {
   fraudAttempts     FraudAttemptLog[]
   posSales          PosSale[]
   anomalyAlerts     AnomalyAlert[]
+  workSchedules     WorkSchedule[]
 
   @@index([createdAt])
   @@index([networkBypassEnabled, networkBypassExpiresAt])
@@ -359,4 +372,75 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model WorkSchedule {
+  id        String             @id @default(cuid())
+  storeId   String
+  year      Int
+  month     Int
+  title     String
+  notes     String?
+  status    WorkScheduleStatus @default(DRAFT)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  store     Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shifts    WorkScheduleShift[]
+  employees WorkScheduleEmployee[]
+
+  @@unique([storeId, year, month])
+}
+
+model WorkScheduleShift {
+  id             String            @id @default(cuid())
+  workScheduleId String
+  key            String
+  code           String
+  name           String
+  startTime      String
+  endTime        String
+  durationHours  Float
+  sortOrder      Int               @default(0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  workSchedule   WorkSchedule      @relation(fields: [workScheduleId], references: [id], onDelete: Cascade)
+  entries        WorkScheduleEntry[]
+
+  @@unique([workScheduleId, key])
+  @@index([workScheduleId, sortOrder])
+}
+
+model WorkScheduleEmployee {
+  id                String              @id @default(cuid())
+  workScheduleId    String
+  userId            String
+  displayName       String
+  sortOrder         Int                 @default(0)
+  trialHourlyRate   Float               @default(0)
+  officialHourlyRate Float              @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  workSchedule      WorkSchedule        @relation(fields: [workScheduleId], references: [id], onDelete: Cascade)
+  user              User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  entries           WorkScheduleEntry[]
+
+  @@unique([workScheduleId, userId])
+  @@index([workScheduleId, sortOrder])
+  @@index([userId])
+}
+
+model WorkScheduleEntry {
+  id                     String               @id @default(cuid())
+  workScheduleEmployeeId String
+  shiftId                String
+  day                    Int
+  entryType              WorkEntryType
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  workScheduleEmployee   WorkScheduleEmployee @relation(fields: [workScheduleEmployeeId], references: [id], onDelete: Cascade)
+  shift                  WorkScheduleShift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@unique([workScheduleEmployeeId, shiftId, day])
+  @@index([shiftId, day])
+  @@index([workScheduleEmployeeId, day])
 }
