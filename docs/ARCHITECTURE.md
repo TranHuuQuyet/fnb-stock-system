@@ -16,7 +16,8 @@
 - `anomalies`: threshold-based anomaly generation from reconciliation
 - `dashboard`: summary cards, reconciliation, recent fraud/scans/alerts
 - `audit`: structured admin audit logs
-- `config`: app config and store network whitelist management
+- `config`: app config, store network whitelist, emergency bypass, business network status
+- `work-schedules`: bảng chấm công theo tháng, ca làm việc, đơn giá thử việc/chính thức, chốt tháng
 - `health`: liveness and readiness checks
 
 ## Core Data Notes
@@ -24,6 +25,8 @@
 - `IngredientBatch` là thực thể trung tâm cho nghiệp vụ lô hàng.
 - `Ingredient` hiện gắn với `IngredientGroup` để dùng chung cho admin form và `Kho nguyên liệu`.
 - `IngredientStockLayout`, `IngredientStockLayoutGroup`, `IngredientStockLayoutItem` lưu bố cục hiển thị theo `storeId + operationType`.
+- `StoreNetworkWhitelist` và các field `networkBypass*` trên `Store` dùng để kiểm soát thao tác nghiệp vụ theo mạng của chi nhánh.
+- `WorkSchedule`, `WorkScheduleShift`, `WorkScheduleEmployee`, `WorkScheduleEntry` lưu bảng chấm công theo `storeId + year + month`.
 - Các field chính liên quan đến in tem:
   - `batchCode`: mã lô dùng để tra cứu và scan
   - `initialQty`: số lượng ban đầu của lô
@@ -54,6 +57,15 @@
 4. Nếu `MUST_CHANGE_PASSWORD`, frontend bắt buộc redirect sang `/change-password`.
 5. Admin tạo user với temporary password, reset password và lock/unlock đều ghi `AuditLog`.
 
+## Business Network Control Flow
+
+1. Admin cấu hình `IP whitelist` cho từng chi nhánh hoặc bật `Emergency bypass` có thời hạn.
+2. Frontend admin có thể gọi `GET /scan/network-status` để lấy IP mà backend thực sự nhìn thấy trước khi thêm whitelist.
+3. Với user không phải `ADMIN`, các route có `@RequireBusinessNetwork()` sẽ check trạng thái mạng theo chi nhánh của user.
+4. Luồng web hiện tại ưu tiên `IP whitelist`; `SSID` không phải cơ chế chính trong browser flow.
+5. Nếu `bypassActive` hoặc IP hiện tại khớp whitelist, user được phép tiếp tục thao tác nghiệp vụ.
+6. Nếu bị chặn, backend trả `ERROR_NETWORK_RESTRICTED`; riêng luồng scan còn ghi thêm `FraudAttemptLog` và `ScanLog` lỗi.
+
 ## Scan Flow
 
 1. Frontend quét QR tem hoặc dùng nhập tay với `batchCode`.
@@ -62,7 +74,7 @@
    - tem mới: `FNBBATCH:<batch_code>|BATCH:<batch_id>|SEQ:<sequenceNumber>`
 3. Frontend luôn trích `batchCode` từ QR trước khi gửi request scan.
 4. Frontend gửi `batchCode`, `quantityUsed`, `scannedAt`, `deviceId`, `clientEventId`, `storeId?`, `entryMethod`.
-5. Backend upsert device, kiểm tra whitelist IP/SSID.
+5. Backend upsert device, đánh giá trạng thái business network theo `IP whitelist` và `Emergency bypass`.
 6. Backend tìm batch theo `storeId + batchCode`.
 7. Backend validate expired, soft lock, remaining quantity và FIFO.
 8. Nếu hợp lệ: trừ tồn, update `DEPLETED` khi về 0, ghi `ScanLog`.
@@ -112,3 +124,12 @@
 2. Validate quantity > 0 và không giảm quá tồn.
 3. Transaction cập nhật `remainingQty`, `status`, tạo `StockAdjustment`.
 4. Ghi `AuditLog` với `oldData/newData`.
+
+## Work Schedule Flow
+
+1. Frontend gọi `GET /work-schedules` với `year`, `month`, `storeId?`.
+2. `ADMIN` được đổi chi nhánh; `MANAGER` và `STAFF` bị khóa theo chi nhánh của tài khoản.
+3. Nếu tháng chưa có dữ liệu, backend trả khung mặc định `Ca 1 / Ca 2 / Ca 3` và tự bổ sung các user `MANAGER/STAFF` active của chi nhánh vào bảng.
+4. `ADMIN` có thể lưu toàn bộ bảng qua `PUT /work-schedules`, gồm ca làm, đơn giá thử việc/chính thức, entries, ghi chú, trạng thái tháng.
+5. UI hỗ trợ `In bảng chấm công` và `Xuất CSV`; `MANAGER` và `STAFF` chỉ xem bảng hiện có.
+6. Khi trạng thái chuyển sang `LOCKED`, backend từ chối mọi chỉnh sửa tiếp theo để tránh thay đổi dữ liệu lương đã chốt.

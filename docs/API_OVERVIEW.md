@@ -19,6 +19,11 @@
 | GET | `/api/v1/admin/stores` | ADMIN | List stores |
 | GET | `/api/v1/admin/stores/:id` | ADMIN | Get store detail |
 | PATCH | `/api/v1/admin/stores/:id` | ADMIN | Update store |
+| GET | `/api/v1/stores/accessible` | ADMIN, MANAGER, STAFF | List stores available for scoped selectors |
+| POST | `/api/v1/admin/ingredients/units` | ADMIN | Create ingredient unit |
+| GET | `/api/v1/admin/ingredients/units` | ADMIN | List ingredient units |
+| PATCH | `/api/v1/admin/ingredients/units/:id` | ADMIN | Update ingredient unit |
+| DELETE | `/api/v1/admin/ingredients/units/:id` | ADMIN | Delete ingredient unit |
 | POST | `/api/v1/admin/ingredients` | ADMIN | Create ingredient |
 | GET | `/api/v1/admin/ingredients` | ADMIN | List ingredients |
 | GET | `/api/v1/admin/ingredients/groups` | ADMIN | List ingredient groups for admin forms and stock board layout |
@@ -41,6 +46,7 @@
 | POST | `/api/v1/scan` | ADMIN, MANAGER, STAFF | Online scan |
 | POST | `/api/v1/scan/manual` | ADMIN, MANAGER, STAFF | Manual fallback scan |
 | POST | `/api/v1/scan/sync` | ADMIN, MANAGER, STAFF | Sync offline events |
+| GET | `/api/v1/scan/network-status` | ADMIN, MANAGER, STAFF | Detect current business network status and normalized IP |
 | GET | `/api/v1/scan/logs` | ADMIN, MANAGER, STAFF | List scan logs by role scope |
 | GET | `/api/v1/ingredient-stock-board` | ADMIN, MANAGER, STAFF | Get ingredient stock board by store, month, year, operation type |
 | PUT | `/api/v1/ingredient-stock-board/layout` | ADMIN, MANAGER | Save stock board layout by store and operation type |
@@ -55,6 +61,8 @@
 | GET | `/api/v1/admin/network-whitelists` | ADMIN | List whitelists |
 | PATCH | `/api/v1/admin/network-whitelists/:id` | ADMIN | Update whitelist |
 | DELETE | `/api/v1/admin/network-whitelists/:id` | ADMIN | Delete whitelist |
+| GET | `/api/v1/admin/network-bypasses` | ADMIN | List emergency bypass status by store |
+| PATCH | `/api/v1/admin/network-bypasses/:storeId` | ADMIN | Enable or disable emergency bypass for a store |
 | GET | `/api/v1/admin/config` | ADMIN | Get app config |
 | PATCH | `/api/v1/admin/config` | ADMIN | Update app config |
 | POST | `/api/v1/pos/sales/import` | ADMIN | Import POS sales |
@@ -63,6 +71,8 @@
 | GET | `/api/v1/anomalies/alerts` | ADMIN, MANAGER | Get recent alerts |
 | GET | `/api/v1/dashboard/summary` | ADMIN, MANAGER | Get dashboard summary |
 | GET | `/api/v1/admin/audit-logs` | ADMIN | List audit logs |
+| GET | `/api/v1/work-schedules` | ADMIN, MANAGER, STAFF | Get monthly work schedule by year, month, and store scope |
+| PUT | `/api/v1/work-schedules` | ADMIN | Save monthly work schedule, shifts, employee rates, and month status |
 | GET | `/api/v1/health` | Public | Liveness check |
 | GET | `/api/v1/health/ready` | Public | Readiness check with DB check |
 
@@ -187,3 +197,97 @@ Validation chính:
 - `ADMIN` luôn có thể chuyển kho.
 - `MANAGER` hoặc `STAFF` muốn chuyển kho phải được cấp permission `scan_transfer`.
 - Khi chuyển kho thành công, chi nhánh nguồn giảm tồn và chi nhánh đích tăng tồn theo cùng nguyên liệu.
+
+## Network Control Notes
+
+### `GET /api/v1/scan/network-status`
+
+Query params chính:
+
+- `storeId?`: chỉ `ADMIN` được đổi chi nhánh
+- `ssid?`: optional, chủ yếu để chẩn đoán tương thích
+
+Response data chính:
+
+- `storeId`
+- `ipAddress`
+- `normalizedIpAddress`
+- `hasActiveWhitelist`
+- `isAllowedByWhitelist`
+- `matchedWhitelistTypes`
+- `bypassEnabled`
+- `bypassActive`
+- `bypassExpiresAt`
+- `bypassReason`
+- `canAccessBusinessOperations`
+
+Quy tắc nghiệp vụ:
+
+- Luồng web hiện tại ưu tiên `IP whitelist` và `Emergency bypass`; `SSID` không phải cơ chế chính trong browser flow.
+- Nếu `bypassActive = true`, chi nhánh vẫn được phép thao tác nghiệp vụ dù IP hiện tại chưa được whitelist.
+- Endpoint này phù hợp cho màn admin lấy chính xác IP mà backend đang nhìn thấy trước khi thêm whitelist.
+
+### `PATCH /api/v1/admin/network-bypasses/:storeId`
+
+Request body mẫu:
+
+```json
+{
+  "enabled": true,
+  "expiresAt": "2026-04-30T17:00:00.000Z",
+  "reason": "Router thay IP, mở tạm trong giờ cao điểm"
+}
+```
+
+Validation chính:
+
+- Khi `enabled = true`, `expiresAt` là bắt buộc và phải nằm trong tương lai.
+- Emergency bypass chỉ nên bật tạm thời khi mạng chi nhánh thay đổi đột xuất.
+- Mọi thay đổi whitelist hoặc bypass đều được ghi `AuditLog`.
+
+## Work Schedule API Notes
+
+### `GET /api/v1/work-schedules`
+
+Query params chính:
+
+- `year`
+- `month`
+- `storeId?`: chỉ `ADMIN` được đổi chi nhánh
+
+Response data chính:
+
+- `store`
+- `year`
+- `month`
+- `daysInMonth`
+- `weekendDays`
+- `canEdit`
+- `schedule.id`
+- `schedule.title`
+- `schedule.notes`
+- `schedule.status`
+- `schedule.shifts`
+- `schedule.employees`
+
+Quy tắc nghiệp vụ:
+
+- `ADMIN` được đổi chi nhánh; `MANAGER` và `STAFF` chỉ xem bảng của chi nhánh tài khoản.
+- Nếu tháng chưa có dữ liệu lưu sẵn, backend trả khung mặc định `Ca 1 / Ca 2 / Ca 3`.
+- Backend tự bổ sung danh sách `MANAGER/STAFF` active của chi nhánh vào bảng để admin tiện sắp ca.
+
+### `PUT /api/v1/work-schedules`
+
+Request body chính gồm:
+
+- `year`, `month`, `storeId?`
+- `title`, `notes`, `status`
+- `shifts[]`
+- `employees[]`
+
+Validation chính:
+
+- Chỉ `ADMIN` được lưu hoặc cập nhật bảng chấm công.
+- `shifts` phải có ít nhất một phần tử và không được trùng `key`.
+- `entries.day` phải nằm trong số ngày hợp lệ của tháng đang lưu.
+- Nếu tháng đã ở trạng thái `LOCKED`, backend sẽ từ chối mọi cập nhật tiếp theo.

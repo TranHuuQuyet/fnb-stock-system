@@ -38,17 +38,19 @@
 11. Nếu cần, chỉnh `Số cột mỗi trang` và `Số hàng mỗi trang`
 12. Bấm `Tạo tem và mở in`
 13. In tem từ browser và dán lên bao/thùng/hộp nguyên liệu
-14. Vào `Admin > Whitelists` để cấu hình IP/SSID whitelist
-15. Vào `Admin > Recipes` để:
+14. Vào `Admin > Whitelists` để cấu hình `IP whitelist` cho từng chi nhánh
+15. Nếu mạng chi nhánh đổi đột xuất, dùng `Emergency bypass` có thời hạn ở cùng màn hình để mở tạm nghiệp vụ
+16. Vào `Admin > Recipes` để:
    - tạo POS product
    - tạo recipe mapping
    - import POS sales mẫu
-16. Vào `Control > Kho nguyên liệu` để cấu hình bố cục ban đầu theo:
+17. Vào `Control > Kho nguyên liệu` để cấu hình bố cục ban đầu theo:
    - chi nhánh
    - phạm vi `Sử dụng tại quán / Chuyển kho`
    - nhóm nguyên liệu
    - thứ tự nguyên liệu trong từng nhóm
-17. Vào `Admin > Config` để chỉnh:
+18. Vào `Control > Ca làm việc` để khởi tạo bảng chấm công tháng nếu cần sắp ca và theo dõi giờ công
+19. Vào `Admin > Config` để chỉnh:
    - `allowFifoBypass`
    - `anomalyThreshold`
 
@@ -115,6 +117,7 @@
    - kiểm tra số lượng đã quét theo ngày/ca
    - lọc nhanh theo `Loại nguyên liệu / Nguyên liệu`
    - lưu lại bố cục hiển thị nếu cần
+8. Vào `Control > Ca làm việc` để xem bảng chấm công tháng, giờ thử việc/chính thức và in hoặc xuất CSV nếu cần
 
 ## 6. Quản trị cho ADMIN
 
@@ -142,11 +145,18 @@
    - tạo recipe
    - import POS sales
 7. `Admin > Whitelists`
-   - thêm/sửa/xóa IP/SSID whitelist
+   - thêm/xóa IP whitelist
+   - dùng `Lấy IP hiện tại` để đọc IP mà backend thực sự nhận được
+   - bật/tắt `Emergency bypass` có thời hạn khi mạng chi nhánh đổi đột xuất
 8. `Admin > Config`
    - chỉnh `allowFifoBypass`
    - chỉnh `anomalyThreshold`
-9. `Admin > Audit Logs`
+9. `Control > Ca làm việc`
+   - tạo/chỉnh bảng chấm công theo tháng
+   - cấu hình ca làm, đơn giá thử việc/chính thức
+   - chuyển trạng thái `DRAFT / PUBLISHED / LOCKED`
+   - in bảng chấm công hoặc xuất CSV
+10. `Admin > Audit Logs`
    - xem toàn bộ hành động quản trị
 
 ## 7. Sử dụng màn Kho nguyên liệu
@@ -175,11 +185,28 @@
    - chạm vào từng nguyên liệu để bung chi tiết `ngày / ca`
    - có nút chuyển giữa `chỉ xem ngày có phát sinh` và `hiện đủ ngày`
 11. Dữ liệu trên bảng tự cập nhật từ quét hợp lệ:
-   - ô ngày/ca cộng đúng số lượng đã quét
-   - `Số lượng tồn` là tổng tồn của tất cả lô còn lại cùng nguyên liệu trong chi nhánh đang chọn
+    - ô ngày/ca cộng đúng số lượng đã quét
+    - `Số lượng tồn` là tổng tồn của tất cả lô còn lại cùng nguyên liệu trong chi nhánh đang chọn
 12. Với phạm vi `Chuyển kho`, bảng hiển thị lượng xuất khỏi chi nhánh nguồn đang chọn
 
-## 8. Kiểm thử luồng chính
+## 8. Sử dụng màn Ca làm việc
+
+1. Vào `Control > Ca làm việc`
+2. Chọn `tháng / năm`; `ADMIN` có thể đổi chi nhánh, `MANAGER` và `STAFF` chỉ xem chi nhánh của tài khoản
+3. Nếu tháng chưa có dữ liệu, hệ thống sẽ trả khung mặc định `Ca 1 / Ca 2 / Ca 3`
+4. `ADMIN` có thể:
+   - đổi tên bảng và ghi chú
+   - thêm/sửa/xóa ca
+   - đổi thứ tự ca
+   - nhập đơn giá `thử việc / chính thức`
+   - chấm từng ngày/ca cho từng nhân viên
+   - lưu bảng với trạng thái `DRAFT / PUBLISHED / LOCKED`
+5. `MANAGER` và `STAFF` chỉ xem bảng hiện có, không được lưu hoặc chốt tháng
+6. Có thể bấm `In bảng chấm công` hoặc `Xuất CSV` để in hoặc đối soát ngoài hệ thống
+7. Nếu vừa thêm nhân viên mới trong chi nhánh, bấm `Tải lại` để lấy danh sách active mới nhất
+8. Khi trạng thái đã là `LOCKED`, hệ thống khóa toàn bộ chỉnh sửa tháng đó
+
+## 9. Kiểm thử luồng chính
 
 1. Login `admin / 123456`
 2. Login `staff2 / 123456` và xác nhận bị buộc đổi mật khẩu
@@ -204,8 +231,12 @@
 19. Import POS sales ở `Admin > Recipes`
 20. Chạy `Run anomaly detection` trên Dashboard
 21. Vào `Batch Adjustments` tạo adjustment mẫu
+22. Vào `Control > Ca làm việc`
+23. Chọn tháng hiện tại, chỉnh thử một vài ca và đơn giá rồi lưu bằng `admin`
+24. Bấm `Xuất CSV` hoặc `In bảng chấm công`
+25. Chuyển trạng thái sang `LOCKED` và xác nhận màn hình không cho chỉnh sửa nữa
 
-## 9. Xử lý sự cố thường gặp
+## 10. Xử lý sự cố thường gặp
 
 ### Frontend không lên
 
@@ -243,7 +274,7 @@
 
 - Kiểm tra IP thực tế backend nhận được
 - Thêm IP vào `Admin > Whitelists`
-- Lưu ý SSID trên web browser chỉ là optional
+- Luồng web hiện tại ưu tiên `IP whitelist`; nếu mạng đổi đột xuất có thể bật `Emergency bypass` tạm thời
 
 ### QR không đọc được
 
@@ -262,6 +293,13 @@
 
 - Đây là cơ chế chống trùng hợp lệ
 - Không cần scan lại nếu event đã sync thành công
+
+### Bảng chấm công không lưu được
+
+- Kiểm tra đang đăng nhập bằng `ADMIN`
+- Kiểm tra tháng đó đã ở trạng thái `LOCKED` chưa
+- Kiểm tra danh sách ca không bị trùng `key`
+- Kiểm tra ngày chấm công nằm trong đúng tháng đang chọn
 
 ### Dashboard không có dữ liệu
 
@@ -295,7 +333,7 @@
 - Kiểm tra whitelist IP theo chi nhánh nguồn
 - Kiểm tra lô nguồn còn đủ tồn để chuyển
 
-## 10. Quy trình nghiệp vụ đề xuất
+## 11. Quy trình nghiệp vụ đề xuất
 
 ### Đầu ca
 
@@ -321,9 +359,10 @@
 - Manager xem warning/error/fraud attempts
 - So reconciliation và kiểm tra ratio thấp
 - Mở `Kho nguyên liệu` để rà nhanh các nhóm có tồn thấp hoặc phát sinh bất thường
+- Mở `Ca làm việc` để rà nhanh giờ công trong tháng nếu cần đối chiếu nhân sự
 - Nếu có hao hụt/đổ vỡ thì ADMIN tạo stock adjustment có lý do
 
-## 11. Demo nhanh
+## 12. Demo nhanh
 
 1. Login `admin`
 2. Tạo user staff mới
@@ -344,3 +383,6 @@
 17. Mở `Control > Kho nguyên liệu`
 18. Kiểm tra bảng đã cộng đúng số lượng vào ngày/ca vừa quét
 19. Mở dashboard để xem dữ liệu cập nhật
+20. Mở `Control > Ca làm việc`
+21. Kiểm tra bảng chấm công tháng hiện tại, thử `Xuất CSV` hoặc `In bảng chấm công`
+22. Nếu cần, chốt tháng bằng `admin` và xác nhận màn hình bị khóa chỉnh sửa

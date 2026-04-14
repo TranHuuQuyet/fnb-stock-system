@@ -13,13 +13,14 @@ Hệ thống kiểm soát sử dụng nguyên liệu theo lô cho chuỗi F&B, g
 ```text
 backend/     NestJS API + Prisma schema + seed + tests
 frontend/    Next.js PWA + IndexedDB offline queue + admin/dashboard UI
-docs/        Architecture, API overview, operation manual
+docs/        Architecture, API overview, operation manual, production deployment
 ```
 
 ## Main Features
 
 - Quản lý lô hàng nguyên liệu theo cửa hàng
 - Quản lý danh mục nguyên liệu có `đơn vị` và `nhóm nguyên liệu`
+- Quản lý `đơn vị nguyên liệu` riêng để tái sử dụng trong form admin
 - Quét nguyên liệu bằng camera hoặc nhập tay
 - Hỗ trợ `Sử dụng tại quán` và `Chuyển kho` giữa các chi nhánh
 - FIFO validation, soft lock, expired/depleted checks
@@ -27,9 +28,11 @@ docs/        Architecture, API overview, operation manual
 - Màn `Kho nguyên liệu` theo tháng/chi nhánh/phạm vi, tự cộng số lượng theo ngày và ca
 - Bộ lọc `Loại nguyên liệu / Nguyên liệu` trên cả desktop và mobile để quan sát nhanh hơn
 - Giao diện mobile cho `Kho nguyên liệu` dùng thẻ tóm tắt, chạm để bung chi tiết ngày/ca
+- Màn `Ca làm việc` để sắp ca theo tháng, theo dõi giờ thử việc/chính thức, in bảng chấm công và xuất CSV
 - In tem theo từng lô với `Number` tuần tự
 - Mỗi tem có QR riêng để giảm rủi ro gian lận
 - `ADMIN` có thể cấp quyền `scan_transfer` cho bất kỳ user nào cần thao tác chuyển kho
+- Hỗ trợ `IP whitelist`, lấy IP backend đang nhìn thấy và `Emergency bypass` có thời hạn cho từng chi nhánh
 - Mặc định hỗ trợ in `10 tem/trang` và cho phép chỉnh bố cục trên màn in
 
 ## Local Setup
@@ -56,6 +59,8 @@ docs/        Architecture, API overview, operation manual
 ```bash
 docker compose up --build
 ```
+
+`docker-compose.yml` hiện dùng cho local/demo. Không nên dùng nguyên xi cho production vì backend đang tự chạy `db:seed`, frontend/backend còn mặc định `localhost`, và secret trong compose chỉ là placeholder. Xem thêm [docs/DEPLOYMENT_PROD.md](docs/DEPLOYMENT_PROD.md).
 
 Container boot flow:
 
@@ -85,6 +90,7 @@ Container boot flow:
 - Swagger: `http://localhost:4000/api/docs`
 - Health: `http://localhost:4000/api/v1/health`
 - Ingredient stock board: `http://localhost:3001/ingredient-stock`
+- Work schedules: `http://localhost:3001/work-schedules`
 
 ## Test Commands
 
@@ -107,6 +113,7 @@ Container boot flow:
 9. Tắt mạng để thử offline queue, bật lại để auto sync
 10. Đăng nhập `manager1 / 123456`
 11. Mở dashboard, xem reconciliation, fraud attempts và anomaly alerts
+12. Mở `Control > Ca làm việc`, kiểm tra bảng chấm công tháng hiện tại, thử `Xuất CSV` hoặc `In bảng chấm công`
 
 ## QR Formats
 
@@ -119,10 +126,11 @@ Scanner frontend sẽ tự tách `batchCode` từ cả hai định dạng trên.
 
 ## Notes
 
-- SSID trong web browser chỉ là field optional, chống gian lận hiện tại dựa chính vào IP whitelist.
+- Luồng web hiện tại ưu tiên `IP whitelist` và `Emergency bypass`; `SSID` chỉ là field optional trong browser flow.
 - Frontend queue scan offline bằng IndexedDB thật, giữ nguyên `clientEventId` để sync idempotent.
 - Tính năng in tem mới phụ thuộc migration thêm field `printedLabelCount` vào `IngredientBatch`.
 - Tính năng `Kho nguyên liệu` phụ thuộc các bảng `IngredientGroup`, `IngredientStockLayout`, `IngredientStockLayoutGroup`, `IngredientStockLayoutItem`.
+- Tính năng `Ca làm việc` phụ thuộc các bảng `WorkSchedule`, `WorkScheduleShift`, `WorkScheduleEmployee`, `WorkScheduleEntry`.
 - Bảng `Kho nguyên liệu` lấy dữ liệu từ `ScanLog` thành công/cảnh báo, cộng theo `ngày / ca / phạm vi sử dụng`.
 - `Số lượng tồn` trên `Kho nguyên liệu` là tổng tồn của tất cả lô còn lại của cùng nguyên liệu trong chi nhánh đang chọn.
 - Route frontend preview cũ `/admin/batches/[id]/label` hiện redirect sang màn in mới.
@@ -132,3 +140,4 @@ Chi tiết triển khai và vận hành nằm trong:
 - `docs/ARCHITECTURE.md`
 - `docs/API_OVERVIEW.md`
 - `docs/OPERATION_MANUAL.md`
+- `docs/DEPLOYMENT_PROD.md`
