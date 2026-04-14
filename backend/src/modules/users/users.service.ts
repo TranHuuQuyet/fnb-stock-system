@@ -188,7 +188,8 @@ export class UsersService {
         ...(dto.fullName ? { fullName: dto.fullName } : {}),
         ...(dto.role ? { role: dto.role } : {}),
         ...(dto.storeId !== undefined ? { storeId: dto.storeId } : {}),
-        ...(dto.status ? { status: dto.status } : {})
+        ...(dto.status ? { status: dto.status } : {}),
+        ...(dto.permissions !== undefined ? { permissions: dto.permissions } : {})
       },
       include: {
         store: true

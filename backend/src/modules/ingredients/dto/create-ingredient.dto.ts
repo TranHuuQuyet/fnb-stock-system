@@ -17,6 +17,11 @@ export class CreateIngredientDto {
   @IsNotEmpty()
   unit!: string;
 
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  groupName!: string;
+
   @ApiPropertyOptional({ default: true })
   @IsOptional()
   @IsBoolean()

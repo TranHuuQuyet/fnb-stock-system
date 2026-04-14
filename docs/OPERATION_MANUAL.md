@@ -24,20 +24,31 @@
 1. Đăng nhập `admin`
 2. Kiểm tra store seed ở `Admin > Stores`
 3. Vào `Admin > Users` để tạo manager/staff mới
-4. Vào `Admin > Ingredients` để thêm nguyên liệu
-5. Vào `Admin > Batches` để tạo lô hàng
-6. Nếu cần, bấm `Tạo QR` để làm mới QR nền của lô
-7. Bấm `In tem` để mở màn in tem của lô
-8. Nhập `Số tem muốn in`
-9. Nếu cần, chỉnh `Số cột mỗi trang` và `Số hàng mỗi trang`
-10. Bấm `Tạo tem và mở in`
-11. In tem từ browser và dán lên bao/thùng/hộp nguyên liệu
-12. Vào `Admin > Whitelists` để cấu hình IP/SSID whitelist
-13. Vào `Admin > Recipes` để:
+4. Nếu cần thao tác chuyển kho, cấp permission `Chuyển kho` cho đúng user ở `Admin > Users`
+5. Vào `Admin > Ingredients` để thêm nguyên liệu
+6. Với mỗi nguyên liệu, khai báo đầy đủ:
+   - mã nguyên liệu
+   - tên nguyên liệu
+   - đơn vị
+   - nhóm nguyên liệu
+7. Vào `Admin > Batches` để tạo lô hàng
+8. Nếu cần, bấm `Tạo QR` để làm mới QR nền của lô
+9. Bấm `In tem` để mở màn in tem của lô
+10. Nhập `Số tem muốn in`
+11. Nếu cần, chỉnh `Số cột mỗi trang` và `Số hàng mỗi trang`
+12. Bấm `Tạo tem và mở in`
+13. In tem từ browser và dán lên bao/thùng/hộp nguyên liệu
+14. Vào `Admin > Whitelists` để cấu hình IP/SSID whitelist
+15. Vào `Admin > Recipes` để:
    - tạo POS product
    - tạo recipe mapping
    - import POS sales mẫu
-14. Vào `Admin > Config` để chỉnh:
+16. Vào `Control > Kho nguyên liệu` để cấu hình bố cục ban đầu theo:
+   - chi nhánh
+   - phạm vi `Sử dụng tại quán / Chuyển kho`
+   - nhóm nguyên liệu
+   - thứ tự nguyên liệu trong từng nhóm
+17. Vào `Admin > Config` để chỉnh:
    - `allowFifoBypass`
    - `anomalyThreshold`
 
@@ -63,19 +74,23 @@
 3. Vào màn `Scan`
 4. Quét QR trên tem nguyên liệu
 5. Hệ thống tự nhận diện mã lô từ tem
-6. Nhập `Số lượng sử dụng`
-7. Bấm gửi lượt quét
-8. Nếu camera lỗi, bật chế độ nhập tay và nhập `Mã lô`
-9. Màu trạng thái:
+6. Chọn phạm vi thao tác:
+   - `Sử dụng tại quán`
+   - `Chuyển kho` nếu tài khoản đã được cấp quyền
+7. Nếu là `Chuyển kho`, chọn `chi nhánh nguồn` và `chi nhánh đích`
+8. Nhập `Số lượng sử dụng` hoặc `Số lượng chuyển`
+9. Bấm gửi lượt quét
+10. Nếu camera lỗi, bật chế độ nhập tay và nhập `Mã lô`
+11. Màu trạng thái:
    - xanh: scan thành công
    - vàng: warning FIFO
    - đỏ: scan bị reject
    - xám: đã lưu offline
-10. Nếu mất mạng:
+12. Nếu mất mạng:
    - scan vẫn được lưu vào IndexedDB
    - badge hiển thị `OFFLINE`
    - khi có mạng lại, app tự sync
-11. Nếu sync lỗi:
+13. Nếu sync lỗi:
    - giữ thiết bị online
    - mở lại màn scan hoặc refresh
    - kiểm tra whitelist IP nếu bị reject liên tục
@@ -95,6 +110,11 @@
    - kiểm tra staff có scan đúng batch chưa
    - kiểm tra batch soft lock hoặc expired
 6. Vào `Scan Logs` để xem chi tiết thao tác
+7. Vào `Control > Kho nguyên liệu` để:
+   - xem tồn theo nhóm nguyên liệu
+   - kiểm tra số lượng đã quét theo ngày/ca
+   - lọc nhanh theo `Loại nguyên liệu / Nguyên liệu`
+   - lưu lại bố cục hiển thị nếu cần
 
 ## 6. Quản trị cho ADMIN
 
@@ -102,10 +122,13 @@
    - tạo user
    - reset password
    - lock/unlock
+   - cấp hoặc gỡ permission `Chuyển kho`
 2. `Admin > Stores`
    - thêm/sửa/disable store
 3. `Admin > Ingredients`
    - thêm/sửa/disable ingredient
+   - quản lý đơn vị
+   - khai báo nhóm nguyên liệu
 4. `Admin > Batches`
    - tạo batch
    - soft lock/unlock
@@ -126,7 +149,37 @@
 9. `Admin > Audit Logs`
    - xem toàn bộ hành động quản trị
 
-## 7. Kiểm thử luồng chính
+## 7. Sử dụng màn Kho nguyên liệu
+
+1. Vào `Control > Kho nguyên liệu`
+2. Bấm `Cấu hình` nếu cần đổi:
+   - tháng
+   - năm
+   - chi nhánh
+   - phạm vi `Sử dụng tại quán / Chuyển kho`
+3. Dùng bộ lọc `Loại nguyên liệu` để thu gọn bảng theo một nhóm; khi chọn nhóm, màn hình sẽ hiện toàn bộ nguyên liệu thuộc nhóm đó
+4. Dùng bộ lọc `Nguyên liệu` nếu cần tập trung vào một nguyên liệu cụ thể
+5. Nếu có cảnh báo `tồn < 2`, bấm `Xem thêm` hoặc `Chỉ xem tồn thấp` để lọc nhanh các dòng cần chú ý
+6. `ADMIN` và `MANAGER` có thể:
+   - thêm nhóm vào bố cục
+   - thêm nguyên liệu đúng nhóm
+   - đổi thứ tự nhóm/nguyên liệu
+   - lưu bố cục
+7. `STAFF` chỉ xem, không được lưu bố cục
+8. Bố cục được lưu riêng theo `chi nhánh + phạm vi sử dụng`
+9. Trên laptop/desktop:
+   - bảng hiển thị dạng ma trận ngày/ca
+   - có thể lọc theo nhóm để giảm số cột phải theo dõi
+10. Trên mobile:
+   - danh sách nguyên liệu hiển thị dạng thẻ tóm tắt để thấy được nhiều nguyên liệu hơn
+   - chạm vào từng nguyên liệu để bung chi tiết `ngày / ca`
+   - có nút chuyển giữa `chỉ xem ngày có phát sinh` và `hiện đủ ngày`
+11. Dữ liệu trên bảng tự cập nhật từ quét hợp lệ:
+   - ô ngày/ca cộng đúng số lượng đã quét
+   - `Số lượng tồn` là tổng tồn của tất cả lô còn lại cùng nguyên liệu trong chi nhánh đang chọn
+12. Với phạm vi `Chuyển kho`, bảng hiển thị lượng xuất khỏi chi nhánh nguồn đang chọn
+
+## 8. Kiểm thử luồng chính
 
 1. Login `admin / 123456`
 2. Login `staff2 / 123456` và xác nhận bị buộc đổi mật khẩu
@@ -152,7 +205,7 @@
 20. Chạy `Run anomaly detection` trên Dashboard
 21. Vào `Batch Adjustments` tạo adjustment mẫu
 
-## 8. Xử lý sự cố thường gặp
+## 9. Xử lý sự cố thường gặp
 
 ### Frontend không lên
 
@@ -227,7 +280,22 @@
 - Kiểm tra scan log có `SUCCESS/WARNING`
 - Nếu `ERROR`, hệ thống chỉ ghi log chứ không trừ tồn
 
-## 9. Quy trình nghiệp vụ đề xuất
+### Kho nguyên liệu không hiển thị đúng dữ liệu
+
+- Kiểm tra đã chọn đúng `tháng / năm / chi nhánh / phạm vi`
+- Kiểm tra nguyên liệu đã được khai báo `nhóm nguyên liệu` chưa
+- Kiểm tra bố cục của `Kho nguyên liệu` đã thêm nhóm và nguyên liệu cần xem chưa
+- Kiểm tra scan log có `SUCCESS/WARNING` trong đúng tháng đang lọc không
+- Nếu đang lọc theo `Loại nguyên liệu / Nguyên liệu`, bấm `Xóa bộ lọc` để xem toàn bộ
+
+### Chuyển kho quét không được
+
+- Kiểm tra user đã được cấp permission `Chuyển kho` chưa
+- Kiểm tra đã chọn đủ `chi nhánh nguồn` và `chi nhánh đích`
+- Kiểm tra whitelist IP theo chi nhánh nguồn
+- Kiểm tra lô nguồn còn đủ tồn để chuyển
+
+## 10. Quy trình nghiệp vụ đề xuất
 
 ### Đầu ca
 
@@ -239,6 +307,7 @@
 - Staff luôn scan batch trước khi xuất dùng
 - Nếu camera lỗi thì dùng nhập tay, không bỏ qua hệ thống
 - Nếu offline thì tiếp tục thao tác, đợi auto sync
+- Nếu có điều chuyển nội bộ, dùng đúng chế độ `Chuyển kho`, không scan dưới chế độ sử dụng tại quán
 
 ### Khi nhập lô mới
 
@@ -251,9 +320,10 @@
 
 - Manager xem warning/error/fraud attempts
 - So reconciliation và kiểm tra ratio thấp
+- Mở `Kho nguyên liệu` để rà nhanh các nhóm có tồn thấp hoặc phát sinh bất thường
 - Nếu có hao hụt/đổ vỡ thì ADMIN tạo stock adjustment có lý do
 
-## 10. Demo nhanh
+## 11. Demo nhanh
 
 1. Login `admin`
 2. Tạo user staff mới
@@ -271,4 +341,6 @@
 14. Import POS sales
 15. Chạy anomaly detection
 16. Tạo stock adjustment
-17. Mở dashboard để xem dữ liệu cập nhật
+17. Mở `Control > Kho nguyên liệu`
+18. Kiểm tra bảng đã cộng đúng số lượng vào ngày/ca vừa quét
+19. Mở dashboard để xem dữ liệu cập nhật

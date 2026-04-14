@@ -6,11 +6,22 @@ export type IngredientUnitOption = {
   usageCount: number;
 };
 
+export type IngredientGroupOption = {
+  id: string;
+  name: string;
+  usageCount: number;
+};
+
 export const listIngredients = (query = '') => apiClient(`/admin/ingredients${query}`);
 
 export const listIngredientUnits = () =>
   unwrapData(
     apiClient<IngredientUnitOption[]>('/admin/ingredients/units')
+  );
+
+export const listIngredientGroups = () =>
+  unwrapData(
+    apiClient<IngredientGroupOption[]>('/admin/ingredients/groups')
   );
 
 export const createIngredientUnit = (payload: { name: string }) =>

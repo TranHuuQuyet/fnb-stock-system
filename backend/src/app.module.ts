@@ -22,6 +22,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AppConfigModule } from './modules/config/config.module';
 import { HealthModule } from './modules/health/health.module';
 import { WorkSchedulesModule } from './modules/work-schedules/work-schedules.module';
+import { IngredientStockBoardModule } from './modules/ingredient-stock-board/ingredient-stock-board.module';
 
 @Module({
   imports: [
@@ -46,7 +47,8 @@ import { WorkSchedulesModule } from './modules/work-schedules/work-schedules.mod
     AuditModule,
     AppConfigModule,
     HealthModule,
-    WorkSchedulesModule
+    WorkSchedulesModule,
+    IngredientStockBoardModule
   ],
   providers: [BusinessNetworkGuard]
 })

@@ -81,6 +81,23 @@ export class StoresService {
     };
   }
 
+  async listAccessible() {
+    return {
+      data: await this.prisma.store.findMany({
+        where: {
+          isActive: true
+        },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          timezone: true
+        },
+        orderBy: [{ name: 'asc' }, { code: 'asc' }]
+      })
+    };
+  }
+
   async getById(id: string) {
     const store = await this.prisma.store.findUnique({ where: { id } });
     if (!store) {

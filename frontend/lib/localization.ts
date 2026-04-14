@@ -19,7 +19,7 @@ const roleLabels: Record<string, string> = {
 
 const userStatusLabels: Record<string, string> = {
   ACTIVE: 'Hoạt động',
-  INACTIVE: 'Ngưng hoạt động',
+  INACTIVE: 'Ngừng hoạt động',
   LOCKED: 'Đã khóa',
   MUST_CHANGE_PASSWORD: 'Cần đổi mật khẩu'
 };
@@ -54,6 +54,7 @@ const resultCodeLabels: Record<string, string> = {
   ERROR_INSUFFICIENT_QTY: 'Số lượng trong lô không đủ',
   ERROR_FIFO: 'Cần xuất theo FIFO',
   ERROR_TRANSFER_ADMIN_ONLY: 'Chỉ admin được chuyển kho',
+  ERROR_TRANSFER_PERMISSION_REQUIRED: 'Tài khoản chưa được cấp quyền chuyển kho',
   ERROR_TRANSFER_DESTINATION_REQUIRED: 'Chưa chọn chi nhánh nhận',
   ERROR_TRANSFER_SAME_STORE: 'Chi nhánh nhận phải khác chi nhánh chuyển',
   ERROR_TRANSFER_STORE_NOT_FOUND: 'Không tìm thấy chi nhánh nhận',
@@ -72,6 +73,8 @@ const apiErrorLabels: Record<string, string> = {
   VALIDATION_INVALID_PAYLOAD: 'Dữ liệu gửi lên chưa hợp lệ',
   VALIDATION_INVALID_QUERY: 'Điều kiện tìm kiếm chưa hợp lệ',
   ADMIN_ERROR_INGREDIENT_UNIT_NOT_FOUND: 'Không tìm thấy đơn vị',
+  ADMIN_ERROR_INGREDIENT_NOT_FOUND: 'Không tìm thấy nguyên liệu',
+  ADMIN_ERROR_STORE_NOT_FOUND: 'Không tìm thấy chi nhánh',
   ERROR_NETWORK_RESTRICTED: 'Thiết bị đang dùng mạng chưa được cho phép',
   ERROR_BATCH_NOT_FOUND: 'Không tìm thấy lô nguyên liệu',
   ERROR_BATCH_EXPIRED: 'Lô nguyên liệu đã hết hạn',
@@ -80,6 +83,7 @@ const apiErrorLabels: Record<string, string> = {
   ERROR_INSUFFICIENT_QTY: 'Số lượng còn lại của lô không đủ',
   ERROR_FIFO: 'Cần sử dụng lô cũ hơn trước theo FIFO',
   ERROR_TRANSFER_ADMIN_ONLY: 'Chỉ quản trị viên mới được chuyển kho',
+  ERROR_TRANSFER_PERMISSION_REQUIRED: 'Tài khoản chưa được cấp quyền chuyển kho',
   ERROR_TRANSFER_DESTINATION_REQUIRED: 'Vui lòng chọn chi nhánh nhận',
   ERROR_TRANSFER_SAME_STORE: 'Chi nhánh nhận phải khác chi nhánh chuyển',
   ERROR_TRANSFER_STORE_NOT_FOUND: 'Không tìm thấy chi nhánh nhận hợp lệ',

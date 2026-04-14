@@ -18,6 +18,12 @@ type IngredientUnitView = {
   usageCount: number;
 };
 
+type IngredientGroupView = {
+  id: string;
+  name: string;
+  usageCount: number;
+};
+
 @Injectable()
 export class IngredientsService {
   constructor(
@@ -26,13 +32,20 @@ export class IngredientsService {
   ) {}
 
   async create(actorUserId: string, dto: CreateIngredientDto) {
-    const unit = await this.ensureUnitExists(dto.unit);
+    const [unit, group] = await Promise.all([
+      this.ensureUnitExists(dto.unit),
+      this.ensureGroupExists(dto.groupName)
+    ]);
     const ingredient = await this.prisma.ingredient.create({
       data: {
         code: dto.code,
         name: dto.name,
         unit: unit.name,
+        groupId: group.id,
         isActive: dto.isActive ?? true
+      },
+      include: {
+        group: true
       }
     });
 
@@ -73,6 +86,32 @@ export class IngredientsService {
     }));
   }
 
+  async listGroups(): Promise<IngredientGroupView[]> {
+    const [groups, ingredients] = await this.prisma.$transaction([
+      this.prisma.ingredientGroup.findMany({
+        orderBy: {
+          name: 'asc'
+        }
+      }),
+      this.prisma.ingredient.findMany({
+        select: {
+          groupId: true
+        }
+      })
+    ]);
+
+    const usageMap = new Map<string, number>();
+    for (const ingredient of ingredients) {
+      usageMap.set(ingredient.groupId, (usageMap.get(ingredient.groupId) ?? 0) + 1);
+    }
+
+    return groups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      usageCount: usageMap.get(group.id) ?? 0
+    }));
+  }
+
   async list(query: QueryIngredientsDto) {
     const { page, pageSize, skip, take } = buildPagination(query);
     const where: Prisma.IngredientWhereInput = {
@@ -92,6 +131,9 @@ export class IngredientsService {
         where,
         skip,
         take,
+        include: {
+          group: true
+        },
         orderBy: {
           [query.sortBy ?? 'createdAt']: query.sortOrder
         }
@@ -106,7 +148,12 @@ export class IngredientsService {
   }
 
   async getById(id: string) {
-    const ingredient = await this.prisma.ingredient.findUnique({ where: { id } });
+    const ingredient = await this.prisma.ingredient.findUnique({
+      where: { id },
+      include: {
+        group: true
+      }
+    });
     if (!ingredient) {
       throw appException(
         HttpStatus.NOT_FOUND,
@@ -120,14 +167,21 @@ export class IngredientsService {
 
   async update(actorUserId: string, id: string, dto: UpdateIngredientDto) {
     const existing = await this.getById(id);
-    const unit = dto.unit ? await this.ensureUnitExists(dto.unit) : null;
+    const [unit, group] = await Promise.all([
+      dto.unit ? this.ensureUnitExists(dto.unit) : null,
+      dto.groupName ? this.ensureGroupExists(dto.groupName) : null
+    ]);
     const updated = await this.prisma.ingredient.update({
       where: { id },
       data: {
         ...(dto.code ? { code: dto.code } : {}),
         ...(dto.name ? { name: dto.name } : {}),
         ...(unit ? { unit: unit.name } : {}),
+        ...(group ? { groupId: group.id } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {})
+      },
+      include: {
+        group: true
       }
     });
 
@@ -342,6 +396,22 @@ export class IngredientsService {
     });
   }
 
+  private async ensureGroupExists(groupName: string) {
+    const name = this.requireGroupName(groupName);
+    const normalizedName = this.normalizeGroupName(groupName);
+
+    return this.prisma.ingredientGroup.upsert({
+      where: { normalizedName },
+      update: {
+        name
+      },
+      create: {
+        name,
+        normalizedName
+      }
+    });
+  }
+
   private async getUnitById(id: string) {
     const unit = await this.prisma.ingredientUnit.findUnique({
       where: { id }
@@ -394,5 +464,32 @@ export class IngredientsService {
 
   private normalizeUnitName(value: string) {
     return this.formatUnitName(value).toLowerCase();
+  }
+
+  private requireGroupName(value: string) {
+    const name = this.formatGroupName(value);
+
+    if (!name) {
+      throw appException(
+        HttpStatus.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
+        'Nhóm nguyên liệu không được để trống'
+      );
+    }
+
+    return name;
+  }
+
+  private formatGroupName(value: string) {
+    return value.trim().replace(/\s+/g, ' ');
+  }
+
+  private normalizeGroupName(value: string) {
+    return this.formatGroupName(value)
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/đ/gu, 'd')
+      .replace(/Đ/gu, 'd')
+      .toLowerCase();
   }
 }

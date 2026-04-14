@@ -19,6 +19,11 @@ export class UpdateIngredientDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsString()
+  groupName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }

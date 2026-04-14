@@ -4,6 +4,7 @@ export type Role = 'ADMIN' | 'MANAGER' | 'STAFF';
 export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'MUST_CHANGE_PASSWORD';
 export type Permission =
   | 'view_scan'
+  | 'scan_transfer'
   | 'view_profile'
   | 'view_scan_logs'
   | 'view_dashboard'

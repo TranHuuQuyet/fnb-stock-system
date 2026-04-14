@@ -19,11 +19,17 @@ docs/        Architecture, API overview, operation manual
 ## Main Features
 
 - Quản lý lô hàng nguyên liệu theo cửa hàng
+- Quản lý danh mục nguyên liệu có `đơn vị` và `nhóm nguyên liệu`
 - Quét nguyên liệu bằng camera hoặc nhập tay
+- Hỗ trợ `Sử dụng tại quán` và `Chuyển kho` giữa các chi nhánh
 - FIFO validation, soft lock, expired/depleted checks
 - Offline queue bằng IndexedDB và auto sync khi có mạng
+- Màn `Kho nguyên liệu` theo tháng/chi nhánh/phạm vi, tự cộng số lượng theo ngày và ca
+- Bộ lọc `Loại nguyên liệu / Nguyên liệu` trên cả desktop và mobile để quan sát nhanh hơn
+- Giao diện mobile cho `Kho nguyên liệu` dùng thẻ tóm tắt, chạm để bung chi tiết ngày/ca
 - In tem theo từng lô với `Number` tuần tự
 - Mỗi tem có QR riêng để giảm rủi ro gian lận
+- `ADMIN` có thể cấp quyền `scan_transfer` cho bất kỳ user nào cần thao tác chuyển kho
 - Mặc định hỗ trợ in `10 tem/trang` và cho phép chỉnh bố cục trên màn in
 
 ## Local Setup
@@ -53,7 +59,7 @@ docker compose up --build
 
 Container boot flow:
 
-- `postgres`: PostgreSQL 15
+- `postgres`: PostgreSQL 16
 - `backend`: chạy `prisma migrate deploy`, `db:seed`, rồi start API
 - `frontend`: build Next.js và publish tại host port `3001`
 
@@ -78,6 +84,7 @@ Container boot flow:
 - Backend API: `http://localhost:4000/api/v1`
 - Swagger: `http://localhost:4000/api/docs`
 - Health: `http://localhost:4000/api/v1/health`
+- Ingredient stock board: `http://localhost:3001/ingredient-stock`
 
 ## Test Commands
 
@@ -115,6 +122,9 @@ Scanner frontend sẽ tự tách `batchCode` từ cả hai định dạng trên.
 - SSID trong web browser chỉ là field optional, chống gian lận hiện tại dựa chính vào IP whitelist.
 - Frontend queue scan offline bằng IndexedDB thật, giữ nguyên `clientEventId` để sync idempotent.
 - Tính năng in tem mới phụ thuộc migration thêm field `printedLabelCount` vào `IngredientBatch`.
+- Tính năng `Kho nguyên liệu` phụ thuộc các bảng `IngredientGroup`, `IngredientStockLayout`, `IngredientStockLayoutGroup`, `IngredientStockLayoutItem`.
+- Bảng `Kho nguyên liệu` lấy dữ liệu từ `ScanLog` thành công/cảnh báo, cộng theo `ngày / ca / phạm vi sử dụng`.
+- `Số lượng tồn` trên `Kho nguyên liệu` là tổng tồn của tất cả lô còn lại của cùng nguyên liệu trong chi nhánh đang chọn.
 - Route frontend preview cũ `/admin/batches/[id]/label` hiện redirect sang màn in mới.
 
 Chi tiết triển khai và vận hành nằm trong:

@@ -134,6 +134,7 @@ model Store {
   posSales          PosSale[]
   anomalyAlerts     AnomalyAlert[]
   workSchedules     WorkSchedule[]
+  ingredientStockLayouts IngredientStockLayout[]
 
   @@index([createdAt])
   @@index([networkBypassEnabled, networkBypassExpiresAt])
@@ -174,14 +175,18 @@ model Ingredient {
   code      String            @unique
   name      String
   unit      String
+  groupId   String
   isActive  Boolean           @default(true)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
+  group     IngredientGroup   @relation(fields: [groupId], references: [id], onDelete: Restrict)
   batches   IngredientBatch[]
   recipes   Recipe[]
   alerts    AnomalyAlert[]
+  stockLayoutItems IngredientStockLayoutItem[]
 
   @@index([createdAt])
+  @@index([groupId])
 }
 
 model IngredientUnit {
@@ -190,6 +195,18 @@ model IngredientUnit {
   normalizedName String   @unique
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
+model IngredientGroup {
+  id          String                     @id @default(cuid())
+  name        String
+  normalizedName String                 @unique
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  ingredients Ingredient[]
+  stockLayoutGroups IngredientStockLayoutGroup[]
 
   @@index([createdAt])
 }
@@ -372,6 +389,50 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model IngredientStockLayout {
+  id            String                     @id @default(cuid())
+  storeId       String
+  operationType ScanOperationType         @default(STORE_USAGE)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  store         Store                     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  groups        IngredientStockLayoutGroup[]
+
+  @@unique([storeId, operationType])
+  @@index([storeId, operationType])
+}
+
+model IngredientStockLayoutGroup {
+  id        String                     @id @default(cuid())
+  layoutId  String
+  groupId   String
+  sortOrder Int                        @default(0)
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+  layout    IngredientStockLayout      @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  group     IngredientGroup            @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  items     IngredientStockLayoutItem[]
+
+  @@unique([layoutId, groupId])
+  @@index([layoutId, sortOrder])
+  @@index([groupId])
+}
+
+model IngredientStockLayoutItem {
+  id            String                    @id @default(cuid())
+  layoutGroupId String
+  ingredientId  String
+  sortOrder     Int                       @default(0)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  layoutGroup   IngredientStockLayoutGroup @relation(fields: [layoutGroupId], references: [id], onDelete: Cascade)
+  ingredient    Ingredient                @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@unique([layoutGroupId, ingredientId])
+  @@index([layoutGroupId, sortOrder])
+  @@index([ingredientId])
 }
 
 model WorkSchedule {

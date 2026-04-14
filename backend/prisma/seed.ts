@@ -13,6 +13,30 @@ const toBusinessDate = (date = new Date()) =>
 
 const batchQr = (batchCode: string) => `FNBBATCH:${batchCode}`;
 const normalizeUnit = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase();
+const normalizeGroupName = (value: string) =>
+  value
+    .trim()
+    .replace(/\s+/g, ' ')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase();
+const buildIngredientUpsertPayload = (code: string, name: string, unit: string, groupId: string) => ({
+  where: { code },
+  update: {
+    name,
+    unit,
+    isActive: true,
+    group: { connect: { id: groupId } }
+  },
+  create: {
+    code,
+    name,
+    unit,
+    isActive: true,
+    group: { connect: { id: groupId } }
+  }
+});
 
 async function main() {
   const passwordHash = await bcrypt.hash('123456', 10);
@@ -130,7 +154,16 @@ async function main() {
     )
   );
 
-  const [tea, milk, sugar] = await Promise.all([
+  const defaultIngredientGroup = await prisma.ingredientGroup.upsert({
+    where: { normalizedName: normalizeGroupName('Chưa phân loại') },
+    update: { name: 'Chưa phân loại' },
+    create: {
+      name: 'Chưa phân loại',
+      normalizedName: normalizeGroupName('Chưa phân loại')
+    }
+  });
+
+  /* const [tea, milk, sugar] = await Promise.all([
     prisma.ingredient.upsert({
       where: { code: 'TEA-LEAF' },
       update: { name: 'Trà lá', unit: 'kg', isActive: true },
@@ -146,6 +179,12 @@ async function main() {
       update: { name: 'Nước đường', unit: 'lít', isActive: true },
       create: { code: 'SUGAR', name: 'Nước đường', unit: 'lít', isActive: true }
     })
+  ]); */
+
+  const [tea, milk, sugar] = await Promise.all([
+    prisma.ingredient.upsert(buildIngredientUpsertPayload('TEA-LEAF', 'Trà lá', 'kg', defaultIngredientGroup.id)),
+    prisma.ingredient.upsert(buildIngredientUpsertPayload('MILK', 'Sữa tươi', 'lít', defaultIngredientGroup.id)),
+    prisma.ingredient.upsert(buildIngredientUpsertPayload('SUGAR', 'Nước đường', 'lít', defaultIngredientGroup.id))
   ]);
 
   const batchTeaOld = await prisma.ingredientBatch.upsert({

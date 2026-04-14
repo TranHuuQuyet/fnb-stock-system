@@ -13,6 +13,7 @@ import { queueOfflineScan } from '@/lib/indexeddb';
 import { localizeResultCode, localizeSyncState } from '@/lib/localization';
 import { listStores } from '@/services/admin/stores';
 import { listBatches } from '@/services/batches';
+import { listAccessibleStores } from '@/services/stores';
 import {
   getScanNetworkStatus,
   submitManualScan,
@@ -129,6 +130,7 @@ const toStoreQuery = (storeId: string) => `?storeId=${encodeURIComponent(storeId
 export default function ScanPageContent() {
   const session = getSession();
   const isAdmin = session?.user.role === 'ADMIN';
+  const canTransfer = isAdmin || (session?.user.permissions ?? []).includes('scan_transfer');
   const { syncState, isOnline } = useOfflineSync();
   const [feedback, setFeedback] = useState<{
     tone: ScanTone;
@@ -185,6 +187,12 @@ export default function ScanPageContent() {
   const sourceStoreId = watch('sourceStoreId');
   const networkStatusStoreId = operationType === 'TRANSFER' ? sourceStoreId : storeId;
 
+  useEffect(() => {
+    if (!canTransfer && operationType === 'TRANSFER') {
+      setValue('operationType', 'STORE_USAGE', { shouldValidate: true });
+    }
+  }, [canTransfer, operationType, setValue]);
+
   // Persist store selections when they change
   useEffect(() => {
     if (storeId) persistStoreId('usage-store', storeId);
@@ -200,8 +208,8 @@ export default function ScanPageContent() {
 
   const storesQuery = useQuery({
     queryKey: ['scan-stores'],
-    queryFn: () => listStores(''),
-    enabled: isAdmin
+    queryFn: () => (isAdmin ? listStores('') : listAccessibleStores()),
+    enabled: isAdmin || canTransfer
   });
 
   const destinationInventoryQuery = useQuery({
@@ -651,7 +659,7 @@ export default function ScanPageContent() {
             >
               Sử dụng tại quán
             </Button>
-            {isAdmin ? (
+            {canTransfer ? (
               <Button
                 type="button"
                 variant={operationType === 'TRANSFER' ? 'primary' : 'secondary'}
@@ -743,17 +751,22 @@ export default function ScanPageContent() {
                 </label>
               ) : null}
 
-              {isAdmin && operationType === 'TRANSFER' ? (
+              {canTransfer && operationType === 'TRANSFER' ? (
                 <>
                   <label className="block space-y-2">
                     <span className="text-sm font-medium text-brand-900">Chi nhánh gửi</span>
                     <select
                       className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
+                      disabled={!isAdmin}
                       {...register('sourceStoreId')}
                     >
                       <option value="">Chọn chi nhánh gửi</option>
                       {stores
-                        .filter((store) => store.id !== destinationStoreId)
+                        .filter((store) =>
+                          isAdmin
+                            ? store.id !== destinationStoreId
+                            : store.id === session?.user.store?.id
+                        )
                         .map((store) => (
                           <option key={store.id} value={store.id}>
                             {store.name}

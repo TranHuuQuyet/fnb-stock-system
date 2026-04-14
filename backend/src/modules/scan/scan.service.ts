@@ -46,6 +46,8 @@ type ProcessScanResult = {
   scanLogId?: string;
 };
 
+const TRANSFER_SCAN_PERMISSION = 'scan_transfer';
+
 @Injectable()
 export class ScanService {
   constructor(
@@ -699,12 +701,13 @@ export class ScanService {
   ): Promise<ProcessScanResult | null> {
     if (
       operationType === ScanOperationType.TRANSFER &&
-      params.currentUser.role !== UserRole.ADMIN
+      params.currentUser.role !== UserRole.ADMIN &&
+      !(await this.hasTransferPermission(params.currentUser.userId))
     ) {
       return this.createErrorResultV2(params, {
         storeId,
         batchId: null,
-        resultCode: ERROR_CODES.ERROR_TRANSFER_ADMIN_ONLY,
+        resultCode: ERROR_CODES.ERROR_TRANSFER_PERMISSION_REQUIRED,
         message: 'Chỉ quản trị viên mới được phép chuyển kho',
         operationType
       });
@@ -1225,5 +1228,16 @@ export class ScanService {
       ...scopedStoreWhere(currentUser.storeId!),
       userId: currentUser.userId
     };
+  }
+
+  private async hasTransferPermission(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        permissions: true
+      }
+    });
+
+    return Boolean(user?.permissions.includes(TRANSFER_SCAN_PERMISSION));
   }
 }

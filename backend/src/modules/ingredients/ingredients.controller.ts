@@ -54,6 +54,13 @@ export class IngredientsController {
     };
   }
 
+  @Get('groups')
+  async listGroups() {
+    return {
+      data: await this.ingredientsService.listGroups()
+    };
+  }
+
   @Delete('units/:id')
   async deleteUnit(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     return {

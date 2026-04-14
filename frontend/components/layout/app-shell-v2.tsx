@@ -1,32 +1,106 @@
 "use client";
 
+import clsx from 'clsx';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useState } from 'react';
-import clsx from 'clsx';
 
+import { useOfflineSync } from '@/hooks/use-offline-sync';
 import { clearSession, getSession, Permission, Role } from '@/lib/auth';
 import { localizeSyncState } from '@/lib/localization';
-import { useOfflineSync } from '@/hooks/use-offline-sync';
-import { BusinessNetworkBanner } from './business-network-banner';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { BusinessNetworkBanner } from './business-network-banner';
 
 const links: Array<{ href: string; label: string; roles: Role[]; permission?: Permission }> = [
-  { href: '/scan', label: 'Quét nguyên liệu', roles: ['STAFF', 'MANAGER', 'ADMIN'], permission: 'view_scan' },
-  { href: '/scan-logs', label: 'Lịch sử quét', roles: ['STAFF', 'MANAGER', 'ADMIN'], permission: 'view_scan_logs' },
-  { href: '/dashboard', label: 'Bảng điều khiển', roles: ['MANAGER', 'ADMIN'], permission: 'view_dashboard' },
-  { href: '/work-schedules', label: 'Ca làm việc', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
-  { href: '/profile', label: 'Tài khoản', roles: ['STAFF', 'MANAGER', 'ADMIN'], permission: 'view_profile' },
-  { href: '/admin/users', label: 'Người dùng', roles: ['ADMIN'], permission: 'manage_users' },
-  { href: '/admin/stores', label: 'Cửa hàng', roles: ['ADMIN'], permission: 'manage_stores' },
-  { href: '/admin/ingredients', label: 'Nguyên liệu', roles: ['ADMIN'], permission: 'manage_ingredients' },
-  { href: '/admin/batches', label: 'Lô hàng', roles: ['ADMIN'], permission: 'manage_batches' },
-  { href: '/admin/batch-adjustments', label: 'Điều chỉnh tồn', roles: ['ADMIN'], permission: 'manage_adjustments' },
-  { href: '/admin/recipes', label: 'Công thức & POS', roles: ['ADMIN'], permission: 'manage_recipes' },
-  { href: '/admin/config', label: 'Cấu hình', roles: ['ADMIN'], permission: 'manage_config' },
-  { href: '/admin/whitelists', label: 'Mạng được phép', roles: ['ADMIN'], permission: 'manage_whitelists' },
-  { href: '/admin/audit-logs', label: 'Nhật ký hệ thống', roles: ['ADMIN'], permission: 'view_audit_logs' }
+  {
+    href: '/scan',
+    label: 'Quét nguyên liệu',
+    roles: ['STAFF', 'MANAGER', 'ADMIN'],
+    permission: 'view_scan'
+  },
+  {
+    href: '/scan-logs',
+    label: 'Lịch sử quét',
+    roles: ['STAFF', 'MANAGER', 'ADMIN'],
+    permission: 'view_scan_logs'
+  },
+  {
+    href: '/dashboard',
+    label: 'Bảng điều khiển',
+    roles: ['MANAGER', 'ADMIN'],
+    permission: 'view_dashboard'
+  },
+  {
+    href: '/ingredient-stock',
+    label: 'Kho nguyên liệu',
+    roles: ['STAFF', 'MANAGER', 'ADMIN']
+  },
+  {
+    href: '/work-schedules',
+    label: 'Ca làm việc',
+    roles: ['STAFF', 'MANAGER', 'ADMIN']
+  },
+  {
+    href: '/profile',
+    label: 'Tài khoản',
+    roles: ['STAFF', 'MANAGER', 'ADMIN'],
+    permission: 'view_profile'
+  },
+  {
+    href: '/admin/users',
+    label: 'Người dùng',
+    roles: ['ADMIN'],
+    permission: 'manage_users'
+  },
+  {
+    href: '/admin/stores',
+    label: 'Cửa hàng',
+    roles: ['ADMIN'],
+    permission: 'manage_stores'
+  },
+  {
+    href: '/admin/ingredients',
+    label: 'Nguyên liệu',
+    roles: ['ADMIN'],
+    permission: 'manage_ingredients'
+  },
+  {
+    href: '/admin/batches',
+    label: 'Lô hàng',
+    roles: ['ADMIN'],
+    permission: 'manage_batches'
+  },
+  {
+    href: '/admin/batch-adjustments',
+    label: 'Điều chỉnh tồn',
+    roles: ['ADMIN'],
+    permission: 'manage_adjustments'
+  },
+  {
+    href: '/admin/recipes',
+    label: 'Công thức & POS',
+    roles: ['ADMIN'],
+    permission: 'manage_recipes'
+  },
+  {
+    href: '/admin/config',
+    label: 'Cấu hình',
+    roles: ['ADMIN'],
+    permission: 'manage_config'
+  },
+  {
+    href: '/admin/whitelists',
+    label: 'Mạng được phép',
+    roles: ['ADMIN'],
+    permission: 'manage_whitelists'
+  },
+  {
+    href: '/admin/audit-logs',
+    label: 'Nhật ký hệ thống',
+    roles: ['ADMIN'],
+    permission: 'view_audit_logs'
+  }
 ] as const;
 
 export const routePermissions: Record<string, Permission | undefined> = Object.fromEntries(
@@ -61,17 +135,17 @@ export function AppShell({
     (routePermission === 'view_scan_logs' || routePermission === 'view_dashboard');
 
   const sidebarClasses = clsx(
-    'rounded-3xl bg-brand-900 p-4 text-white lg:sticky lg:top-4 lg:w-80 lg:self-start lg:h-[calc(100vh-2rem)] lg:min-h-0 xl:w-[22rem]',
+    'rounded-3xl bg-brand-900 p-4 text-white lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:min-h-0 lg:w-80 lg:self-start xl:w-[22rem]',
     sidebarOpen
-      ? 'fixed inset-y-0 left-0 z-50 w-72 h-full overflow-auto shadow-2xl transform translate-x-0 transition-transform duration-300 ease-in-out lg:static lg:top-auto lg:h-[calc(100vh-2rem)] lg:overflow-auto lg:shadow-none lg:translate-x-0'
-      : 'fixed inset-y-0 left-0 z-50 w-72 h-full overflow-auto shadow-2xl transform -translate-x-full transition-transform duration-300 ease-in-out lg:static lg:top-auto lg:h-[calc(100vh-2rem)] lg:overflow-auto lg:shadow-none lg:translate-x-0'
+      ? 'fixed inset-y-0 left-0 z-50 h-full w-72 translate-x-0 overflow-auto shadow-2xl transition-transform duration-300 ease-in-out lg:static lg:h-[calc(100vh-2rem)] lg:translate-x-0 lg:overflow-auto lg:shadow-none'
+      : 'fixed inset-y-0 left-0 z-50 h-full w-72 -translate-x-full overflow-auto shadow-2xl transition-transform duration-300 ease-in-out lg:static lg:h-[calc(100vh-2rem)] lg:translate-x-0 lg:overflow-auto lg:shadow-none'
   );
 
   return (
     <div className="min-h-screen bg-transparent">
       <div
         className={clsx(
-          'mx-auto flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-start lg:h-[calc(100vh-2rem)] lg:overflow-hidden',
+          'mx-auto flex flex-col gap-4 px-4 py-4 lg:h-[calc(100vh-2rem)] lg:flex-row lg:items-start lg:overflow-hidden',
           wide ? 'max-w-[1800px]' : 'max-w-7xl'
         )}
       >
@@ -150,7 +224,9 @@ export function AppShell({
                   href={item.href}
                   className={clsx(
                     'rounded-2xl px-4 py-3 text-sm transition',
-                    pathname === item.href ? 'bg-white text-brand-900' : 'text-brand-50 hover:bg-white/10'
+                    pathname === item.href
+                      ? 'bg-white text-brand-900'
+                      : 'text-brand-50 hover:bg-white/10'
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >

@@ -6,6 +6,7 @@
 - `users`: admin user management, lock/unlock, reset password
 - `stores`: admin store management
 - `ingredients`: ingredient master data
+- `ingredient-stock-board`: dựng bảng kho nguyên liệu theo tháng, nhóm, ngày/ca và lưu bố cục hiển thị
 - `batches`: batch CRUD, accessible batch listing, soft lock/unlock
 - `batch-labels`: generate base QR, return print metadata, issue sequential labels with unique QR per tem
 - `stock-adjustments`: manual inventory adjustment with audit
@@ -21,6 +22,8 @@
 ## Core Data Notes
 
 - `IngredientBatch` là thực thể trung tâm cho nghiệp vụ lô hàng.
+- `Ingredient` hiện gắn với `IngredientGroup` để dùng chung cho admin form và `Kho nguyên liệu`.
+- `IngredientStockLayout`, `IngredientStockLayoutGroup`, `IngredientStockLayoutItem` lưu bố cục hiển thị theo `storeId + operationType`.
 - Các field chính liên quan đến in tem:
   - `batchCode`: mã lô dùng để tra cứu và scan
   - `initialQty`: số lượng ban đầu của lô
@@ -29,6 +32,19 @@
   - `printedLabelCount`: số tem đã được phát hành cho lô
   - `labelCreatedAt`: thời điểm phát hành tem gần nhất
 - `printedLabelCount` được dùng để đảm bảo `Number` trên tem luôn tăng liên tục theo từng lô.
+
+## Ingredient Stock Board Flow
+
+1. Frontend gọi `GET /ingredient-stock-board` với `storeId?`, `year`, `month`, `operationType`.
+2. Backend resolve phạm vi chi nhánh theo role:
+   - `ADMIN` được đổi chi nhánh
+   - `MANAGER` và `STAFF` bị khóa theo chi nhánh của tài khoản
+3. Backend lấy `WorkSchedule` theo `storeId + year + month` để map giờ quét vào ca; nếu chưa có lịch sẽ dùng mặc định `Ca 1 / Ca 2 / Ca 3`.
+4. Backend đọc `ScanLog` hợp lệ (`SUCCESS`, `WARNING`) theo `operationType` và cộng vào đúng ô `ngày / ca`.
+5. Backend cộng `remainingQty` của tất cả `IngredientBatch` còn tồn để ra `Số lượng tồn` của từng nguyên liệu.
+6. Nếu chi nhánh chưa có bố cục lưu sẵn, backend tự dựng bố cục mặc định theo `IngredientGroup` và danh sách nguyên liệu active.
+7. `ADMIN` và `MANAGER` có thể lưu lại bố cục qua `PUT /ingredient-stock-board/layout`; `STAFF` chỉ xem.
+8. Frontend áp dụng thêm bộ lọc `Loại nguyên liệu / Nguyên liệu` và mobile compact view để quan sát nhanh hơn.
 
 ## Auth And User Management Flow
 
@@ -50,8 +66,9 @@
 6. Backend tìm batch theo `storeId + batchCode`.
 7. Backend validate expired, soft lock, remaining quantity và FIFO.
 8. Nếu hợp lệ: trừ tồn, update `DEPLETED` khi về 0, ghi `ScanLog`.
-9. Nếu bị chặn bởi network policy: ghi `FraudAttemptLog` và `ScanLog` lỗi.
-10. Nếu duplicate `clientEventId`: trả `duplicated=true`, không trừ kho lần nữa.
+9. Với `operationType = TRANSFER`, backend kiểm tra thêm permission `scan_transfer` cho user không phải `ADMIN`, trừ tồn ở chi nhánh nguồn và tăng tồn ở chi nhánh đích.
+10. Nếu bị chặn bởi network policy: ghi `FraudAttemptLog` và `ScanLog` lỗi.
+11. Nếu duplicate `clientEventId`: trả `duplicated=true`, không trừ kho lần nữa.
 
 ## Offline Sync Flow
 

@@ -21,6 +21,7 @@
 | PATCH | `/api/v1/admin/stores/:id` | ADMIN | Update store |
 | POST | `/api/v1/admin/ingredients` | ADMIN | Create ingredient |
 | GET | `/api/v1/admin/ingredients` | ADMIN | List ingredients |
+| GET | `/api/v1/admin/ingredients/groups` | ADMIN | List ingredient groups for admin forms and stock board layout |
 | GET | `/api/v1/admin/ingredients/:id` | ADMIN | Get ingredient detail |
 | PATCH | `/api/v1/admin/ingredients/:id` | ADMIN | Update ingredient |
 | DELETE | `/api/v1/admin/ingredients/:id` | ADMIN | Disable ingredient |
@@ -41,6 +42,8 @@
 | POST | `/api/v1/scan/manual` | ADMIN, MANAGER, STAFF | Manual fallback scan |
 | POST | `/api/v1/scan/sync` | ADMIN, MANAGER, STAFF | Sync offline events |
 | GET | `/api/v1/scan/logs` | ADMIN, MANAGER, STAFF | List scan logs by role scope |
+| GET | `/api/v1/ingredient-stock-board` | ADMIN, MANAGER, STAFF | Get ingredient stock board by store, month, year, operation type |
+| PUT | `/api/v1/ingredient-stock-board/layout` | ADMIN, MANAGER | Save stock board layout by store and operation type |
 | POST | `/api/v1/admin/pos-products` | ADMIN | Create POS product |
 | GET | `/api/v1/admin/pos-products` | ADMIN | List POS products |
 | PATCH | `/api/v1/admin/pos-products/:id` | ADMIN | Update POS product |
@@ -117,3 +120,70 @@ Frontend scanner hỗ trợ cả hai định dạng sau:
 - Current issued label: `FNBBATCH:<batch_code>|BATCH:<batch_id>|SEQ:<sequenceNumber>`
 
 Trong cả hai trường hợp, frontend đều tách ra `batchCode` trước khi gửi request scan.
+
+## Ingredient Stock Board API Notes
+
+### `GET /api/v1/ingredient-stock-board`
+
+Query params chính:
+
+- `storeId?`: chỉ `ADMIN` được đổi chi nhánh
+- `year`
+- `month`
+- `operationType`: `STORE_USAGE | TRANSFER`
+
+Response data chính:
+
+- `store`
+- `daysInMonth`
+- `shifts`
+- `summary`
+- `alerts`
+- `layout.groups`
+- `options.groups`
+- `options.ingredients`
+- `canEdit`
+
+Quy tắc nghiệp vụ:
+
+- `ADMIN` và `MANAGER` có thể chỉnh bố cục, `STAFF` chỉ xem.
+- `Số lượng tồn` là tổng tồn của tất cả lô còn lại của cùng nguyên liệu trong chi nhánh đã chọn.
+- Các ô ngày/ca chỉ cộng `ScanLog` có trạng thái `SUCCESS` hoặc `WARNING`.
+- Với `operationType = TRANSFER`, bảng thể hiện lượng xuất khỏi chi nhánh đang chọn.
+
+### `PUT /api/v1/ingredient-stock-board/layout`
+
+Request body mẫu:
+
+```json
+{
+  "storeId": "store-id",
+  "operationType": "STORE_USAGE",
+  "groups": [
+    {
+      "groupId": "group-id",
+      "sortOrder": 0,
+      "items": [
+        {
+          "ingredientId": "ingredient-id",
+          "sortOrder": 0
+        }
+      ]
+    }
+  ]
+}
+```
+
+Validation chính:
+
+- Không được trùng `groupId` trong cùng một bố cục.
+- Một nguyên liệu chỉ được xuất hiện một lần.
+- Nguyên liệu phải thuộc đúng nhóm đã chọn.
+- Bố cục được lưu riêng theo `storeId + operationType`.
+
+## Scan And Transfer Notes
+
+- Scan API hỗ trợ `operationType = STORE_USAGE | TRANSFER`.
+- `ADMIN` luôn có thể chuyển kho.
+- `MANAGER` hoặc `STAFF` muốn chuyển kho phải được cấp permission `scan_transfer`.
+- Khi chuyển kho thành công, chi nhánh nguồn giảm tồn và chi nhánh đích tăng tồn theo cùng nguyên liệu.
