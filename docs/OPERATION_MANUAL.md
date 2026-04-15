@@ -1,5 +1,7 @@
 ﻿# Operation Manual
 
+Tài liệu này tập trung vào vận hành hằng ngày của hệ thống. Nếu bạn đang chuẩn bị staging, UAT hoặc ngày go-live, xem thêm [DEPLOYMENT_PROD.md](./DEPLOYMENT_PROD.md), [STAGING_CHECKLIST.md](./STAGING_CHECKLIST.md), [UAT_CHECKLIST.md](./UAT_CHECKLIST.md) và [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md).
+
 ## 1. Khởi tạo ban đầu
 
 1. Chạy hệ thống:
@@ -218,6 +220,8 @@
 8. Khi trạng thái là `LOCKED`, grid chấm công bị khóa; `ADMIN` có thể đổi lại trạng thái để mở khóa tạm thời nếu cần chỉnh sửa
 
 ## 9. Kiểm thử luồng chính
+
+Phần này là checklist nhanh để tự kiểm tra trong quá trình dev hoặc demo. Khi chuẩn bị triển khai thực tế, dùng thêm [UAT_CHECKLIST.md](./UAT_CHECKLIST.md) để test đủ trước khi go-live.
 
 1. Login `admin / 123456`
 2. Login `staff2 / 123456` và xác nhận bị buộc đổi mật khẩu

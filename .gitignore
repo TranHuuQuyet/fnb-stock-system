@@ -3,5 +3,8 @@ node_modules
 dist
 coverage
 .env
+.env.local
+.env.production
+.env.production.compose
 *.log
 postgres_data

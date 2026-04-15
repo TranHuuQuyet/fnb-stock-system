@@ -2,13 +2,20 @@
 
 Tài liệu này mô tả cách triển khai hệ thống ở môi trường production dựa trên trạng thái hiện tại của repo. Mục tiêu là giúp bạn có một quy trình go-live thực tế, có kiểm soát, và tránh dùng nhầm cấu hình demo/local cho môi trường thật.
 
+Tài liệu nên được dùng cùng các file sau:
+
+- [STAGING_CHECKLIST.md](./STAGING_CHECKLIST.md)
+- [UAT_CHECKLIST.md](./UAT_CHECKLIST.md)
+- [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md)
+- [BACKUP_RESTORE.md](./BACKUP_RESTORE.md)
+
 ## 1. Phạm vi và giả định
 
 - Repo hiện có `docker-compose.yml` để chạy local/demo nhanh.
 - Production nên chạy sau reverse proxy có TLS.
 - Backend là NestJS, frontend là Next.js, database là PostgreSQL.
 - Tài liệu này ưu tiên mô hình `Linux server + PostgreSQL + systemd + reverse proxy`.
-- Nếu bạn muốn dùng container cho production, hãy tạo cấu hình riêng; không dùng nguyên xi `docker-compose.yml` hiện tại.
+- Repo hiện đã có bộ file riêng cho container production; không dùng nguyên xi `docker-compose.yml` hiện tại.
 
 ## 2. Những việc bắt buộc trước khi go-live
 
@@ -18,6 +25,7 @@ Tài liệu này mô tả cách triển khai hệ thống ở môi trường pro
    - backend tự chạy `db:seed`
    - secret trong compose là giá trị mẫu
    - frontend/backend còn mặc định `localhost`
+   - nếu dùng container production, phải dùng `docker-compose.prod.yml`, `backend/Dockerfile.prod`, `frontend/Dockerfile.prod`
 2. Repo chưa có luồng bootstrap admin production-safe riêng; `db:seed` đang tạo user/demo password mẫu.
 3. Frontend hiện lưu access token trong `localStorage`; đây là điểm cần cân nhắc kỹ trước khi public ra Internet.
 4. Repo chưa có sẵn runbook backup/restore, monitoring, alerting và rollback cho production.
@@ -90,6 +98,71 @@ Ghi chú:
 
 - Nếu tách backend riêng domain, ví dụ `https://api.example.com/api/v1`, hãy cập nhật `CORS_ORIGIN` tương ứng ở backend.
 - Giá trị `NEXT_PUBLIC_API_BASE_URL` được dùng khi build frontend; phải đúng domain production trước khi chạy `npm run build`.
+
+### Compose env cho production
+
+Repo có sẵn file `.env.production.compose.example` để phục vụ `docker-compose.prod.yml`:
+
+```dotenv
+COMPOSE_PROJECT_NAME=fnbstore
+APP_DOMAIN=fnbstore.store
+LETSENCRYPT_EMAIL=ops@fnbstore.store
+NEXT_PUBLIC_API_BASE_URL=https://fnbstore.store/api/v1
+BACKEND_ENV_FILE=backend/.env.production
+FRONTEND_ENV_FILE=frontend/.env.production
+```
+
+Ghi chú:
+
+- `APP_DOMAIN` là domain public của hệ thống.
+- `NEXT_PUBLIC_API_BASE_URL` phải trùng domain backend public vì frontend build-time sẽ bake giá trị này vào bundle.
+- `BACKEND_ENV_FILE` và `FRONTEND_ENV_FILE` cho phép bạn đổi sang file env khác nếu muốn dùng staging hoặc file secret riêng.
+
+## 4.1. Bộ file container production có sẵn
+
+Repo hiện đã có sẵn:
+
+- `docker-compose.prod.yml`
+- `backend/Dockerfile.prod`
+- `frontend/Dockerfile.prod`
+- `deploy/caddy/Caddyfile`
+- `.env.production.compose.example`
+
+Luồng này phù hợp khi bạn muốn chạy:
+
+- `1 VPS`
+- frontend/backend bằng container
+- PostgreSQL managed bên ngoài
+- cùng 1 domain `https://fnbstore.store`
+
+### Cách dùng nhanh
+
+1. Copy file env:
+
+```bash
+cp .env.production.compose.example .env.production.compose
+cp backend/.env.production.example backend/.env.production
+cp frontend/.env.production.example frontend/.env.production
+```
+
+2. Điền giá trị production thật vào 3 file trên.
+3. Đảm bảo DNS của `fnbstore.store` đã trỏ về VPS và port `80/443` mở ra Internet.
+4. Chạy:
+
+```bash
+docker compose --env-file .env.production.compose -f docker-compose.prod.yml up -d --build
+```
+
+5. Kiểm tra:
+   - `docker compose --env-file .env.production.compose -f docker-compose.prod.yml ps`
+   - `https://fnbstore.store`
+   - `https://fnbstore.store/api/v1/health`
+
+Ghi chú:
+
+- `caddy` trong compose sẽ nhận TLS tự động nếu domain và port public đúng.
+- Compose production này không tạo container PostgreSQL vì hướng triển khai đã chốt là `PostgreSQL managed`.
+- Backend container production không chạy `db:seed`; chỉ chạy `prisma migrate deploy` rồi start app.
 
 ## 5. Chuẩn bị máy chủ
 
@@ -358,8 +431,8 @@ Thực hiện toàn bộ trước khi mở cho người dùng thật:
 
 - Backup PostgreSQL hằng ngày.
 - Giữ ít nhất:
-  - 7 bản daily
-  - 4 bản weekly
+  - 14 bản daily
+  - 8 bản weekly
   - 3 bản monthly
 - Mã hóa backup nếu lưu ngoài máy chủ.
 
@@ -381,6 +454,7 @@ Khuyến nghị:
 - Test restore định kỳ trên môi trường staging hoặc máy phục hồi riêng.
 - Không coi backup là hoàn thành nếu chưa test restore.
 - Xem runbook chi tiết tại [BACKUP_RESTORE.md](./BACKUP_RESTORE.md).
+- Trước khi mở thật cho người dùng, chạy lần lượt [STAGING_CHECKLIST.md](./STAGING_CHECKLIST.md), [UAT_CHECKLIST.md](./UAT_CHECKLIST.md), rồi [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md).
 
 ## 11. Monitoring và log
 

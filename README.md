@@ -16,6 +16,17 @@ frontend/    Next.js PWA + IndexedDB offline queue + admin/dashboard UI
 docs/        Architecture, API overview, operation manual, production deployment
 ```
 
+## Operational Docs
+
+- `docs/ARCHITECTURE.md`: kiến trúc module và luồng dữ liệu
+- `docs/API_OVERVIEW.md`: tổng hợp API chính
+- `docs/OPERATION_MANUAL.md`: hướng dẫn vận hành hằng ngày
+- `docs/DEPLOYMENT_PROD.md`: hướng dẫn triển khai production
+- `docs/BACKUP_RESTORE.md`: runbook backup và restore
+- `docs/STAGING_CHECKLIST.md`: checklist dựng staging
+- `docs/UAT_CHECKLIST.md`: checklist kiểm thử chấp nhận người dùng
+- `docs/GO_LIVE_CHECKLIST.md`: checklist ngày go-live
+
 ## Main Features
 
 - Quản lý lô hàng nguyên liệu theo cửa hàng
@@ -62,6 +73,22 @@ docker compose up --build
 ```
 
 `docker-compose.yml` hiện dùng cho local/demo. Không nên dùng nguyên xi cho production vì backend đang tự chạy `db:seed`, frontend/backend còn mặc định `localhost`, và secret trong compose chỉ là placeholder. Xem thêm [docs/DEPLOYMENT_PROD.md](docs/DEPLOYMENT_PROD.md).
+
+Nếu muốn chạy production bằng container, repo đã có sẵn:
+
+- `docker-compose.prod.yml`
+- `backend/Dockerfile.prod`
+- `frontend/Dockerfile.prod`
+- `deploy/caddy/Caddyfile`
+- `.env.production.compose.example`
+
+Luồng khuyến nghị:
+
+1. Copy `.env.production.compose.example` thành `.env.production.compose`
+2. Copy `backend/.env.production.example` thành `backend/.env.production`
+3. Copy `frontend/.env.production.example` thành `frontend/.env.production`
+4. Điền domain thật `fnbstore.store`, secret thật và `DATABASE_URL` production
+5. Chạy `docker compose --env-file .env.production.compose -f docker-compose.prod.yml up -d --build`
 
 Container boot flow:
 
