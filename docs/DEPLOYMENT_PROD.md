@@ -347,7 +347,7 @@ Thực hiện toàn bộ trước khi mở cho người dùng thật:
 4. Tạo batch, in tem, quét online.
 5. Thử offline queue rồi bật mạng lại để sync.
 6. Mở `Control > Kho nguyên liệu` và xác nhận số liệu cập nhật đúng.
-7. Mở `Control > Ca làm việc`, lưu tháng hiện tại, thử `Xuất CSV` hoặc `In bảng chấm công`.
+7. Mở `Control > Ca làm việc`, lưu tháng hiện tại, nhập thử `phụ cấp / đi trễ / về sớm`, rồi thử `In bảng lương` hoặc `Xuất Excel`.
 8. Cấu hình `IP whitelist`, thử `Lấy IP hiện tại`, kiểm tra `scan/network-status`.
 9. Thử bật `Emergency bypass` có thời hạn cho một chi nhánh test.
 10. Kiểm tra dashboard, reconciliation, anomaly alerts, audit logs.

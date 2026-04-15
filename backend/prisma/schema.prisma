@@ -523,6 +523,9 @@ model WorkScheduleEmployee {
   sortOrder         Int                 @default(0)
   trialHourlyRate   Float               @default(0)
   officialHourlyRate Float              @default(0)
+  allowanceAmount   Float               @default(0)
+  lateMinutes       Int                 @default(0)
+  earlyLeaveMinutes Int                 @default(0)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   workSchedule      WorkSchedule        @relation(fields: [workScheduleId], references: [id], onDelete: Cascade)

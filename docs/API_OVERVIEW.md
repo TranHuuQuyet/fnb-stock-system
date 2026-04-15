@@ -68,6 +68,7 @@
 | PATCH | `/api/v1/admin/network-bypasses/:storeId` | ADMIN | Enable or disable emergency bypass for a store |
 | GET | `/api/v1/admin/config` | ADMIN | Get app config |
 | PATCH | `/api/v1/admin/config` | ADMIN | Update app config |
+| GET | `/api/v1/admin/reports` | ADMIN | Get admin overview report for inventory, wastage, batch history, usage, and payroll |
 | POST | `/api/v1/pos/sales/import` | ADMIN | Import POS sales |
 | GET | `/api/v1/pos/reconciliation` | ADMIN, MANAGER | Get reconciliation by store/date |
 | POST | `/api/v1/anomalies/run` | ADMIN, MANAGER | Generate anomaly alerts |
@@ -323,6 +324,10 @@ Response data chính:
 - `schedule.status`
 - `schedule.shifts`
 - `schedule.employees`
+- `schedule.employees[].allowanceAmount`
+- `schedule.employees[].lateMinutes`
+- `schedule.employees[].earlyLeaveMinutes`
+- `schedule.employees[].totals`
 
 Quy tắc nghiệp vụ:
 
@@ -338,10 +343,42 @@ Request body chính gồm:
 - `title`, `notes`, `status`
 - `shifts[]`
 - `employees[]`
+- `employees[].trialHourlyRate`
+- `employees[].officialHourlyRate`
+- `employees[].allowanceAmount?`
+- `employees[].lateMinutes?`
+- `employees[].earlyLeaveMinutes?`
 
 Validation chính:
 
 - Chỉ `ADMIN` được lưu hoặc cập nhật bảng chấm công.
 - `shifts` phải có ít nhất một phần tử và không được trùng `key`.
 - `entries.day` phải nằm trong số ngày hợp lệ của tháng đang lưu.
-- Nếu tháng đã ở trạng thái `LOCKED`, backend sẽ từ chối mọi cập nhật tiếp theo.
+- `LOCKED` là trạng thái khóa chỉnh sửa trên UI; `ADMIN` có thể chuyển lại sang `DRAFT` hoặc `PUBLISHED` để mở khóa tạm thời.
+
+## Admin Report Notes
+
+### `GET /api/v1/admin/reports`
+
+Query params chính:
+
+- `storeId`
+- `startDate?`
+- `endDate?`
+- `year?`
+- `month?`
+
+Response data chính:
+
+- `summary`
+- `inventorySnapshot`
+- `wastage`
+- `batchHistory`
+- `topIngredients`
+- `workScheduleSummary`
+
+Quy tắc nghiệp vụ:
+
+- Endpoint hiện trả `tồn kho hiện tại` theo snapshot lúc mở báo cáo, không phải snapshot lịch sử đã lưu sẵn theo từng ngày.
+- `wastage` được tổng hợp từ các phiếu `StockAdjustment` loại `DECREASE`.
+- `workScheduleSummary` dùng tháng/năm được chọn để tổng hợp lương theo giờ, phụ cấp, đi trễ và về sớm.

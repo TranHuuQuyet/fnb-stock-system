@@ -24,6 +24,7 @@ import { AppConfigModule } from './modules/config/config.module';
 import { HealthModule } from './modules/health/health.module';
 import { WorkSchedulesModule } from './modules/work-schedules/work-schedules.module';
 import { IngredientStockBoardModule } from './modules/ingredient-stock-board/ingredient-stock-board.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -49,7 +50,8 @@ import { IngredientStockBoardModule } from './modules/ingredient-stock-board/ing
     AppConfigModule,
     HealthModule,
     WorkSchedulesModule,
-    IngredientStockBoardModule
+    IngredientStockBoardModule,
+    ReportsModule
   ],
   providers: [BusinessNetworkGuard, PermissionsGuard]
 })

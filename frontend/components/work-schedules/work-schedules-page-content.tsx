@@ -40,12 +40,19 @@ type WorkEmployee = {
   sortOrder: number;
   trialHourlyRate: number;
   officialHourlyRate: number;
+  allowanceAmount: number;
+  lateMinutes: number;
+  earlyLeaveMinutes: number;
   entries: WorkEntry[];
   totals: {
     trialHours: number;
     officialHours: number;
     totalWorkingDays: number;
-    totalSalary: number;
+    grossSalary: number;
+    lateDeduction: number;
+    earlyLeaveDeduction: number;
+    totalDeductions: number;
+    netSalary: number;
   };
 };
 
@@ -129,6 +136,9 @@ const buildEditorState = (payload?: WorkSchedulePayload): EditableState | null =
       sortOrder: employee.sortOrder,
       trialHourlyRate: employee.trialHourlyRate,
       officialHourlyRate: employee.officialHourlyRate,
+      allowanceAmount: employee.allowanceAmount,
+      lateMinutes: employee.lateMinutes,
+      earlyLeaveMinutes: employee.earlyLeaveMinutes,
       entries: employee.entries.map((entry) => ({ ...entry }))
     }))
   };
@@ -199,7 +209,19 @@ const computeEmployeeTotals = (employee: EditableEmployee, shifts: WorkShift[]) 
     trialHours,
     officialHours,
     totalWorkingDays: workedDays.size,
-    totalSalary: trialHours * employee.trialHourlyRate + officialHours * employee.officialHourlyRate,
+    grossSalary:
+      trialHours * employee.trialHourlyRate + officialHours * employee.officialHourlyRate,
+    lateDeduction: (employee.officialHourlyRate * employee.lateMinutes) / 60,
+    earlyLeaveDeduction: (employee.officialHourlyRate * employee.earlyLeaveMinutes) / 60,
+    totalDeductions:
+      (employee.officialHourlyRate * employee.lateMinutes) / 60 +
+      (employee.officialHourlyRate * employee.earlyLeaveMinutes) / 60,
+    netSalary:
+      trialHours * employee.trialHourlyRate +
+      officialHours * employee.officialHourlyRate +
+      employee.allowanceAmount -
+      (employee.officialHourlyRate * employee.lateMinutes) / 60 -
+      (employee.officialHourlyRate * employee.earlyLeaveMinutes) / 60,
     dailyHours
   };
 };
@@ -325,7 +347,7 @@ const buildCsvContent = ({
       formatHours(totals.trialHours),
       formatHours(totals.officialHours),
       totals.totalWorkingDays,
-      formatCurrency(totals.totalSalary)
+      formatCurrency(totals.netSalary)
     ]);
 
     rows.push([
@@ -336,7 +358,7 @@ const buildCsvContent = ({
       formatCurrency(employee.trialHourlyRate),
       formatCurrency(employee.officialHourlyRate),
       '',
-      formatCurrency(totals.totalSalary)
+      formatCurrency(totals.netSalary)
     ]);
   });
 
@@ -420,7 +442,7 @@ const buildPrintHtml = ({
           <td class="cell salary-note" colspan="${days.length}">Lương thử việc và chính thức được tính tự động theo đơn giá hiện tại.</td>
           <td class="cell">${escapeHtml(formatCurrency(employee.trialHourlyRate))}</td>
           <td class="cell">${escapeHtml(formatCurrency(employee.officialHourlyRate))}</td>
-          <td class="cell salary-total">${escapeHtml(formatCurrency(totals.totalSalary))}</td>
+          <td class="cell salary-total">${escapeHtml(formatCurrency(totals.netSalary))}</td>
         </tr>
       `;
 
@@ -493,6 +515,161 @@ const buildPrintHtml = ({
       </body>
     </html>
   `;
+};
+
+const buildPayrollPrintHtml = ({
+  state,
+  employees,
+  storeName,
+  selectedMonth,
+  selectedYear
+}: {
+  state: EditableState;
+  employees: EditableEmployee[];
+  storeName: string;
+  selectedMonth: number;
+  selectedYear: number;
+}) => {
+  const rowsHtml = employees
+    .map((employee, index) => {
+      const totals = computeEmployeeTotals(employee, state.shifts);
+      return `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(employee.displayName)}</td>
+          <td>${escapeHtml(roleLabels[employee.role])}</td>
+          <td>${escapeHtml(formatHours(totals.trialHours))}</td>
+          <td>${escapeHtml(formatHours(totals.officialHours))}</td>
+          <td>${escapeHtml(formatCurrency(totals.grossSalary))}</td>
+          <td>${escapeHtml(formatCurrency(employee.allowanceAmount))}</td>
+          <td>${employee.lateMinutes}</td>
+          <td>${employee.earlyLeaveMinutes}</td>
+          <td>${escapeHtml(formatCurrency(totals.totalDeductions))}</td>
+          <td>${escapeHtml(formatCurrency(totals.netSalary))}</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  return `
+    <!doctype html>
+    <html lang="vi">
+      <head>
+        <meta charset="utf-8" />
+        <title>Bảng lương ${selectedMonth}/${selectedYear}</title>
+        <style>
+          @page { size: A4 landscape; margin: 10mm; }
+          body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; }
+          h1 { margin: 0 0 6px; font-size: 24px; }
+          .meta { margin-bottom: 6px; font-size: 13px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 16px; }
+          th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; }
+          thead th { background: #1a2b21; color: #fff; }
+          td:nth-child(2), td:nth-child(3) { text-align: left; }
+          tfoot td { background: #edf4ea; font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        <h1>Bảng lương tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear}</h1>
+        <div class="meta"><strong>Chi nhánh:</strong> ${escapeHtml(storeName)}</div>
+        <div class="meta"><strong>Bảng chấm công:</strong> ${escapeHtml(state.title)}</div>
+        <table>
+          <thead>
+            <tr>
+              <th>STT</th>
+              <th>Nhân viên</th>
+              <th>Vai trò</th>
+              <th>Giờ thử việc</th>
+              <th>Giờ chính thức</th>
+              <th>Lương gốc</th>
+              <th>Phụ cấp</th>
+              <th>Đi trễ (phút)</th>
+              <th>Về sớm (phút)</th>
+              <th>Khấu trừ</th>
+              <th>Thực nhận</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <script>
+          window.onload = function () {
+            window.print();
+          };
+        </script>
+      </body>
+    </html>
+  `;
+};
+
+const buildExcelCell = (value: string | number, type: 'String' | 'Number' = 'String') =>
+  `<Cell><Data ss:Type="${type}">${type === 'String' ? escapeHtml(String(value)) : value}</Data></Cell>`;
+
+const buildPayrollExcelXml = ({
+  state,
+  employees,
+  storeName,
+  selectedMonth,
+  selectedYear
+}: {
+  state: EditableState;
+  employees: EditableEmployee[];
+  storeName: string;
+  selectedMonth: number;
+  selectedYear: number;
+}) => {
+  const headerRows = [
+    [buildExcelCell(`Bảng lương tháng ${String(selectedMonth).padStart(2, '0')}/${selectedYear}`)],
+    [buildExcelCell(`Chi nhánh: ${storeName}`)],
+    [buildExcelCell(`Bảng chấm công: ${state.title}`)],
+    []
+  ];
+
+  const columns = [
+    'STT',
+    'Nhân viên',
+    'Vai trò',
+    'Giờ thử việc',
+    'Giờ chính thức',
+    'Lương gốc',
+    'Phụ cấp',
+    'Đi trễ (phút)',
+    'Về sớm (phút)',
+    'Khấu trừ',
+    'Thực nhận'
+  ];
+
+  const bodyRows = employees.map((employee, index) => {
+    const totals = computeEmployeeTotals(employee, state.shifts);
+    return [
+      buildExcelCell(index + 1, 'Number'),
+      buildExcelCell(employee.displayName),
+      buildExcelCell(roleLabels[employee.role]),
+      buildExcelCell(Number(totals.trialHours.toFixed(2)), 'Number'),
+      buildExcelCell(Number(totals.officialHours.toFixed(2)), 'Number'),
+      buildExcelCell(Math.round(totals.grossSalary), 'Number'),
+      buildExcelCell(Math.round(employee.allowanceAmount), 'Number'),
+      buildExcelCell(employee.lateMinutes, 'Number'),
+      buildExcelCell(employee.earlyLeaveMinutes, 'Number'),
+      buildExcelCell(Math.round(totals.totalDeductions), 'Number'),
+      buildExcelCell(Math.round(totals.netSalary), 'Number')
+    ];
+  });
+
+  const allRows = [...headerRows, columns.map((column) => buildExcelCell(column)), ...bodyRows];
+
+  return `<?xml version="1.0"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Worksheet ss:Name="BangLuong">
+    <Table>
+      ${allRows
+        .map((row) => `<Row>${Array.isArray(row) ? row.join('') : row}</Row>`)
+        .join('')}
+    </Table>
+  </Worksheet>
+</Workbook>`;
 };
 
 export function WorkSchedulesPageContent() {
@@ -588,6 +765,9 @@ export function WorkSchedulesPageContent() {
           sortOrder: employee.sortOrder,
           trialHourlyRate: employee.trialHourlyRate,
           officialHourlyRate: employee.officialHourlyRate,
+          allowanceAmount: employee.allowanceAmount,
+          lateMinutes: employee.lateMinutes,
+          earlyLeaveMinutes: employee.earlyLeaveMinutes,
           entries: employee.entries.map((entry) => ({
             day: entry.day,
             shiftKey: entry.shiftKey,
@@ -610,7 +790,7 @@ export function WorkSchedulesPageContent() {
   );
 
   const persistedLocked = scheduleQuery.data?.schedule.status === 'LOCKED';
-  const canManageSchedule = Boolean(isAdmin && editorState && !persistedLocked);
+  const canManageSchedule = Boolean(isAdmin && editorState);
   const canEditGrid = Boolean(canManageSchedule && editorState?.status !== 'LOCKED');
   const orderedEmployees = useMemo(
     () => (editorState ? normalizeEmployeeOrdering(editorState.employees) : []),
@@ -647,6 +827,25 @@ export function WorkSchedulesPageContent() {
 
     return orderedEmployees.filter((employee) => employee.userId === focusedEmployeeId);
   }, [focusedEmployeeId, isMobile, orderedEmployees]);
+
+  const payrollSummary = useMemo(() => {
+    return visibleEmployees.reduce(
+      (summary, employee) => {
+        const totals = computeEmployeeTotals(employee, editorState?.shifts ?? []);
+        summary.grossSalary += totals.grossSalary;
+        summary.allowanceAmount += employee.allowanceAmount;
+        summary.totalDeductions += totals.totalDeductions;
+        summary.netSalary += totals.netSalary;
+        return summary;
+      },
+      {
+        grossSalary: 0,
+        allowanceAmount: 0,
+        totalDeductions: 0,
+        netSalary: 0
+      }
+    );
+  }, [editorState?.shifts, visibleEmployees]);
 
   const statusOption = editorState
     ? statusOptions.find((option) => option.value === editorState.status)
@@ -690,6 +889,24 @@ export function WorkSchedulesPageContent() {
     );
   };
 
+  const handleExportExcel = () => {
+    if (!editorState) return;
+
+    const content = buildPayrollExcelXml({
+      state: editorState,
+      employees: visibleEmployees,
+      storeName,
+      selectedMonth,
+      selectedYear
+    });
+
+    downloadTextFile(
+      `bang-luong-${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${sanitizeFilename(storeName)}.xls`,
+      content,
+      'application/vnd.ms-excel;charset=utf-8;'
+    );
+  };
+
   const handlePrint = () => {
     if (!editorState) return;
 
@@ -703,6 +920,24 @@ export function WorkSchedulesPageContent() {
         weekendDays,
         employees: visibleEmployees,
         storeName
+      })
+    );
+    printWindow.document.close();
+  };
+
+  const handlePrintPayroll = () => {
+    if (!editorState) return;
+
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1440,height=900');
+    if (!printWindow) return;
+
+    printWindow.document.write(
+      buildPayrollPrintHtml({
+        state: editorState,
+        employees: visibleEmployees,
+        storeName,
+        selectedMonth,
+        selectedYear
       })
     );
     printWindow.document.close();
@@ -743,8 +978,14 @@ export function WorkSchedulesPageContent() {
               <Button variant="secondary" onClick={handlePrint} disabled={!editorState}>
                 In bảng chấm công
               </Button>
+              <Button variant="secondary" onClick={handlePrintPayroll} disabled={!editorState}>
+                In bảng lương
+              </Button>
               <Button variant="secondary" onClick={handleExportCsv} disabled={!editorState}>
                 Xuất CSV
+              </Button>
+              <Button variant="secondary" onClick={handleExportExcel} disabled={!editorState}>
+                Xuất Excel
               </Button>
               <Button
                 variant="secondary"
@@ -760,7 +1001,7 @@ export function WorkSchedulesPageContent() {
                 >
                   {saveMutation.isPending
                     ? 'Đang lưu...'
-                    : persistedLocked
+                    : editorState.status === 'LOCKED'
                       ? 'Bảng đã chốt'
                       : 'Lưu thay đổi'}
                 </Button>
@@ -768,7 +1009,7 @@ export function WorkSchedulesPageContent() {
             </div>
           </div>
 
-          <div className="grid gap-3 border-t border-brand-100 bg-white/80 px-5 py-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 border-t border-brand-100 bg-white/80 px-5 py-4 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-2xl bg-brand-50 px-4 py-3">
               <p className="text-xs uppercase tracking-[0.18em] text-brand-700">Nhân viên hiển thị</p>
               <p className="mt-2 text-2xl font-semibold text-brand-900">{visibleEmployees.length}</p>
@@ -799,6 +1040,16 @@ export function WorkSchedulesPageContent() {
                 {isAdmin
                   ? 'Được chọn chi nhánh, sắp ca, chỉnh lương và chốt tháng.'
                   : 'Chỉ xem bảng chấm công của chi nhánh hiện tại.'}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-brand-100">
+              <p className="text-xs uppercase tracking-[0.18em] text-brand-700">Tổng thực nhận</p>
+              <p className="mt-2 text-2xl font-semibold text-brand-900">
+                {formatCurrency(payrollSummary.netSalary)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Lương gốc {formatCurrency(payrollSummary.grossSalary)} • Khấu trừ{' '}
+                {formatCurrency(payrollSummary.totalDeductions)}
               </p>
             </div>
           </div>
@@ -1484,7 +1735,7 @@ export function WorkSchedulesPageContent() {
                             )}
                           </td>
                           <td className="border border-brand-100 px-3 py-3 text-center text-lg font-semibold text-white">
-                            {formatCurrency(totals.totalSalary)}
+                            {formatCurrency(totals.netSalary)}
                           </td>
                         </tr>
                       </Fragment>
@@ -1495,6 +1746,154 @@ export function WorkSchedulesPageContent() {
             </div>
           )}
         </Card>
+
+        {editorState ? (
+          <Card className="space-y-4 border border-brand-100 bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-brand-900">Bảng lương tháng</h3>
+                <p className="text-sm text-slate-500">
+                  Tính theo giờ thử việc/chính thức, cộng phụ cấp và trừ đi trễ, về sớm.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge
+                  label={`Lương gốc ${formatCurrency(payrollSummary.grossSalary)}`}
+                  tone="neutral"
+                />
+                <Badge
+                  label={`Thực nhận ${formatCurrency(payrollSummary.netSalary)}`}
+                  tone="success"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-auto rounded-3xl border border-brand-100">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-brand-100 bg-brand-900 text-left text-white">
+                    <th className="px-3 py-3">Nhân viên</th>
+                    <th className="px-3 py-3 text-right">Giờ thử việc</th>
+                    <th className="px-3 py-3 text-right">Giờ chính thức</th>
+                    <th className="px-3 py-3 text-right">Lương gốc</th>
+                    <th className="px-3 py-3 text-right">Phụ cấp</th>
+                    <th className="px-3 py-3 text-right">Đi trễ (phút)</th>
+                    <th className="px-3 py-3 text-right">Về sớm (phút)</th>
+                    <th className="px-3 py-3 text-right">Khấu trừ</th>
+                    <th className="px-3 py-3 text-right">Thực nhận</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleEmployees.map((employee, index) => {
+                    const totals = computeEmployeeTotals(employee, editorState.shifts);
+                    return (
+                      <tr
+                        key={`${employee.userId}-payroll`}
+                        className={index % 2 === 0 ? 'bg-white' : 'bg-brand-50/30'}
+                      >
+                        <td className="px-3 py-3">
+                          <div className="font-semibold text-brand-900">{employee.displayName}</div>
+                          <div className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                            {roleLabels[employee.role]}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-right">{formatHours(totals.trialHours)}</td>
+                        <td className="px-3 py-3 text-right">{formatHours(totals.officialHours)}</td>
+                        <td className="px-3 py-3 text-right font-medium">
+                          {formatCurrency(totals.grossSalary)}
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          {isAdmin ? (
+                            <input
+                              className="w-32 rounded-lg border border-brand-100 bg-white px-3 py-2 text-right text-sm text-brand-900"
+                              type="number"
+                              min="0"
+                              step="1000"
+                              value={employee.allowanceAmount}
+                              onChange={(event) =>
+                                updateEditorState((state) => ({
+                                  ...state,
+                                  employees: state.employees.map((item) =>
+                                    item.userId === employee.userId
+                                      ? {
+                                          ...item,
+                                          allowanceAmount: Number(event.target.value) || 0
+                                        }
+                                      : item
+                                  )
+                                }))
+                              }
+                              disabled={!canManageSchedule}
+                            />
+                          ) : (
+                            formatCurrency(employee.allowanceAmount)
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          {isAdmin ? (
+                            <input
+                              className="w-24 rounded-lg border border-brand-100 bg-white px-3 py-2 text-right text-sm text-brand-900"
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={employee.lateMinutes}
+                              onChange={(event) =>
+                                updateEditorState((state) => ({
+                                  ...state,
+                                  employees: state.employees.map((item) =>
+                                    item.userId === employee.userId
+                                      ? { ...item, lateMinutes: Number(event.target.value) || 0 }
+                                      : item
+                                  )
+                                }))
+                              }
+                              disabled={!canManageSchedule}
+                            />
+                          ) : (
+                            employee.lateMinutes
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          {isAdmin ? (
+                            <input
+                              className="w-24 rounded-lg border border-brand-100 bg-white px-3 py-2 text-right text-sm text-brand-900"
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={employee.earlyLeaveMinutes}
+                              onChange={(event) =>
+                                updateEditorState((state) => ({
+                                  ...state,
+                                  employees: state.employees.map((item) =>
+                                    item.userId === employee.userId
+                                      ? {
+                                          ...item,
+                                          earlyLeaveMinutes: Number(event.target.value) || 0
+                                        }
+                                      : item
+                                  )
+                                }))
+                              }
+                              disabled={!canManageSchedule}
+                            />
+                          ) : (
+                            employee.earlyLeaveMinutes
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-right text-rose-700">
+                          {formatCurrency(totals.totalDeductions)}
+                        </td>
+                        <td className="px-3 py-3 text-right text-base font-semibold text-brand-900">
+                          {formatCurrency(totals.netSalary)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        ) : null}
       </div>
     </ProtectedPage>
   );

@@ -17,7 +17,8 @@
 - `dashboard`: summary cards, reconciliation, recent fraud/scans/alerts
 - `audit`: structured admin audit logs
 - `config`: app config, store network whitelist, emergency bypass, business network status
-- `work-schedules`: bảng chấm công theo tháng, ca làm việc, đơn giá thử việc/chính thức, chốt tháng
+- `work-schedules`: bảng chấm công theo tháng, ca làm việc, đơn giá thử việc/chính thức, phụ cấp, đi trễ/về sớm, bảng lương
+- `reports`: báo cáo quản trị cho tồn kho hiện tại, hao hụt, lịch sử batch, top nguyên liệu dùng nhiều và lương tháng
 - `health`: liveness and readiness checks
 
 ## Core Data Notes
@@ -27,7 +28,7 @@
 - `IngredientStockLayout`, `IngredientStockLayoutGroup`, `IngredientStockLayoutItem` lưu bố cục hiển thị theo `storeId + operationType`.
 - `StoreNetworkWhitelist` và các field `networkBypass*` trên `Store` dùng để kiểm soát thao tác nghiệp vụ theo mạng của chi nhánh.
 - `StockTransfer` lưu phiếu chuyển kho giữa hai chi nhánh, gồm số lượng gửi, số lượng nhận, trạng thái `IN_TRANSIT | RECEIVED`, ghi chú chênh lệch và người xác nhận.
-- `WorkSchedule`, `WorkScheduleShift`, `WorkScheduleEmployee`, `WorkScheduleEntry` lưu bảng chấm công theo `storeId + year + month`.
+- `WorkSchedule`, `WorkScheduleShift`, `WorkScheduleEmployee`, `WorkScheduleEntry` lưu bảng chấm công theo `storeId + year + month`; trong đó `WorkScheduleEmployee` còn giữ `allowanceAmount`, `lateMinutes`, `earlyLeaveMinutes` để tính bảng lương thực nhận.
 - Các field chính liên quan đến in tem:
   - `batchCode`: mã lô dùng để tra cứu và scan
   - `initialQty`: số lượng ban đầu của lô
@@ -142,6 +143,17 @@
 1. Frontend gọi `GET /work-schedules` với `year`, `month`, `storeId?`.
 2. `ADMIN` được đổi chi nhánh; `MANAGER` và `STAFF` bị khóa theo chi nhánh của tài khoản.
 3. Nếu tháng chưa có dữ liệu, backend trả khung mặc định `Ca 1 / Ca 2 / Ca 3` và tự bổ sung các user `MANAGER/STAFF` active của chi nhánh vào bảng.
-4. `ADMIN` có thể lưu toàn bộ bảng qua `PUT /work-schedules`, gồm ca làm, đơn giá thử việc/chính thức, entries, ghi chú, trạng thái tháng.
-5. UI hỗ trợ `In bảng chấm công` và `Xuất CSV`; `MANAGER` và `STAFF` chỉ xem bảng hiện có.
-6. Khi trạng thái chuyển sang `LOCKED`, backend từ chối mọi chỉnh sửa tiếp theo để tránh thay đổi dữ liệu lương đã chốt.
+4. `ADMIN` có thể lưu toàn bộ bảng qua `PUT /work-schedules`, gồm ca làm, đơn giá thử việc/chính thức, phụ cấp, đi trễ/về sớm, entries, ghi chú, trạng thái tháng.
+5. UI hỗ trợ `In bảng chấm công`, `In bảng lương`, `Xuất CSV`, `Xuất Excel`; `MANAGER` và `STAFF` chỉ xem bảng hiện có.
+6. Khi trạng thái chuyển sang `LOCKED`, grid chấm công bị khóa; `ADMIN` vẫn có thể đổi trạng thái về `DRAFT` hoặc `PUBLISHED` để mở khóa tạm thời.
+
+## Admin Report Flow
+
+1. Frontend admin gọi `GET /admin/reports` với `storeId`, khoảng ngày của báo cáo vận hành và `year/month` cho bảng lương.
+2. Backend trả một payload tổng hợp gồm:
+   - tồn kho hiện tại theo nguyên liệu
+   - hao hụt từ `StockAdjustment`
+   - lịch sử batch trong kỳ
+   - top nguyên liệu dùng nhiều từ `ScanLog`
+   - tổng hợp bảng lương tháng từ `WorkSchedule`
+3. Frontend render các bảng tổng hợp và cho phép `Xuất Excel` để admin gửi cho chủ hoặc kế toán.

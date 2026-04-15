@@ -96,6 +96,11 @@ const links: Array<{ href: string; label: string; roles: Role[]; permission?: Pe
     permission: 'manage_whitelists'
   },
   {
+    href: '/admin/reports',
+    label: 'Báo cáo admin',
+    roles: ['ADMIN']
+  },
+  {
     href: '/admin/audit-logs',
     label: 'Nhật ký hệ thống',
     roles: ['ADMIN'],

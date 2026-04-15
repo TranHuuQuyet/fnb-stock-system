@@ -121,7 +121,7 @@
    - kiểm tra số lượng đã quét theo ngày/ca
    - lọc nhanh theo `Loại nguyên liệu / Nguyên liệu`
    - lưu lại bố cục hiển thị nếu cần
-10. Vào `Control > Ca làm việc` để xem bảng chấm công tháng, giờ thử việc/chính thức và in hoặc xuất CSV nếu cần
+10. Vào `Control > Ca làm việc` để xem bảng chấm công tháng, giờ thử việc/chính thức, phụ cấp, đi trễ/về sớm và in bảng lương nếu cần
 
 ## 6. Quản trị cho ADMIN
 
@@ -157,10 +157,16 @@
    - chỉnh `anomalyThreshold`
 9. `Control > Ca làm việc`
    - tạo/chỉnh bảng chấm công theo tháng
-   - cấu hình ca làm, đơn giá thử việc/chính thức
+   - cấu hình ca làm, đơn giá thử việc/chính thức, phụ cấp, đi trễ/về sớm
    - chuyển trạng thái `DRAFT / PUBLISHED / LOCKED`
-   - in bảng chấm công hoặc xuất CSV
-10. `Admin > Audit Logs`
+   - in bảng chấm công, in bảng lương, xuất CSV, xuất Excel
+10. `Admin > Reports`
+   - xem tồn kho hiện tại
+   - theo dõi hao hụt
+   - xem lịch sử batch
+   - xem top nguyên liệu dùng nhiều
+   - xem tổng hợp bảng lương theo tháng
+11. `Admin > Audit Logs`
    - xem toàn bộ hành động quản trị
 
 ## 7. Sử dụng màn Kho nguyên liệu
@@ -203,12 +209,13 @@
    - thêm/sửa/xóa ca
    - đổi thứ tự ca
    - nhập đơn giá `thử việc / chính thức`
+   - nhập `phụ cấp`, `đi trễ`, `về sớm` trong bảng lương tháng
    - chấm từng ngày/ca cho từng nhân viên
    - lưu bảng với trạng thái `DRAFT / PUBLISHED / LOCKED`
 5. `MANAGER` và `STAFF` chỉ xem bảng hiện có, không được lưu hoặc chốt tháng
-6. Có thể bấm `In bảng chấm công` hoặc `Xuất CSV` để in hoặc đối soát ngoài hệ thống
+6. Có thể bấm `In bảng chấm công`, `In bảng lương`, `Xuất CSV`, `Xuất Excel` để in hoặc đối soát ngoài hệ thống
 7. Nếu vừa thêm nhân viên mới trong chi nhánh, bấm `Tải lại` để lấy danh sách active mới nhất
-8. Khi trạng thái đã là `LOCKED`, hệ thống khóa toàn bộ chỉnh sửa tháng đó
+8. Khi trạng thái là `LOCKED`, grid chấm công bị khóa; `ADMIN` có thể đổi lại trạng thái để mở khóa tạm thời nếu cần chỉnh sửa
 
 ## 9. Kiểm thử luồng chính
 
@@ -237,12 +244,14 @@
 21. Vào `Batch Adjustments` tạo adjustment mẫu
 22. Vào `Control > Ca làm việc`
 23. Chọn tháng hiện tại, chỉnh thử một vài ca và đơn giá rồi lưu bằng `admin`
-24. Bấm `Xuất CSV` hoặc `In bảng chấm công`
-25. Chuyển trạng thái sang `LOCKED` và xác nhận màn hình không cho chỉnh sửa nữa
-26. Tạo một phiếu `Chuyển kho` từ chi nhánh A sang chi nhánh B
-27. Đăng nhập `manager` hoặc `admin` của chi nhánh B, vào `Scan Logs > Chuyển kho`
-28. Xác nhận số lượng nhận đủ hoặc nhận thiếu kèm ghi chú
-29. Kiểm tra tồn kho chi nhánh B chỉ tăng sau bước xác nhận
+24. Nhập thử `phụ cấp`, `đi trễ`, `về sớm` cho ít nhất 1 nhân viên
+25. Bấm `In bảng lương` hoặc `Xuất Excel`
+26. Chuyển trạng thái sang `LOCKED` và xác nhận grid chấm công bị khóa
+27. Chuyển lại trạng thái `PUBLISHED` để xác nhận admin có thể mở khóa tạm thời khi cần
+28. Tạo một phiếu `Chuyển kho` từ chi nhánh A sang chi nhánh B
+29. Đăng nhập `manager` hoặc `admin` của chi nhánh B, vào `Scan Logs > Chuyển kho`
+30. Xác nhận số lượng nhận đủ hoặc nhận thiếu kèm ghi chú
+31. Kiểm tra tồn kho chi nhánh B chỉ tăng sau bước xác nhận
 
 ## 10. Xử lý sự cố thường gặp
 
@@ -306,7 +315,7 @@
 ### Bảng chấm công không lưu được
 
 - Kiểm tra đang đăng nhập bằng `ADMIN`
-- Kiểm tra tháng đó đã ở trạng thái `LOCKED` chưa
+- Kiểm tra tháng đó có đang ở trạng thái `LOCKED` không; nếu có thì đổi lại `DRAFT` hoặc `PUBLISHED` để mở khóa tạm thời
 - Kiểm tra danh sách ca không bị trùng `key`
 - Kiểm tra ngày chấm công nằm trong đúng tháng đang chọn
 
@@ -400,5 +409,6 @@
 18. Kiểm tra bảng đã cộng đúng số lượng vào ngày/ca vừa quét
 19. Mở dashboard để xem dữ liệu cập nhật
 20. Mở `Control > Ca làm việc`
-21. Kiểm tra bảng chấm công tháng hiện tại, thử `Xuất CSV` hoặc `In bảng chấm công`
-22. Nếu cần, chốt tháng bằng `admin` và xác nhận màn hình bị khóa chỉnh sửa
+21. Kiểm tra bảng chấm công tháng hiện tại, nhập thử `phụ cấp / đi trễ / về sớm`
+22. Thử `In bảng lương` hoặc `Xuất Excel`
+23. Nếu cần, chuyển trạng thái `LOCKED` rồi mở lại bằng `admin` để xác nhận cơ chế khóa tạm

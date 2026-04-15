@@ -58,6 +58,27 @@ export class SaveWorkScheduleEmployeeDto {
   @Min(0)
   officialHourlyRate!: number;
 
+  @ApiPropertyOptional()
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  allowanceAmount?: number;
+
+  @ApiPropertyOptional()
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  lateMinutes?: number;
+
+  @ApiPropertyOptional()
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  earlyLeaveMinutes?: number;
+
   @ApiProperty({ type: [SaveWorkScheduleEntryDto] })
   @IsArray()
   @ValidateNested({ each: true })

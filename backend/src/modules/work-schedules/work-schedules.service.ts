@@ -169,6 +169,9 @@ export class WorkSchedulesService {
           sortOrder: row.sortOrder,
           trialHourlyRate: row.trialHourlyRate,
           officialHourlyRate: row.officialHourlyRate,
+          allowanceAmount: row.allowanceAmount,
+          lateMinutes: row.lateMinutes,
+          earlyLeaveMinutes: row.earlyLeaveMinutes,
           entries: row.entries
             .map((entry) => ({
               day: entry.day,
@@ -190,6 +193,9 @@ export class WorkSchedulesService {
             sortOrder: (schedule?.employees.length ?? 0) + index,
             trialHourlyRate: 0,
             officialHourlyRate: 0,
+            allowanceAmount: 0,
+            lateMinutes: 0,
+            earlyLeaveMinutes: 0,
             entries: [],
             shifts
           })
@@ -206,9 +212,7 @@ export class WorkSchedulesService {
       month: query.month,
       daysInMonth: totalDays,
       weekendDays: buildWeekendDays(query.year, query.month, totalDays),
-      canEdit:
-        currentUser.role === UserRole.ADMIN &&
-        schedule?.status !== WorkScheduleStatus.LOCKED,
+      canEdit: currentUser.role === UserRole.ADMIN,
       schedule: {
         id: schedule?.id ?? null,
         title: schedule?.title ?? this.buildDefaultTitle(store, query.month, query.year),
@@ -267,6 +271,9 @@ export class WorkSchedulesService {
       sortOrder: employee.sortOrder ?? index,
       trialHourlyRate: employee.trialHourlyRate,
       officialHourlyRate: employee.officialHourlyRate,
+      allowanceAmount: employee.allowanceAmount ?? 0,
+      lateMinutes: employee.lateMinutes ?? 0,
+      earlyLeaveMinutes: employee.earlyLeaveMinutes ?? 0,
       entries: employee.entries.map((entry) => ({
         day: entry.day,
         shiftKey: normalizeText(entry.shiftKey),
@@ -358,7 +365,7 @@ export class WorkSchedulesService {
       }
     });
 
-    if (existing?.status === WorkScheduleStatus.LOCKED) {
+    if (existing?.status === WorkScheduleStatus.LOCKED && currentUser.role !== UserRole.ADMIN) {
       throw appException(
         HttpStatus.CONFLICT,
         ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
@@ -446,7 +453,10 @@ export class WorkSchedulesService {
             displayName: user.fullName,
             sortOrder: employee.sortOrder,
             trialHourlyRate: employee.trialHourlyRate,
-            officialHourlyRate: employee.officialHourlyRate
+            officialHourlyRate: employee.officialHourlyRate,
+            allowanceAmount: employee.allowanceAmount,
+            lateMinutes: employee.lateMinutes,
+            earlyLeaveMinutes: employee.earlyLeaveMinutes
           }
         });
 
@@ -544,6 +554,9 @@ export class WorkSchedulesService {
     sortOrder: number;
     trialHourlyRate: number;
     officialHourlyRate: number;
+    allowanceAmount: number;
+    lateMinutes: number;
+    earlyLeaveMinutes: number;
     entries: EntryView[];
     shifts: ShiftView[];
   }) {
@@ -565,7 +578,12 @@ export class WorkSchedulesService {
     }, 0);
 
     const workedDays = new Set(params.entries.map((entry) => entry.day));
-    const totalSalary = trialHours * params.trialHourlyRate + officialHours * params.officialHourlyRate;
+    const grossSalary =
+      trialHours * params.trialHourlyRate + officialHours * params.officialHourlyRate;
+    const lateDeduction = (params.officialHourlyRate * params.lateMinutes) / 60;
+    const earlyLeaveDeduction = (params.officialHourlyRate * params.earlyLeaveMinutes) / 60;
+    const totalDeductions = lateDeduction + earlyLeaveDeduction;
+    const netSalary = grossSalary + params.allowanceAmount - totalDeductions;
 
     return {
       userId: params.userId,
@@ -575,12 +593,19 @@ export class WorkSchedulesService {
       sortOrder: params.sortOrder,
       trialHourlyRate: params.trialHourlyRate,
       officialHourlyRate: params.officialHourlyRate,
+      allowanceAmount: params.allowanceAmount,
+      lateMinutes: params.lateMinutes,
+      earlyLeaveMinutes: params.earlyLeaveMinutes,
       entries: params.entries,
       totals: {
         trialHours,
         officialHours,
         totalWorkingDays: workedDays.size,
-        totalSalary
+        grossSalary,
+        lateDeduction,
+        earlyLeaveDeduction,
+        totalDeductions,
+        netSalary
       }
     };
   }
