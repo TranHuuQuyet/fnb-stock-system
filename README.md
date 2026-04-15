@@ -22,7 +22,7 @@ docs/        Architecture, API overview, operation manual, production deployment
 - Quản lý danh mục nguyên liệu có `đơn vị` và `nhóm nguyên liệu`
 - Quản lý `đơn vị nguyên liệu` riêng để tái sử dụng trong form admin
 - Quét nguyên liệu bằng camera hoặc nhập tay
-- Hỗ trợ `Sử dụng tại quán` và `Chuyển kho` giữa các chi nhánh
+- Hỗ trợ `Sử dụng tại quán` và `Chuyển kho` giữa các chi nhánh theo mô hình `in transit -> xác nhận nhận`
 - FIFO validation, soft lock, expired/depleted checks
 - Offline queue bằng IndexedDB và auto sync khi có mạng
 - Màn `Kho nguyên liệu` theo tháng/chi nhánh/phạm vi, tự cộng số lượng theo ngày và ca
@@ -31,7 +31,7 @@ docs/        Architecture, API overview, operation manual, production deployment
 - Màn `Ca làm việc` để sắp ca theo tháng, theo dõi giờ thử việc/chính thức, in bảng chấm công và xuất CSV
 - In tem theo từng lô với `Number` tuần tự
 - Mỗi tem có QR riêng để giảm rủi ro gian lận
-- `ADMIN` có thể cấp quyền `scan_transfer` cho bất kỳ user nào cần thao tác chuyển kho
+- `MANAGER` được chuyển kho theo role; `ADMIN` có thể cấp quyền `scan_transfer` cho `STAFF` khi cần thao tác chuyển kho
 - Hỗ trợ `IP whitelist`, lấy IP backend đang nhìn thấy và `Emergency bypass` có thời hạn cho từng chi nhánh
 - Mặc định hỗ trợ in `10 tem/trang` và cho phép chỉnh bố cục trên màn in
 
@@ -128,6 +128,7 @@ Scanner frontend sẽ tự tách `batchCode` từ cả hai định dạng trên.
 
 - Luồng web hiện tại ưu tiên `IP whitelist` và `Emergency bypass`; `SSID` chỉ là field optional trong browser flow.
 - Frontend queue scan offline bằng IndexedDB thật, giữ nguyên `clientEventId` để sync idempotent.
+- Phiếu chuyển kho chỉ cộng tồn ở chi nhánh nhận sau khi bên nhận xác nhận số lượng thực nhận.
 - Tính năng in tem mới phụ thuộc migration thêm field `printedLabelCount` vào `IngredientBatch`.
 - Tính năng `Kho nguyên liệu` phụ thuộc các bảng `IngredientGroup`, `IngredientStockLayout`, `IngredientStockLayoutGroup`, `IngredientStockLayoutItem`.
 - Tính năng `Ca làm việc` phụ thuộc các bảng `WorkSchedule`, `WorkScheduleShift`, `WorkScheduleEmployee`, `WorkScheduleEntry`.
@@ -141,3 +142,4 @@ Chi tiết triển khai và vận hành nằm trong:
 - `docs/API_OVERVIEW.md`
 - `docs/OPERATION_MANUAL.md`
 - `docs/DEPLOYMENT_PROD.md`
+- `docs/BACKUP_RESTORE.md`

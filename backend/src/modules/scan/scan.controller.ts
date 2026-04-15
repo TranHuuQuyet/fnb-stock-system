@@ -3,7 +3,9 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ScanEntryMethod, UserRole } from '@prisma/client';
 import { Request } from 'express';
 
+import { PERMISSIONS } from '../../common/constants/permissions';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Permissions } from '../../common/decorators/permissions.decorator';
 import { RequireBusinessNetwork } from '../../common/decorators/require-business-network.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
@@ -94,6 +96,7 @@ export class ScanController {
 
   @Get('logs')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF)
+  @Permissions(PERMISSIONS.VIEW_SCAN_LOGS)
   @RequireBusinessNetwork()
   async listLogs(@CurrentUser() user: JwtUser, @Query() query: QueryScanLogsDto) {
     return this.scanService.listLogs(user, query);

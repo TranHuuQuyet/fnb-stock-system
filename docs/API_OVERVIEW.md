@@ -48,6 +48,9 @@
 | POST | `/api/v1/scan/sync` | ADMIN, MANAGER, STAFF | Sync offline events |
 | GET | `/api/v1/scan/network-status` | ADMIN, MANAGER, STAFF | Detect current business network status and normalized IP |
 | GET | `/api/v1/scan/logs` | ADMIN, MANAGER, STAFF | List scan logs by role scope |
+| GET | `/api/v1/transfers/stores` | ADMIN, MANAGER, STAFF | List active stores for transfer source/destination selectors |
+| GET | `/api/v1/transfers` | ADMIN, MANAGER, STAFF | List stock transfer tickets by role scope and direction |
+| PATCH | `/api/v1/transfers/:id/confirm` | ADMIN, MANAGER | Confirm received quantity for an incoming transfer ticket |
 | GET | `/api/v1/ingredient-stock-board` | ADMIN, MANAGER, STAFF | Get ingredient stock board by store, month, year, operation type |
 | PUT | `/api/v1/ingredient-stock-board/layout` | ADMIN, MANAGER | Save stock board layout by store and operation type |
 | POST | `/api/v1/admin/pos-products` | ADMIN | Create POS product |
@@ -195,8 +198,59 @@ Validation chính:
 
 - Scan API hỗ trợ `operationType = STORE_USAGE | TRANSFER`.
 - `ADMIN` luôn có thể chuyển kho.
-- `MANAGER` hoặc `STAFF` muốn chuyển kho phải được cấp permission `scan_transfer`.
-- Khi chuyển kho thành công, chi nhánh nguồn giảm tồn và chi nhánh đích tăng tồn theo cùng nguyên liệu.
+- `MANAGER` có thể chuyển kho theo role; `STAFF` muốn chuyển kho phải được cấp permission `scan_transfer`.
+- Khi tạo chuyển kho, hệ thống trừ tồn ở chi nhánh nguồn ngay và tạo `StockTransfer` ở trạng thái `IN_TRANSIT`.
+- Chi nhánh đích chỉ tăng tồn sau khi `ADMIN` hoặc `MANAGER` của chi nhánh nhận xác nhận phiếu qua `PATCH /transfers/:id/confirm`.
+- Nếu số lượng nhận nhỏ hơn số lượng gửi, request xác nhận bắt buộc có `note` để lưu chênh lệch.
+
+## Transfer API Notes
+
+### `GET /api/v1/transfers`
+
+Query params chính:
+
+- `storeId?`: chỉ `ADMIN` được đổi chi nhánh
+- `batchCode?`
+- `status?`: `IN_TRANSIT | RECEIVED`
+- `direction?`: `ALL | INCOMING | OUTGOING`
+- `startDate?`
+- `endDate?`
+
+Response data chính:
+
+- `sourceStore`
+- `destinationStore`
+- `ingredient`
+- `quantityRequested`
+- `quantityReceived`
+- `status`
+- `confirmationNote`
+- `discrepancyQty`
+- `canConfirm`
+
+Quy tắc nghiệp vụ:
+
+- `MANAGER` chỉ nhìn thấy phiếu của chi nhánh mình theo vai trò gửi/nhận.
+- `STAFF` không có quyền xác nhận phiếu nhận hàng.
+- `canConfirm = true` khi phiếu còn `IN_TRANSIT` và user hiện tại là `ADMIN` hoặc `MANAGER` của chi nhánh nhận.
+
+### `PATCH /api/v1/transfers/:id/confirm`
+
+Request body mẫu:
+
+```json
+{
+  "receivedQty": 9,
+  "note": "Thiếu 1 chai do hỏng khi vận chuyển"
+}
+```
+
+Validation chính:
+
+- `receivedQty` không được âm.
+- `receivedQty` không được lớn hơn `quantityRequested`.
+- Nếu `receivedQty < quantityRequested`, `note` là bắt buộc.
+- `MANAGER` chỉ được xác nhận phiếu mà `destinationStoreId` thuộc chi nhánh của tài khoản.
 
 ## Network Control Notes
 

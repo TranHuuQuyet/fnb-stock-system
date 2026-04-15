@@ -26,6 +26,7 @@
 - `Ingredient` hiện gắn với `IngredientGroup` để dùng chung cho admin form và `Kho nguyên liệu`.
 - `IngredientStockLayout`, `IngredientStockLayoutGroup`, `IngredientStockLayoutItem` lưu bố cục hiển thị theo `storeId + operationType`.
 - `StoreNetworkWhitelist` và các field `networkBypass*` trên `Store` dùng để kiểm soát thao tác nghiệp vụ theo mạng của chi nhánh.
+- `StockTransfer` lưu phiếu chuyển kho giữa hai chi nhánh, gồm số lượng gửi, số lượng nhận, trạng thái `IN_TRANSIT | RECEIVED`, ghi chú chênh lệch và người xác nhận.
 - `WorkSchedule`, `WorkScheduleShift`, `WorkScheduleEmployee`, `WorkScheduleEntry` lưu bảng chấm công theo `storeId + year + month`.
 - Các field chính liên quan đến in tem:
   - `batchCode`: mã lô dùng để tra cứu và scan
@@ -78,9 +79,20 @@
 6. Backend tìm batch theo `storeId + batchCode`.
 7. Backend validate expired, soft lock, remaining quantity và FIFO.
 8. Nếu hợp lệ: trừ tồn, update `DEPLETED` khi về 0, ghi `ScanLog`.
-9. Với `operationType = TRANSFER`, backend kiểm tra thêm permission `scan_transfer` cho user không phải `ADMIN`, trừ tồn ở chi nhánh nguồn và tăng tồn ở chi nhánh đích.
-10. Nếu bị chặn bởi network policy: ghi `FraudAttemptLog` và `ScanLog` lỗi.
-11. Nếu duplicate `clientEventId`: trả `duplicated=true`, không trừ kho lần nữa.
+9. Với `operationType = TRANSFER`, backend cho `ADMIN` và `MANAGER` tạo phiếu chuyển theo role; `STAFF` phải có permission `scan_transfer`.
+10. Khi tạo phiếu chuyển, backend trừ tồn ở chi nhánh nguồn, ghi `ScanLog` xuất kho và tạo `StockTransfer` trạng thái `IN_TRANSIT`.
+11. Chi nhánh đích chỉ được cộng tồn sau khi `ADMIN` hoặc `MANAGER` của chi nhánh nhận xác nhận phiếu.
+12. Nếu bị chặn bởi network policy: ghi `FraudAttemptLog` và `ScanLog` lỗi.
+13. Nếu duplicate `clientEventId`: trả `duplicated=true`, không trừ kho lần nữa.
+
+## Transfer Confirmation Flow
+
+1. Chi nhánh nguồn tạo phiếu chuyển từ màn `Scan` với `operationType = TRANSFER`.
+2. Hàng rời kho nguồn ngay sau khi phiếu được tạo, nhưng chưa cộng vào kho đích.
+3. Màn `Scan Logs` của chi nhánh nhận gọi `GET /transfers` để xem các phiếu `IN_TRANSIT`.
+4. `ADMIN` hoặc `MANAGER` của chi nhánh nhận xác nhận số lượng thực nhận qua `PATCH /transfers/:id/confirm`.
+5. Nếu nhận đủ, hệ thống cộng đúng số lượng vào batch đích và đổi trạng thái phiếu sang `RECEIVED`.
+6. Nếu nhận thiếu, hệ thống vẫn đổi phiếu sang `RECEIVED` nhưng bắt buộc lưu `confirmationNote` để giữ vết chênh lệch.
 
 ## Offline Sync Flow
 

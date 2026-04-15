@@ -21,9 +21,10 @@ export class AuthService {
     private readonly prisma: PrismaService
   ) { }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ipAddress = '0.0.0.0') {
     const user = await this.usersService.findByUsername(dto.username);
     if (!user) {
+      await this.logFailedLogin(dto.username, ipAddress, 'USER_NOT_FOUND');
       throw appException(
         HttpStatus.UNAUTHORIZED,
         ERROR_CODES.AUTH_INVALID_CREDENTIALS,
@@ -32,6 +33,7 @@ export class AuthService {
     }
 
     if (user.status === UserStatus.LOCKED) {
+      await this.logFailedLogin(dto.username, ipAddress, 'ACCOUNT_LOCKED', user.id);
       throw appException(
         HttpStatus.UNAUTHORIZED,
         ERROR_CODES.AUTH_ACCOUNT_LOCKED,
@@ -40,6 +42,7 @@ export class AuthService {
     }
 
     if (user.status === UserStatus.INACTIVE) {
+      await this.logFailedLogin(dto.username, ipAddress, 'ACCOUNT_INACTIVE', user.id);
       throw appException(
         HttpStatus.UNAUTHORIZED,
         ERROR_CODES.AUTH_ACCOUNT_INACTIVE,
@@ -49,6 +52,7 @@ export class AuthService {
 
     const isValidPassword = await comparePassword(dto.password, user.passwordHash);
     if (!isValidPassword) {
+      await this.logFailedLogin(dto.username, ipAddress, 'INVALID_PASSWORD', user.id);
       throw appException(
         HttpStatus.UNAUTHORIZED,
         ERROR_CODES.AUTH_INVALID_CREDENTIALS,
@@ -158,5 +162,24 @@ export class AuthService {
       id: updated.id,
       status: updated.status
     };
+  }
+
+  private async logFailedLogin(
+    username: string,
+    ipAddress: string,
+    reason: string,
+    actorUserId?: string
+  ) {
+    await this.auditService.createLog({
+      actorUserId: actorUserId ?? null,
+      action: 'LOGIN_FAILED',
+      entityType: 'Auth',
+      entityId: actorUserId ?? username,
+      newData: {
+        username,
+        ipAddress,
+        reason
+      }
+    });
   }
 }

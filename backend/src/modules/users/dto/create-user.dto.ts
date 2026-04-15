@@ -1,6 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MinLength, IsArray } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength
+} from 'class-validator';
+
+import { PERMISSION_VALUES } from '../../../common/constants/permissions';
 
 export class CreateUserDto {
   @ApiProperty()
@@ -30,6 +40,7 @@ export class CreateUserDto {
   @ApiProperty({ required: false, type: [String], default: [] })
   @IsOptional()
   @IsArray()
+  @IsIn(PERMISSION_VALUES, { each: true })
   @IsString({ each: true })
   permissions?: string[];
 }

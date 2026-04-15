@@ -41,10 +41,17 @@ const operationTypeLabels: Record<string, string> = {
   TRANSFER: 'Chuyển kho'
 };
 
+const transferStatusLabels: Record<string, string> = {
+  IN_TRANSIT: 'Đang vận chuyển',
+  RECEIVED: 'Đã nhận'
+};
+
 const resultCodeLabels: Record<string, string> = {
   OFFLINE_QUEUED: 'Đã lưu ngoại tuyến',
   SCAN_OK: 'Quét thành công',
   TRANSFER_OK: 'Chuyển kho thành công',
+  TRANSFER_PENDING_RECEIPT: 'Đã tạo phiếu chuyển kho',
+  TRANSFER_RECEIVED: 'Đã xác nhận chuyển kho',
   WARNING_FIFO: 'Cảnh báo FIFO',
   ERROR_NETWORK_RESTRICTED: 'Mạng chưa được cho phép',
   ERROR_BATCH_NOT_FOUND: 'Không tìm thấy lô',
@@ -59,6 +66,10 @@ const resultCodeLabels: Record<string, string> = {
   ERROR_TRANSFER_SAME_STORE: 'Chi nhánh nhận phải khác chi nhánh chuyển',
   ERROR_TRANSFER_STORE_NOT_FOUND: 'Không tìm thấy chi nhánh nhận',
   ERROR_TRANSFER_BATCH_CONFLICT: 'Lô nhận bị trùng mã khác nguyên liệu',
+  ERROR_TRANSFER_NOT_FOUND: 'Không tìm thấy phiếu chuyển kho',
+  ERROR_TRANSFER_ALREADY_RECEIVED: 'Phiếu chuyển kho đã được xác nhận trước đó',
+  ERROR_TRANSFER_CONFIRMATION_NOTE_REQUIRED: 'Cần nhập ghi chú khi số lượng nhận không khớp',
+  ERROR_TRANSFER_RECEIVED_QTY_INVALID: 'Số lượng nhận không hợp lệ',
   AUTH_FORBIDDEN: 'Không có quyền thao tác'
 };
 
@@ -88,6 +99,10 @@ const apiErrorLabels: Record<string, string> = {
   ERROR_TRANSFER_SAME_STORE: 'Chi nhánh nhận phải khác chi nhánh chuyển',
   ERROR_TRANSFER_STORE_NOT_FOUND: 'Không tìm thấy chi nhánh nhận hợp lệ',
   ERROR_TRANSFER_BATCH_CONFLICT: 'Chi nhánh nhận có lô trùng mã nhưng khác nguyên liệu',
+  ERROR_TRANSFER_NOT_FOUND: 'Không tìm thấy phiếu chuyển kho',
+  ERROR_TRANSFER_ALREADY_RECEIVED: 'Phiếu chuyển kho đã được xác nhận trước đó',
+  ERROR_TRANSFER_CONFIRMATION_NOTE_REQUIRED: 'Vui lòng nhập ghi chú khi số lượng nhận không khớp',
+  ERROR_TRANSFER_RECEIVED_QTY_INVALID: 'Số lượng nhận không được vượt quá số lượng đã gửi',
   ERROR_DUPLICATE_CLIENT_EVENT: 'Yêu cầu quét đã được ghi nhận trước đó',
   ERROR_INVALID_QR_FORMAT: 'Mã QR không đúng định dạng',
   POS_IMPORT_ERROR: 'Không thể nhập dữ liệu bán hàng POS',
@@ -120,6 +135,9 @@ export const localizeAdjustmentType = (value: string) =>
 
 export const localizeOperationType = (value: string) =>
   operationTypeLabels[value] ?? fallback(value);
+
+export const localizeTransferStatus = (value: string) =>
+  transferStatusLabels[value] ?? fallback(value);
 
 export const localizeResultCode = (value: string) =>
   resultCodeLabels[value] ?? fallback(value);

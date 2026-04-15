@@ -8,10 +8,12 @@ import {
   ScanOperationType,
   ScanResultStatus,
   ScanSource,
+  StockTransferStatus,
   UserRole
 } from '@prisma/client';
 
 import { ERROR_CODES } from '../../common/constants/error-codes';
+import { PERMISSIONS } from '../../common/constants/permissions';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { appException } from '../../common/utils/app-exception';
 import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
@@ -44,9 +46,9 @@ type ProcessScanResult = {
   destinationStoreId?: string | null;
   remainingQty?: number;
   scanLogId?: string;
+  transferId?: string;
+  transferStatus?: StockTransferStatus;
 };
-
-const TRANSFER_SCAN_PERMISSION = 'scan_transfer';
 
 @Injectable()
 export class ScanService {
@@ -701,7 +703,7 @@ export class ScanService {
   ): Promise<ProcessScanResult | null> {
     if (
       operationType === ScanOperationType.TRANSFER &&
-      params.currentUser.role !== UserRole.ADMIN &&
+      params.currentUser.role === UserRole.STAFF &&
       !(await this.hasTransferPermission(params.currentUser.userId))
     ) {
       return this.createErrorResultV2(params, {
@@ -935,7 +937,7 @@ export class ScanService {
 
       const olderBatch = await this.batchesService.findOlderActiveBatch(freshBatch);
       let resultStatus: ScanResultStatus = ScanResultStatus.SUCCESS;
-      let resultCode: string = ERROR_CODES.TRANSFER_OK;
+      let resultCode: string = ERROR_CODES.TRANSFER_PENDING_RECEIPT;
       let message = `Đã chuyển nguyên liệu sang chi nhánh ${destinationStoreName} thành công`;
 
       if (olderBatch) {
@@ -954,6 +956,73 @@ export class ScanService {
         message = `Cảnh báo FIFO: vẫn còn lô cũ hơn chưa được sử dụng hết trước khi chuyển sang ${destinationStoreName}`;
       }
 
+      if (resultStatus === ScanResultStatus.SUCCESS) {
+        message = `Đã tạo phiếu chuyển kho sang chi nhánh ${destinationStoreName}. Chờ chi nhánh nhận xác nhận.`;
+      }
+
+      const transferSourceQty = freshBatch.remainingQty - params.dto.quantityUsed;
+      const updatedTransferSourceBatch = await tx.ingredientBatch.update({
+        where: { id: freshBatch.id },
+        data: {
+          remainingQty: transferSourceQty,
+          status: transferSourceQty <= 0 ? BatchStatus.DEPLETED : freshBatch.status
+        }
+      });
+
+      const transferScanLog = await tx.scanLog.create({
+        data: {
+          clientEventId: params.dto.clientEventId,
+          storeId,
+          destinationStoreId,
+          userId: params.currentUser.userId,
+          deviceId: params.deviceId,
+          batchId: freshBatch.id,
+          quantityUsed: params.dto.quantityUsed,
+          scannedAt: new Date(params.dto.scannedAt),
+          receivedAt: new Date(),
+          source: params.source,
+          entryMethod: params.entryMethod,
+          operationType: ScanOperationType.TRANSFER,
+          ipAddress: params.ipAddress,
+          ssid: params.dto.ssid,
+          resultStatus,
+          resultCode,
+          message,
+          duplicated: false
+        }
+      });
+
+      const createdTransfer = await tx.stockTransfer.create({
+        data: {
+          sourceStoreId: storeId,
+          destinationStoreId,
+          sourceBatchId: freshBatch.id,
+          ingredientId: freshBatch.ingredientId,
+          batchCode: freshBatch.batchCode,
+          quantityRequested: params.dto.quantityUsed,
+          status: StockTransferStatus.IN_TRANSIT,
+          requestedAt: new Date(params.dto.scannedAt),
+          createdByUserId: params.currentUser.userId
+        }
+      });
+
+      return {
+        duplicated: false,
+        clientEventId: transferScanLog.clientEventId,
+        resultStatus,
+        resultCode,
+        message,
+        batchCode: params.dto.batchCode,
+        operationType: ScanOperationType.TRANSFER,
+        batchId: transferScanLog.batchId,
+        destinationStoreId,
+        remainingQty: updatedTransferSourceBatch.remainingQty,
+        scanLogId: transferScanLog.id,
+        transferId: createdTransfer.id,
+        transferStatus: createdTransfer.status
+      };
+
+      /* Legacy immediate destination-stock update flow kept for reference.
       const targetBatch = await tx.ingredientBatch.findUnique({
         where: {
           storeId_batchCode: {
@@ -1051,6 +1120,7 @@ export class ScanService {
         remainingQty: updatedSourceBatch.remainingQty,
         scanLogId: scanLog.id
       };
+      */
     });
   }
 
@@ -1238,6 +1308,6 @@ export class ScanService {
       }
     });
 
-    return Boolean(user?.permissions.includes(TRANSFER_SCAN_PERMISSION));
+    return Boolean(user?.permissions.includes(PERMISSIONS.SCAN_TRANSFER));
   }
 }

@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { Prisma, UserStatus } from '@prisma/client';
+import { Prisma, UserRole, UserStatus } from '@prisma/client';
 
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import { appException } from '../../common/utils/app-exception';
@@ -16,6 +16,9 @@ const sanitizeUser = <T extends { passwordHash: string }>(user: T) => {
   const { passwordHash, ...safeUser } = user;
   return safeUser;
 };
+
+const normalizePermissions = (permissions?: string[]) =>
+  Array.from(new Set(permissions ?? []));
 
 @Injectable()
 export class UsersService {
@@ -54,6 +57,8 @@ export class UsersService {
       );
     }
 
+    this.assertStoreAssignment(dto.role, dto.storeId ?? null);
+
     if (dto.storeId) {
       const store = await this.prisma.store.findUnique({ where: { id: dto.storeId } });
       if (!store) {
@@ -74,7 +79,7 @@ export class UsersService {
         storeId: dto.storeId ?? null,
         passwordHash,
         status: UserStatus.MUST_CHANGE_PASSWORD,
-        permissions: dto.permissions ?? []
+        permissions: normalizePermissions(dto.permissions)
       },
       include: {
         store: true
@@ -171,8 +176,13 @@ export class UsersService {
       );
     }
 
-    if (dto.storeId) {
-      const store = await this.prisma.store.findUnique({ where: { id: dto.storeId } });
+    const nextRole = dto.role ?? existing.role;
+    const nextStoreId = dto.storeId !== undefined ? dto.storeId : existing.storeId;
+
+    this.assertStoreAssignment(nextRole, nextStoreId ?? null);
+
+    if (nextStoreId) {
+      const store = await this.prisma.store.findUnique({ where: { id: nextStoreId } });
       if (!store) {
         throw appException(
           HttpStatus.NOT_FOUND,
@@ -189,7 +199,9 @@ export class UsersService {
         ...(dto.role ? { role: dto.role } : {}),
         ...(dto.storeId !== undefined ? { storeId: dto.storeId } : {}),
         ...(dto.status ? { status: dto.status } : {}),
-        ...(dto.permissions !== undefined ? { permissions: dto.permissions } : {})
+        ...(dto.permissions !== undefined
+          ? { permissions: normalizePermissions(dto.permissions) }
+          : {})
       },
       include: {
         store: true
@@ -286,5 +298,15 @@ export class UsersService {
     });
 
     return sanitizeUser(updated);
+  }
+
+  private assertStoreAssignment(role: UserRole, storeId: string | null) {
+    if (role !== UserRole.ADMIN && !storeId) {
+      throw appException(
+        HttpStatus.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
+        'MANAGER và STAFF phải được gắn chi nhánh'
+      );
+    }
   }
 }

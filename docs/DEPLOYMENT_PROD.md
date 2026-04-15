@@ -25,7 +25,7 @@ Tài liệu này mô tả cách triển khai hệ thống ở môi trường pro
 ### Checklist bắt buộc
 
 1. Tạo domain hoặc subdomain thật:
-   - ví dụ `fnb.example.com` cho frontend
+   - ví dụ `fnbstore.store` cho frontend
    - hoặc `api.example.com` cho backend nếu không đi chung domain
 2. Tạo secret mạnh cho:
    - `JWT_SECRET`
@@ -67,7 +67,7 @@ JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN=1d
 JWT_REFRESH_SECRET=replace-with-another-long-random-secret
 JWT_REFRESH_EXPIRES_IN=7d
-CORS_ORIGIN=https://fnb.example.com
+CORS_ORIGIN=https://fnbstore.store
 APP_TIMEZONE=Asia/Ho_Chi_Minh
 TRUST_PROXY=1
 ```
@@ -83,7 +83,7 @@ Ghi chú:
 Tạo file `frontend/.env.production`:
 
 ```dotenv
-NEXT_PUBLIC_API_BASE_URL=https://fnb.example.com/api/v1
+NEXT_PUBLIC_API_BASE_URL=https://fnbstore.store/api/v1
 ```
 
 Ghi chú:
@@ -135,8 +135,8 @@ npm ci
 ### Bước 3: tạo env production
 
 ```bash
-cp /srv/fnb-stock-system/backend/.env.example /srv/fnb-stock-system/backend/.env.production
-cp /srv/fnb-stock-system/frontend/.env.example /srv/fnb-stock-system/frontend/.env.production
+cp /srv/fnb-stock-system/backend/.env.production.example /srv/fnb-stock-system/backend/.env.production
+cp /srv/fnb-stock-system/frontend/.env.production.example /srv/fnb-stock-system/frontend/.env.production
 ```
 
 Sau đó thay toàn bộ giá trị demo bằng giá trị production thật.
@@ -156,6 +156,39 @@ Lưu ý:
 
 - Không chạy `npm run db:seed` trên production.
 - Nếu chưa có bootstrap admin production-safe, hãy hoàn tất bước này trước khi mở hệ thống cho user thật.
+
+### Bước 4.1: bootstrap admin đầu tiên
+
+Lệnh này dùng để tạo admin đầu tiên cho production mà không kéo theo dữ liệu demo:
+
+```bash
+cd /srv/fnb-stock-system/backend
+BOOTSTRAP_ADMIN_USERNAME=admin \
+BOOTSTRAP_ADMIN_FULL_NAME="FNB Store Admin" \
+BOOTSTRAP_ADMIN_PASSWORD='replace-with-a-strong-password' \
+BOOTSTRAP_ADMIN_FORCE_RESET=true \
+npm run bootstrap:admin
+```
+
+Nếu muốn tạo luôn chi nhánh đầu tiên:
+
+```bash
+cd /srv/fnb-stock-system/backend
+BOOTSTRAP_ADMIN_USERNAME=admin \
+BOOTSTRAP_ADMIN_FULL_NAME="FNB Store Admin" \
+BOOTSTRAP_ADMIN_PASSWORD='replace-with-a-strong-password' \
+BOOTSTRAP_ADMIN_FORCE_RESET=true \
+BOOTSTRAP_STORE_CODE=CN01 \
+BOOTSTRAP_STORE_NAME="Chi nhánh 1" \
+BOOTSTRAP_STORE_TIMEZONE=Asia/Ho_Chi_Minh \
+npm run bootstrap:admin
+```
+
+Ghi chú:
+
+- Script này chỉ tạo tối thiểu `AppConfig`, admin đầu tiên, và tùy chọn 1 store.
+- Không dùng script này để nạp dữ liệu demo.
+- Không chạy lặp lại với cùng `username`.
 
 ### Bước 5: build backend và frontend
 
@@ -347,6 +380,7 @@ Khuyến nghị:
 
 - Test restore định kỳ trên môi trường staging hoặc máy phục hồi riêng.
 - Không coi backup là hoàn thành nếu chưa test restore.
+- Xem runbook chi tiết tại [BACKUP_RESTORE.md](./BACKUP_RESTORE.md).
 
 ## 11. Monitoring và log
 

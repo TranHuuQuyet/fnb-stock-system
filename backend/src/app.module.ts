@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { BusinessNetworkGuard } from './common/guards/business-network.guard';
+import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { PrismaModule } from './prisma/prisma.module';
@@ -50,7 +51,7 @@ import { IngredientStockBoardModule } from './modules/ingredient-stock-board/ing
     WorkSchedulesModule,
     IngredientStockBoardModule
   ],
-  providers: [BusinessNetworkGuard]
+  providers: [BusinessNetworkGuard, PermissionsGuard]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

@@ -11,14 +11,13 @@ import { getDeviceId, getSession } from '@/lib/auth';
 import { parseBatchQrValue } from '@/lib/batch-qr';
 import { queueOfflineScan } from '@/lib/indexeddb';
 import { localizeResultCode, localizeSyncState } from '@/lib/localization';
-import { listStores } from '@/services/admin/stores';
 import { listBatches } from '@/services/batches';
-import { listAccessibleStores } from '@/services/stores';
 import {
   getScanNetworkStatus,
   submitManualScan,
   submitScan
 } from '@/services/scan';
+import { listTransferStores } from '@/services/transfers';
 import { ProtectedPage } from '@/components/layout/protected-page';
 import { QrScanner } from '@/components/scan/qr-scanner';
 import { Badge } from '@/components/ui/badge';
@@ -130,7 +129,9 @@ const toStoreQuery = (storeId: string) => `?storeId=${encodeURIComponent(storeId
 export default function ScanPageContent() {
   const session = getSession();
   const isAdmin = session?.user.role === 'ADMIN';
-  const canTransfer = isAdmin || (session?.user.permissions ?? []).includes('scan_transfer');
+  const isManager = session?.user.role === 'MANAGER';
+  const canTransfer =
+    isAdmin || isManager || (session?.user.permissions ?? []).includes('scan_transfer');
   const { syncState, isOnline } = useOfflineSync();
   const [feedback, setFeedback] = useState<{
     tone: ScanTone;
@@ -206,9 +207,9 @@ export default function ScanPageContent() {
     if (destinationStoreId) persistStoreId('transfer-destination', destinationStoreId);
   }, [destinationStoreId]);
 
-  const storesQuery = useQuery({
+  const storesQuery = useQuery<Array<{ id: string; name: string }>>({
     queryKey: ['scan-stores'],
-    queryFn: () => (isAdmin ? listStores('') : listAccessibleStores()),
+    queryFn: () => listTransferStores(),
     enabled: isAdmin || canTransfer
   });
 
@@ -258,17 +259,17 @@ export default function ScanPageContent() {
   }, [destinationInventoryQuery.data]);
 
   const selectedDestinationStoreName = useMemo(() => {
-    const stores = (storesQuery.data?.data ?? []) as Array<{ id: string; name: string }>;
+    const stores = storesQuery.data ?? [];
     return stores.find((store) => store.id === destinationStoreId)?.name ?? '';
   }, [destinationStoreId, storesQuery.data]);
 
   const selectedUsageStoreName = useMemo(() => {
-    const stores = (storesQuery.data?.data ?? []) as Array<{ id: string; name: string }>;
+    const stores = storesQuery.data ?? [];
     return stores.find((store) => store.id === storeId)?.name ?? '';
   }, [storeId, storesQuery.data]);
 
   const selectedSourceStoreName = useMemo(() => {
-    const stores = (storesQuery.data?.data ?? []) as Array<{ id: string; name: string }>;
+    const stores = storesQuery.data ?? [];
     return stores.find((store) => store.id === sourceStoreId)?.name ?? '';
   }, [sourceStoreId, storesQuery.data]);
 
@@ -519,6 +520,25 @@ export default function ScanPageContent() {
         entryMethod: (values.manual ? 'MANUAL' : 'CAMERA') as 'MANUAL' | 'CAMERA'
       };
 
+      if (!isOnline && values.operationType === 'STORE_USAGE') {
+        await queueOfflineScan({
+          ...payload,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        });
+        return {
+          resultStatus: 'SUCCESS',
+          resultCode: 'OFFLINE_QUEUED',
+          message: 'Lượt quét đã được lưu ngoại tuyến và sẽ tự đồng bộ khi có mạng.'
+        };
+      }
+
+      if (!isOnline && values.operationType === 'TRANSFER') {
+        throw new Error(
+          'Thiết bị đang offline. Chuyển kho cần online để chi nhánh nhận theo dõi và xác nhận phiếu.'
+        );
+      }
+
       if (!isOnline) {
         throw new Error(
           'Thiết bị đang offline. Theo chính sách hiện tại, bạn phải kết nối đúng mạng chi nhánh mới được quét.'
@@ -543,6 +563,23 @@ export default function ScanPageContent() {
           ? ((await submitManualScan(payload)) as ScanResponse)
           : ((await submitScan(payload)) as ScanResponse);
       } catch (error) {
+        if (!navigator.onLine && values.operationType === 'STORE_USAGE') {
+          await queueOfflineScan({
+            ...payload,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+          });
+          return {
+            resultStatus: 'SUCCESS',
+            resultCode: 'OFFLINE_QUEUED',
+            message: 'Mạng vừa mất, lượt quét đã được lưu ngoại tuyến.'
+          };
+        }
+
+        if (!navigator.onLine && values.operationType === 'TRANSFER') {
+          throw new Error('Mạng vừa mất. Hãy kết nối lại để hoàn tất tạo phiếu chuyển kho.');
+        }
+
         if (!navigator.onLine) {
           throw new Error(
             'Mạng vừa mất. Hãy kết nối lại đúng mạng chi nhánh rồi quét lại.'
@@ -608,7 +645,7 @@ export default function ScanPageContent() {
     }
   });
 
-  const stores = (storesQuery.data?.data ?? []) as Array<{ id: string; name: string }>;
+  const stores = storesQuery.data ?? [];
 
   return (
     <ProtectedPage title="Quét nguyên liệu" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
@@ -675,6 +712,16 @@ export default function ScanPageContent() {
               : `Quét để ghi nhận nguyên liệu vừa được sử dụng tại quầy. ${isAdmin && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name ? `Chi nhánh sử dụng: ${selectedUsageStoreName}.` : ''}`}
           </p>
         </Card>
+
+        {operationType === 'TRANSFER' ? (
+          <Card className="mb-4 border border-amber-200 bg-amber-50">
+            <p className="text-sm font-medium text-amber-900">
+              Lưu ý: lượt quét chuyển kho chỉ tạo phiếu và trừ tồn ở chi nhánh gửi.
+              Chi nhánh nhận phải vào màn lịch sử chuyển kho để xác nhận số lượng thực nhận,
+              lúc đó kho đích mới được cộng.
+            </p>
+          </Card>
+        ) : null}
 
         {!manualMode ? (
           <Card className="mb-4">

@@ -24,7 +24,7 @@
 1. Đăng nhập `admin`
 2. Kiểm tra store seed ở `Admin > Stores`
 3. Vào `Admin > Users` để tạo manager/staff mới
-4. Nếu cần thao tác chuyển kho, cấp permission `Chuyển kho` cho đúng user ở `Admin > Users`
+4. `MANAGER` có thể chuyển kho theo role; nếu muốn cho `STAFF` chuyển kho, cấp permission `Chuyển kho` ở `Admin > Users`
 5. Vào `Admin > Ingredients` để thêm nguyên liệu
 6. Với mỗi nguyên liệu, khai báo đầy đủ:
    - mã nguyên liệu
@@ -78,21 +78,23 @@
 5. Hệ thống tự nhận diện mã lô từ tem
 6. Chọn phạm vi thao tác:
    - `Sử dụng tại quán`
-   - `Chuyển kho` nếu tài khoản đã được cấp quyền
+   - `Chuyển kho` nếu là `MANAGER` hoặc `STAFF` đã được cấp quyền
 7. Nếu là `Chuyển kho`, chọn `chi nhánh nguồn` và `chi nhánh đích`
 8. Nhập `Số lượng sử dụng` hoặc `Số lượng chuyển`
 9. Bấm gửi lượt quét
-10. Nếu camera lỗi, bật chế độ nhập tay và nhập `Mã lô`
-11. Màu trạng thái:
+10. Nếu là `Chuyển kho`, hệ thống sẽ tạo `phiếu chuyển kho`, trừ tồn ở chi nhánh gửi và chờ chi nhánh nhận xác nhận
+11. Nếu camera lỗi, bật chế độ nhập tay và nhập `Mã lô`
+12. Màu trạng thái:
    - xanh: scan thành công
    - vàng: warning FIFO
    - đỏ: scan bị reject
    - xám: đã lưu offline
-12. Nếu mất mạng:
-   - scan vẫn được lưu vào IndexedDB
+13. Nếu mất mạng:
+   - `Sử dụng tại quán` vẫn được lưu vào IndexedDB
+   - `Chuyển kho` không cho thao tác offline
    - badge hiển thị `OFFLINE`
-   - khi có mạng lại, app tự sync
-13. Nếu sync lỗi:
+   - khi có mạng lại, app tự sync các lượt `Sử dụng tại quán`
+14. Nếu sync lỗi:
    - giữ thiết bị online
    - mở lại màn scan hoặc refresh
    - kiểm tra whitelist IP nếu bị reject liên tục
@@ -112,12 +114,14 @@
    - kiểm tra staff có scan đúng batch chưa
    - kiểm tra batch soft lock hoặc expired
 6. Vào `Scan Logs` để xem chi tiết thao tác
-7. Vào `Control > Kho nguyên liệu` để:
+7. Nếu có phiếu chuyển kho đang đến chi nhánh mình, vào tab `Chuyển kho` để xác nhận số lượng thực nhận
+8. Nếu nhận thiếu hoặc hỏng, nhập đúng `Số lượng nhận` và bắt buộc ghi chú lý do chênh lệch
+9. Vào `Control > Kho nguyên liệu` để:
    - xem tồn theo nhóm nguyên liệu
    - kiểm tra số lượng đã quét theo ngày/ca
    - lọc nhanh theo `Loại nguyên liệu / Nguyên liệu`
    - lưu lại bố cục hiển thị nếu cần
-8. Vào `Control > Ca làm việc` để xem bảng chấm công tháng, giờ thử việc/chính thức và in hoặc xuất CSV nếu cần
+10. Vào `Control > Ca làm việc` để xem bảng chấm công tháng, giờ thử việc/chính thức và in hoặc xuất CSV nếu cần
 
 ## 6. Quản trị cho ADMIN
 
@@ -235,6 +239,10 @@
 23. Chọn tháng hiện tại, chỉnh thử một vài ca và đơn giá rồi lưu bằng `admin`
 24. Bấm `Xuất CSV` hoặc `In bảng chấm công`
 25. Chuyển trạng thái sang `LOCKED` và xác nhận màn hình không cho chỉnh sửa nữa
+26. Tạo một phiếu `Chuyển kho` từ chi nhánh A sang chi nhánh B
+27. Đăng nhập `manager` hoặc `admin` của chi nhánh B, vào `Scan Logs > Chuyển kho`
+28. Xác nhận số lượng nhận đủ hoặc nhận thiếu kèm ghi chú
+29. Kiểm tra tồn kho chi nhánh B chỉ tăng sau bước xác nhận
 
 ## 10. Xử lý sự cố thường gặp
 
@@ -285,6 +293,7 @@
 
 ### Offline logs không sync
 
+- Luồng offline chỉ áp dụng cho `Sử dụng tại quán`, không áp dụng cho `Chuyển kho`
 - Kiểm tra badge trạng thái có chuyển `SYNCING` không
 - Giữ browser online
 - Kiểm tra backend `/scan/sync`
@@ -328,10 +337,17 @@
 
 ### Chuyển kho quét không được
 
-- Kiểm tra user đã được cấp permission `Chuyển kho` chưa
+- Kiểm tra user là `MANAGER` hoặc `STAFF` đã được cấp permission `Chuyển kho`
 - Kiểm tra đã chọn đủ `chi nhánh nguồn` và `chi nhánh đích`
 - Kiểm tra whitelist IP theo chi nhánh nguồn
 - Kiểm tra lô nguồn còn đủ tồn để chuyển
+- Kiểm tra thiết bị đang online vì chuyển kho không hỗ trợ offline
+
+### Phiếu chuyển kho chưa vào tồn kho chi nhánh nhận
+
+- Kiểm tra chi nhánh nhận đã vào `Scan Logs > Chuyển kho` để xác nhận chưa
+- Kiểm tra phiếu còn ở trạng thái `IN_TRANSIT` hay đã `RECEIVED`
+- Nếu nhận thiếu, bắt buộc nhập ghi chú khi xác nhận
 
 ## 11. Quy trình nghiệp vụ đề xuất
 

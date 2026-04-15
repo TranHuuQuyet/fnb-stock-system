@@ -1,7 +1,8 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 
 import { ERROR_CODES } from '../../common/constants/error-codes';
+import type { JwtUser } from '../../common/types/request-with-user';
 import { appException } from '../../common/utils/app-exception';
 import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -81,12 +82,17 @@ export class StoresService {
     };
   }
 
-  async listAccessible() {
+  async listAccessible(currentUser: JwtUser) {
+    const where: Prisma.StoreWhereInput = {
+      isActive: true,
+      ...(currentUser.role === UserRole.ADMIN
+        ? {}
+        : { id: currentUser.storeId ?? '__missing_store_scope__' })
+    };
+
     return {
       data: await this.prisma.store.findMany({
-        where: {
-          isActive: true
-        },
+        where,
         select: {
           id: true,
           code: true,

@@ -1,5 +1,6 @@
 import { JwtService } from '@nestjs/jwt';
 import { UserRole, UserStatus } from '@prisma/client';
+import { comparePassword } from '../../common/utils/password';
 
 import { AuthService } from './auth.service';
 
@@ -9,6 +10,7 @@ jest.mock('../../common/utils/password', () => ({
 }));
 
 describe('AuthService', () => {
+  const mockedComparePassword = comparePassword as jest.Mock;
   const usersService = {
     findByUsername: jest.fn(),
     findById: jest.fn(),
@@ -50,12 +52,57 @@ describe('AuthService', () => {
       service.login({
         username: 'locked',
         password: '123456'
-      })
+      }, '127.0.0.1')
     ).rejects.toMatchObject({
       response: {
         code: 'AUTH_ACCOUNT_LOCKED'
       }
     });
+    expect(auditService.createLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'LOGIN_FAILED',
+        actorUserId: 'user-1'
+      })
+    );
+  });
+
+  it('logs invalid password attempts', async () => {
+    usersService.findByUsername.mockResolvedValue({
+      id: 'user-2',
+      username: 'staff1',
+      fullName: 'Staff 1',
+      role: UserRole.STAFF,
+      storeId: 'store-1',
+      passwordHash: 'hashed',
+      status: UserStatus.ACTIVE,
+      permissions: [],
+      store: null
+    });
+    mockedComparePassword.mockResolvedValueOnce(false);
+
+    await expect(
+      service.login(
+        {
+          username: 'staff1',
+          password: 'wrong-password'
+        },
+        '127.0.0.1'
+      )
+    ).rejects.toMatchObject({
+      response: {
+        code: 'AUTH_INVALID_CREDENTIALS'
+      }
+    });
+
+    expect(auditService.createLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'LOGIN_FAILED',
+        actorUserId: 'user-2',
+        newData: expect.objectContaining({
+          reason: 'INVALID_PASSWORD'
+        })
+      })
+    );
   });
 
   it('changes password and activates must-change account', async () => {

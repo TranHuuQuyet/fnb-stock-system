@@ -59,6 +59,11 @@ enum ScanOperationType {
   TRANSFER
 }
 
+enum StockTransferStatus {
+  IN_TRANSIT
+  RECEIVED
+}
+
 enum FraudAttemptType {
   NETWORK_RESTRICTED
   INVALID_QR
@@ -107,6 +112,8 @@ model User {
   adjustments   StockAdjustment[]
   audits        AuditLog[]
   workScheduleEmployees WorkScheduleEmployee[]
+  createdTransfers StockTransfer[] @relation("CreatedStockTransfers")
+  confirmedTransfers StockTransfer[] @relation("ConfirmedStockTransfers")
 
   @@index([storeId])
   @@index([createdAt])
@@ -135,6 +142,8 @@ model Store {
   anomalyAlerts     AnomalyAlert[]
   workSchedules     WorkSchedule[]
   ingredientStockLayouts IngredientStockLayout[]
+  outgoingTransfers StockTransfer[] @relation("SourceStockTransfers")
+  incomingTransfers StockTransfer[] @relation("DestinationStockTransfers")
 
   @@index([createdAt])
   @@index([networkBypassEnabled, networkBypassExpiresAt])
@@ -184,6 +193,7 @@ model Ingredient {
   recipes   Recipe[]
   alerts    AnomalyAlert[]
   stockLayoutItems IngredientStockLayoutItem[]
+  stockTransfers StockTransfer[]
 
   @@index([createdAt])
   @@index([groupId])
@@ -232,6 +242,8 @@ model IngredientBatch {
   store          Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
   adjustments    StockAdjustment[]
   scanLogs       ScanLog[]
+  outgoingTransfers StockTransfer[] @relation("SourceBatchTransfers")
+  incomingTransfers StockTransfer[] @relation("DestinationBatchTransfers")
 
   @@unique([storeId, batchCode])
   @@index([storeId, status, receivedAt])
@@ -389,6 +401,38 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model StockTransfer {
+  id                String              @id @default(cuid())
+  sourceStoreId     String
+  destinationStoreId String
+  sourceBatchId     String
+  destinationBatchId String?
+  ingredientId      String
+  batchCode         String
+  quantityRequested Float
+  quantityReceived  Float?
+  status            StockTransferStatus @default(IN_TRANSIT)
+  requestedAt       DateTime
+  confirmedAt       DateTime?
+  confirmationNote  String?
+  createdByUserId   String
+  confirmedByUserId String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  sourceStore       Store               @relation("SourceStockTransfers", fields: [sourceStoreId], references: [id], onDelete: Restrict)
+  destinationStore  Store               @relation("DestinationStockTransfers", fields: [destinationStoreId], references: [id], onDelete: Restrict)
+  sourceBatch       IngredientBatch     @relation("SourceBatchTransfers", fields: [sourceBatchId], references: [id], onDelete: Restrict)
+  destinationBatch  IngredientBatch?    @relation("DestinationBatchTransfers", fields: [destinationBatchId], references: [id], onDelete: SetNull)
+  ingredient        Ingredient          @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  createdByUser     User                @relation("CreatedStockTransfers", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  confirmedByUser   User?               @relation("ConfirmedStockTransfers", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([sourceStoreId, requestedAt])
+  @@index([destinationStoreId, status, requestedAt])
+  @@index([status, requestedAt])
+  @@index([batchCode, requestedAt])
 }
 
 model IngredientStockLayout {
