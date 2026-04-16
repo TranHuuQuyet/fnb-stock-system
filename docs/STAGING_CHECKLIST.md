@@ -1,6 +1,6 @@
 # Staging Checklist
 
-Tài liệu này dùng để dựng môi trường staging gần giống production nhất có thể trước khi chạy UAT và pilot.
+Tài liệu này dùng để dựng môi trường staging gần giống production nhất có thể trước khi chạy UAT và pilot. Nếu cần chốt tag release, rollback hoặc bàn giao deploy, xem thêm [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md).
 
 ## 1. Mục tiêu staging
 
@@ -31,31 +31,38 @@ Tài liệu này dùng để dựng môi trường staging gần giống product
 
 ## 4. Checklist cấu hình
 
-1. Tạo `backend/.env.production` cho staging
-2. Tạo `frontend/.env.production` cho staging
-3. Kiểm tra các biến bắt buộc:
+1. Tạo `.env.staging.compose` cho staging
+2. Tạo `backend/.env.staging` cho staging
+3. Tạo `frontend/.env.staging` cho staging
+4. Kiểm tra các biến bắt buộc:
    - `DATABASE_URL`
    - `JWT_SECRET`
    - `JWT_REFRESH_SECRET`
    - `CORS_ORIGIN`
    - `NEXT_PUBLIC_API_BASE_URL`
-4. Xác nhận `NEXT_PUBLIC_API_BASE_URL` dùng đúng domain staging
-5. Xác nhận không còn giá trị `localhost` trong env staging
+5. Xác nhận `NEXT_PUBLIC_API_BASE_URL` dùng đúng domain staging
+6. Xác nhận không còn giá trị `localhost` trong env staging
+7. Khuyến nghị copy từ các file mẫu:
+   - `.env.staging.compose.example`
+   - `backend/.env.staging.example`
+   - `frontend/.env.staging.example`
 
 ## 5. Checklist deploy
 
 1. Pull code đúng branch hoặc tag cần kiểm thử
-2. Cài dependencies bằng `npm ci`
-3. Chạy:
+2. Nếu dùng compose staging, chạy:
+   - `docker compose --env-file .env.staging.compose -f docker-compose.prod.yml up -d --build`
+3. Nếu không dùng compose, cài dependencies bằng `npm ci`
+4. Chạy:
    - `cd backend && npm run prisma:generate`
    - `cd backend && npm run prisma:deploy`
-4. Không chạy `npm run db:seed`
-5. Chạy `bootstrap:admin` để tạo admin đầu tiên
-6. Build:
+5. Không chạy `npm run db:seed`
+6. Chạy `bootstrap:admin` để tạo admin đầu tiên
+7. Build:
    - `cd backend && npm run build`
    - `cd frontend && npm run build`
-7. Start service backend và frontend
-8. Kiểm tra reverse proxy và TLS
+8. Start service backend và frontend
+9. Kiểm tra reverse proxy và TLS
 
 ## 6. Checklist smoke test staging
 

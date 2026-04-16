@@ -34,7 +34,7 @@ export class BatchLabelsService {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_BATCH_NOT_FOUND,
-        'Không tìm thấy lô hàng'
+        'Khong tim thay lo hang'
       );
     }
 
@@ -91,7 +91,7 @@ export class BatchLabelsService {
     return this.buildLabelResponse(batch);
   }
 
-  async issueLabels(actorUserId: string, batchId: string, quantity: number) {
+  async issueLabels(actorUserId: string, batchId: string, quantity: number, reason?: string) {
     const issued = await this.prisma.$transaction(async (tx) => {
       const batch = await tx.ingredientBatch.findUnique({
         where: { id: batchId },
@@ -105,16 +105,27 @@ export class BatchLabelsService {
         throw appException(
           HttpStatus.NOT_FOUND,
           ERROR_CODES.ADMIN_ERROR_BATCH_NOT_FOUND,
-          'KhÃ´ng tÃ¬m tháº¥y lÃ´ hÃ ng'
+          'Khong tim thay lo hang'
         );
       }
 
       const stats = this.buildLabelStats(batch.initialQty, batch.printedLabelCount);
+      const normalizedReason = reason?.trim();
+      const isReprint = batch.printedLabelCount > 0;
+
+      if (isReprint && !normalizedReason) {
+        throw appException(
+          HttpStatus.BAD_REQUEST,
+          ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
+          'Can nhap ly do khi phat hanh them tem cho lo da tung in'
+        );
+      }
+
       if (quantity > stats.remainingLabelCount) {
         throw appException(
           HttpStatus.CONFLICT,
           ERROR_CODES.ERROR_LABEL_PRINT_LIMIT_EXCEEDED,
-          'Sá»‘ tem yÃªu cáº§u vÆ°á»£t quÃ¡ dÃ£y sá»‘ cÃ²n láº¡i cá»§a lÃ´ nÃ y',
+          'So tem yeu cau vuot qua day so con lai cua lo nay',
           {
             requestedQuantity: quantity,
             remainingLabelCount: stats.remainingLabelCount,
@@ -147,7 +158,7 @@ export class BatchLabelsService {
         throw appException(
           HttpStatus.CONFLICT,
           ERROR_CODES.QR_LABEL_RENDER_ERROR,
-          'LÃ´ hÃ ng vá»«a Ä‘Æ°á»£c cáº­p nháº­t tá»« phiÃªn khÃ¡c. Vui lÃ²ng táº£i láº¡i vÃ  thá»­ in láº¡i.'
+          'Lo hang vua duoc cap nhat tu phien khac. Vui long tai lai va thu lai.'
         );
       }
 
@@ -164,6 +175,8 @@ export class BatchLabelsService {
 
       return {
         batch: updated,
+        reason: normalizedReason ?? null,
+        isReprint,
         issuedFromNumber,
         issuedToNumber,
         quantity,
@@ -187,6 +200,8 @@ export class BatchLabelsService {
         issuedQuantity: issued.quantity,
         issuedFromNumber: issued.issuedFromNumber,
         issuedToNumber: issued.issuedToNumber,
+        reprintReason: issued.reason,
+        isReprint: issued.isReprint,
         printedLabelCount: issued.batch.printedLabelCount,
         labelCreatedAt: issued.batch.labelCreatedAt
       }

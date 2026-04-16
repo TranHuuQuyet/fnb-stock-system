@@ -23,6 +23,9 @@ docs/        Architecture, API overview, operation manual, production deployment
 - `docs/OPERATION_MANUAL.md`: hướng dẫn vận hành hằng ngày
 - `docs/DEPLOYMENT_PROD.md`: hướng dẫn triển khai production
 - `docs/BACKUP_RESTORE.md`: runbook backup và restore
+- `docs/RELEASE_RUNBOOK.md`: runbook staging, release tag, deploy và rollback
+- `docs/PILOT_RUNBOOK.md`: runbook pilot 2 chi nhánh đầu tiên
+- `docs/RELEASE_TEMPLATE.md`: mẫu biên bản release trước pilot/go-live
 - `docs/STAGING_CHECKLIST.md`: checklist dựng staging
 - `docs/UAT_CHECKLIST.md`: checklist kiểm thử chấp nhận người dùng
 - `docs/GO_LIVE_CHECKLIST.md`: checklist ngày go-live
@@ -77,6 +80,7 @@ docker compose up --build
 Nếu muốn chạy production bằng container, repo đã có sẵn:
 
 - `docker-compose.prod.yml`
+- `.env.staging.compose.example`
 - `backend/Dockerfile.prod`
 - `frontend/Dockerfile.prod`
 - `deploy/caddy/Caddyfile`
@@ -92,9 +96,22 @@ Luồng khuyến nghị:
 
 Container boot flow:
 
-- `postgres`: PostgreSQL 16
-- `backend`: chạy `prisma migrate deploy`, `db:seed`, rồi start API
-- `frontend`: build Next.js và publish tại host port `3001`
+- `migrate`: job một lần để chờ DB rồi chạy `prisma migrate deploy`
+- `backend`: chỉ start API sau khi migrate thành công
+- `frontend`: dùng `Next.js standalone` cho runtime gọn hơn
+- `caddy`: reverse proxy + TLS cho cùng 1 domain production
+
+CI/CD hiện có tại `.github/workflows/docker-image.yml`:
+
+- `pull_request`: chạy test/build cho backend + frontend và validate `docker-compose.prod.yml`
+- `push main`: chỉ build/push image GHCR sau khi job verify pass
+- `push tag v*`: push thêm image tag theo release để chốt mốc deploy/rollback rõ ràng hơn
+
+Repo cũng đã có script smoke test nhanh sau deploy:
+
+- `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store`
+- `powershell -ExecutionPolicy Bypass -File deploy/scripts/init-staging.ps1`
+- `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment staging`
 
 ## Database Commands
 
@@ -173,3 +190,7 @@ Chi tiết triển khai và vận hành nằm trong:
 - `docs/OPERATION_MANUAL.md`
 - `docs/DEPLOYMENT_PROD.md`
 - `docs/BACKUP_RESTORE.md`
+- `docs/RELEASE_RUNBOOK.md`
+- `docs/PILOT_RUNBOOK.md`
+- `docs/RELEASE_TEMPLATE.md`
+- `docs/PILOT_DAILY_LOG_TEMPLATE.md`

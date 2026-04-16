@@ -1,10 +1,11 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma, UserRole, UserStatus } from '@prisma/client';
+import { randomInt } from 'node:crypto';
 
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import { appException } from '../../common/utils/app-exception';
 import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
-import { hashPassword } from '../../common/utils/password';
+import { assertPasswordPolicy, hashPassword } from '../../common/utils/password';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -70,6 +71,7 @@ export class UsersService {
       }
     }
 
+    assertPasswordPolicy(dto.temporaryPassword);
     const passwordHash = await hashPassword(dto.temporaryPassword);
     const user = await this.prisma.user.create({
       data: {
@@ -240,13 +242,17 @@ export class UsersService {
 
     const temporaryPassword =
       dto.temporaryPassword ??
-      `Temp${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      this.generateTemporaryPassword();
+    assertPasswordPolicy(temporaryPassword);
 
     await this.prisma.user.update({
       where: { id },
       data: {
         passwordHash: await hashPassword(temporaryPassword),
-        status: UserStatus.MUST_CHANGE_PASSWORD
+        status: UserStatus.MUST_CHANGE_PASSWORD,
+        failedLoginAttempts: 0,
+        lastFailedLoginAt: null,
+        lockoutUntil: null
       }
     });
 
@@ -284,7 +290,16 @@ export class UsersService {
 
     const updated = await this.prisma.user.update({
       where: { id },
-      data: { status },
+      data: {
+        status,
+        ...(status === UserStatus.ACTIVE
+          ? {
+              failedLoginAttempts: 0,
+              lastFailedLoginAt: null,
+              lockoutUntil: null
+            }
+          : {})
+      },
       include: { store: true }
     });
 
@@ -308,5 +323,16 @@ export class UsersService {
         'MANAGER và STAFF phải được gắn chi nhánh'
       );
     }
+  }
+
+  private generateTemporaryPassword() {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghijkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const alphabet = `${upper}${lower}${digits}`;
+    const pick = (characters: string) => characters[randomInt(0, characters.length)];
+    const tail = Array.from({ length: 5 }, () => pick(alphabet)).join('');
+
+    return `Tmp${pick(upper)}${pick(lower)}${pick(digits)}${tail}`;
   }
 }

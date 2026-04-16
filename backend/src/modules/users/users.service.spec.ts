@@ -36,15 +36,17 @@ describe('UsersService', () => {
     });
 
     const result = await service.resetPassword('admin-1', 'user-1', {
-      temporaryPassword: '654321'
+      temporaryPassword: 'ResetPass1'
     });
 
-    expect(result.temporaryPassword).toBe('654321');
+    expect(result.temporaryPassword).toBe('ResetPass1');
     expect(prisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'user-1' },
         data: expect.objectContaining({
-          status: UserStatus.MUST_CHANGE_PASSWORD
+          status: UserStatus.MUST_CHANGE_PASSWORD,
+          failedLoginAttempts: 0,
+          lockoutUntil: null
         })
       })
     );

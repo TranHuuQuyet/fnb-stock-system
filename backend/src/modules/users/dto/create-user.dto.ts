@@ -7,10 +7,16 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   MinLength
 } from 'class-validator';
 
 import { PERMISSION_VALUES } from '../../../common/constants/permissions';
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_POLICY_MESSAGE,
+  PASSWORD_POLICY_REGEX
+} from '../../../common/utils/password';
 
 export class CreateUserDto {
   @ApiProperty()
@@ -34,7 +40,8 @@ export class CreateUserDto {
 
   @ApiProperty()
   @IsString()
-  @MinLength(6)
+  @MinLength(PASSWORD_MIN_LENGTH)
+  @Matches(PASSWORD_POLICY_REGEX, { message: PASSWORD_POLICY_MESSAGE })
   temporaryPassword!: string;
 
   @ApiProperty({ required: false, type: [String], default: [] })

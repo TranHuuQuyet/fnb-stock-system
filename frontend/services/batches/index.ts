@@ -46,7 +46,7 @@ export const generateBatchQr = (id: string) =>
 export const getBatchQr = (id: string) => unwrapData(apiClient(`/admin/batches/${id}/qr`));
 export const getBatchLabel = (id: string) =>
   unwrapData(apiClient(`/admin/batches/${id}/label`));
-export const issueBatchLabels = (id: string, payload: { quantity: number }) =>
+export const issueBatchLabels = (id: string, payload: { quantity: number; reason?: string }) =>
   unwrapData(
     apiClient(`/admin/batches/${id}/labels/issue`, {
       method: 'POST',

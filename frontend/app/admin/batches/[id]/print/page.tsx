@@ -56,7 +56,8 @@ const DEFAULT_LAYOUT: PrintLayout = {
 };
 
 const issueSchema = z.object({
-  quantity: z.coerce.number().int('Số tem phải là số nguyên').min(1, 'Cần in ít nhất 1 tem')
+  quantity: z.coerce.number().int('So tem phai la so nguyen').min(1, 'Can in it nhat 1 tem'),
+  reason: z.string().trim().max(200, 'Ly do toi da 200 ky tu').optional()
 });
 
 const formatDate = (value?: string | null) =>
@@ -95,6 +96,7 @@ export default function BatchPrintPage() {
   const [issuedJob, setIssuedJob] = useState<IssuedLabelJob | null>(null);
   const [layout, setLayout] = useState<PrintLayout>(DEFAULT_LAYOUT);
   const [pendingAutoPrint, setPendingAutoPrint] = useState(false);
+  const [reasonError, setReasonError] = useState<string | null>(null);
   const initialQuantity = useMemo(() => {
     const parsed = Number(qtyParam ?? '1');
     if (!Number.isFinite(parsed) || parsed < 1) {
@@ -147,6 +149,7 @@ export default function BatchPrintPage() {
     mutationFn: (values: z.infer<typeof issueSchema>) => issueBatchLabels(batchId, values),
     onSuccess: (data) => {
       setIssuedJob(data as IssuedLabelJob);
+      setReasonError(null);
       setPendingAutoPrint(true);
       void query.refetch();
     }
@@ -272,7 +275,19 @@ export default function BatchPrintPage() {
                 <div className="space-y-4 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
                   <form
                     className="space-y-4"
-                    onSubmit={handleSubmit((values) => issueMutation.mutate(values))}
+                    onSubmit={handleSubmit((values) => {
+                      const normalizedReason = values.reason?.trim();
+                      if ((label.printedLabelCount ?? 0) > 0 && !normalizedReason) {
+                        setReasonError('Can nhap ly do khi phat hanh them tem cho lo da tung in');
+                        return;
+                      }
+
+                      setReasonError(null);
+                      issueMutation.mutate({
+                        quantity: values.quantity,
+                        reason: normalizedReason || undefined
+                      });
+                    })}
                   >
                     <Input
                       label="Số tem muốn in"
@@ -318,6 +333,22 @@ export default function BatchPrintPage() {
                     <p className="text-sm text-slate-500">
                       Lần in này sẽ bắt đầu từ Number {label.nextLabelNumber ?? '-'}.
                     </p>
+                    <label className="block space-y-2">
+                      <span className="text-sm font-medium text-brand-900">
+                        Ly do phat hanh them tem
+                      </span>
+                      <textarea
+                        rows={3}
+                        className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900 shadow-sm outline-none ring-0 placeholder:text-slate-400 focus:border-brand-500"
+                        placeholder={
+                          label.printedLabelCount > 0
+                            ? 'Bat buoc nhap ly do in bo sung hoac in lai tem'
+                            : 'Co the bo trong cho lan in dau tien'
+                        }
+                        {...register('reason')}
+                      />
+                    </label>
+                    {reasonError ? <p className="text-sm text-danger">{reasonError}</p> : null}
                     {issueMutation.isError ? (
                       <p className="text-sm text-danger">
                         Không thể tạo tem. Lô này còn tối đa {label.remainingLabelCount} số để cấp.

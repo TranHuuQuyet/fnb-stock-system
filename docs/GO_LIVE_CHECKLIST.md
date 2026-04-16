@@ -1,6 +1,6 @@
 # Go-Live Checklist
 
-Tài liệu này dùng cho ngày mở hệ thống thực tế tại `fnbstore.store`. Nên chạy theo đúng thứ tự để giảm rủi ro khi triển khai cho 2 chi nhánh đầu tiên.
+Tài liệu này dùng cho ngày mở hệ thống thực tế tại `fnbstore.store`. Nên chạy theo đúng thứ tự để giảm rủi ro khi triển khai cho 2 chi nhánh đầu tiên. Nếu cần chốt tag release, image tag hoặc rollback chi tiết, xem thêm [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md). Nếu đang chạy thử 2 chi nhánh đầu tiên, xem thêm [PILOT_RUNBOOK.md](./PILOT_RUNBOOK.md).
 
 ## 1. Quyết định đã chốt
 
@@ -24,7 +24,7 @@ Tài liệu này dùng cho ngày mở hệ thống thực tế tại `fnbstore.s
 
 1. Hoàn thành [STAGING_CHECKLIST.md](./STAGING_CHECKLIST.md)
 2. Hoàn thành [UAT_CHECKLIST.md](./UAT_CHECKLIST.md)
-3. Chốt branch hoặc tag sẽ deploy production
+3. Chốt branch hoặc tag sẽ deploy production theo [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md)
 4. Chốt danh sách user đầu tiên:
    - `ADMIN`
    - `MANAGER` từng chi nhánh
@@ -51,8 +51,10 @@ Tài liệu này dùng cho ngày mở hệ thống thực tế tại `fnbstore.s
    - `JWT_REFRESH_SECRET`
    - `CORS_ORIGIN=https://fnbstore.store`
    - `NEXT_PUBLIC_API_BASE_URL=https://fnbstore.store/api/v1`
-6. Xác nhận production không chạy `db:seed`
-7. Xác nhận đã có lệnh `bootstrap:admin`
+6. Chạy preflight check:
+   - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment production`
+7. Xác nhận production không chạy `db:seed`
+8. Xác nhận đã có lệnh `bootstrap:admin`
 
 ## 4. Các bước go-live
 
@@ -68,6 +70,8 @@ Tài liệu này dùng cho ngày mở hệ thống thực tế tại `fnbstore.s
 8. Kiểm tra:
    - `GET /api/v1/health`
    - `GET /api/v1/health/ready`
+9. Chạy script smoke test nhanh:
+   - `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store`
 
 ## 5. Smoke test bắt buộc ngay sau deploy
 

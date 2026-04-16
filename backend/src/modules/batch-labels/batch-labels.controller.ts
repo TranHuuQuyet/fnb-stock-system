@@ -5,8 +5,8 @@ import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
-import { IssueBatchLabelsDto } from './dto/issue-batch-labels.dto';
 import { BatchLabelsService } from './batch-labels.service';
+import { IssueBatchLabelsDto } from './dto/issue-batch-labels.dto';
 
 @ApiTags('Batch Labels')
 @ApiBearerAuth()
@@ -19,7 +19,7 @@ export class BatchLabelsController {
   async generateQr(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     return {
       data: await this.batchLabelsService.generateQr(user.userId, id),
-      message: 'Tạo mã QR thành công'
+      message: 'Tao ma QR thanh cong'
     };
   }
 
@@ -44,8 +44,8 @@ export class BatchLabelsController {
     @Body() dto: IssueBatchLabelsDto
   ) {
     return {
-      data: await this.batchLabelsService.issueLabels(user.userId, id, dto.quantity),
-      message: 'Phát hành tem in thành công'
+      data: await this.batchLabelsService.issueLabels(user.userId, id, dto.quantity, dto.reason),
+      message: 'Phat hanh tem in thanh cong'
     };
   }
 }

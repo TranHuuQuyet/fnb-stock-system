@@ -6,20 +6,30 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getSession, setSession } from '@/lib/auth';
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_POLICY_MESSAGE,
+  PASSWORD_POLICY_REGEX
+} from '@/lib/password-policy';
 import { changePassword } from '@/services/auth';
 
 const schema = z
   .object({
-    currentPassword: z.string().min(6, 'Mật khẩu hiện tại phải có ít nhất 6 ký tự'),
-    newPassword: z.string().min(6, 'Mật khẩu mới phải có ít nhất 6 ký tự'),
-    confirmPassword: z.string().min(6, 'Vui lòng nhập lại mật khẩu mới')
+    currentPassword: z.string().min(1, 'Vui long nhap mat khau hien tai'),
+    newPassword: z
+      .string()
+      .min(PASSWORD_MIN_LENGTH, PASSWORD_POLICY_MESSAGE)
+      .regex(PASSWORD_POLICY_REGEX, PASSWORD_POLICY_MESSAGE),
+    confirmPassword: z
+      .string()
+      .min(1, 'Vui long nhap lai mat khau moi')
   })
   .refine((value) => value.newPassword === value.confirmPassword, {
-    message: 'Mật khẩu nhập lại không khớp',
+    message: 'Mat khau nhap lai khong khop',
     path: ['confirmPassword']
   });
 
@@ -59,9 +69,12 @@ export default function ChangePasswordPage() {
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="w-full max-w-md space-y-6">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-brand-900">Đổi mật khẩu lần đầu</h1>
+          <h1 className="text-3xl font-semibold text-brand-900">Doi mat khau lan dau</h1>
           <p className="text-sm text-slate-500">
-            Tài khoản này đang ở trạng thái bắt buộc đổi mật khẩu trước khi tiếp tục sử dụng.
+            Tai khoan nay dang o trang thai bat buoc doi mat khau truoc khi tiep tuc su dung.
+          </p>
+          <p className="text-xs text-slate-500">
+            Mat khau moi can co it nhat {PASSWORD_MIN_LENGTH} ky tu, gom chu hoa, chu thuong va so.
           </p>
         </div>
 
@@ -71,21 +84,21 @@ export default function ChangePasswordPage() {
         >
           <Input
             type="password"
-            label="Mật khẩu hiện tại"
+            label="Mat khau hien tai"
             autoComplete="current-password"
             error={errors.currentPassword?.message}
             {...register('currentPassword')}
           />
           <Input
             type="password"
-            label="Mật khẩu mới"
+            label="Mat khau moi"
             autoComplete="new-password"
             error={errors.newPassword?.message}
             {...register('newPassword')}
           />
           <Input
             type="password"
-            label="Nhập lại mật khẩu mới"
+            label="Nhap lai mat khau moi"
             autoComplete="new-password"
             error={errors.confirmPassword?.message}
             {...register('confirmPassword')}
@@ -94,7 +107,7 @@ export default function ChangePasswordPage() {
             <p className="text-sm text-danger">{mutation.error.message}</p>
           ) : null}
           <Button type="submit" fullWidth disabled={mutation.isPending}>
-            {mutation.isPending ? 'Đang cập nhật...' : 'Xác nhận'}
+            {mutation.isPending ? 'Dang cap nhat...' : 'Xac nhan'}
           </Button>
         </form>
       </Card>

@@ -14,6 +14,11 @@ import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/table';
 import { localizeRole, localizeUserStatus } from '@/lib/localization';
 import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_POLICY_MESSAGE,
+  PASSWORD_POLICY_REGEX
+} from '@/lib/password-policy';
+import {
   createUser,
   listUsers,
   lockUser,
@@ -24,30 +29,33 @@ import {
 import { listStores } from '@/services/admin/stores';
 
 const schema = z.object({
-  username: z.string().min(1),
-  fullName: z.string().min(1),
+  username: z.string().min(1, 'Vui long nhap ten dang nhap'),
+  fullName: z.string().min(1, 'Vui long nhap ho ten'),
   role: z.enum(['MANAGER', 'STAFF']),
-  storeId: z.string().min(1),
-  temporaryPassword: z.string().min(6)
+  storeId: z.string().min(1, 'Vui long chon chi nhanh'),
+  temporaryPassword: z
+    .string()
+    .min(PASSWORD_MIN_LENGTH, PASSWORD_POLICY_MESSAGE)
+    .regex(PASSWORD_POLICY_REGEX, PASSWORD_POLICY_MESSAGE)
 });
 
 type FormValues = z.infer<typeof schema>;
 
 const AVAILABLE_PERMISSIONS = [
-  { value: 'view_scan', label: 'Quét nguyên liệu' },
-  { value: 'scan_transfer', label: 'Chuyển kho' },
-  { value: 'view_profile', label: 'Tài khoản' },
-  { value: 'view_scan_logs', label: 'Lịch sử quét' },
-  { value: 'view_dashboard', label: 'Bảng điều khiển' },
-  { value: 'manage_users', label: 'Người dùng' },
-  { value: 'manage_stores', label: 'Cửa hàng' },
-  { value: 'manage_ingredients', label: 'Nguyên liệu' },
-  { value: 'manage_batches', label: 'Lô hàng' },
-  { value: 'manage_adjustments', label: 'Điều chỉnh tồn' },
-  { value: 'manage_recipes', label: 'Công thức & POS' },
-  { value: 'manage_config', label: 'Cấu hình' },
-  { value: 'manage_whitelists', label: 'Mạng được phép' },
-  { value: 'view_audit_logs', label: 'Nhật ký hệ thống' }
+  { value: 'view_scan', label: 'Quet nguyen lieu' },
+  { value: 'scan_transfer', label: 'Chuyen kho' },
+  { value: 'view_profile', label: 'Tai khoan' },
+  { value: 'view_scan_logs', label: 'Lich su quet' },
+  { value: 'view_dashboard', label: 'Bang dieu khien' },
+  { value: 'manage_users', label: 'Nguoi dung' },
+  { value: 'manage_stores', label: 'Cua hang' },
+  { value: 'manage_ingredients', label: 'Nguyen lieu' },
+  { value: 'manage_batches', label: 'Lo hang' },
+  { value: 'manage_adjustments', label: 'Dieu chinh ton' },
+  { value: 'manage_recipes', label: 'Cong thuc va POS' },
+  { value: 'manage_config', label: 'Cau hinh' },
+  { value: 'manage_whitelists', label: 'Mang duoc phep' },
+  { value: 'view_audit_logs', label: 'Nhat ky he thong' }
 ];
 
 const DEFAULT_PERMISSIONS_BY_ROLE: Record<'STAFF' | 'MANAGER', string[]> = {
@@ -55,8 +63,23 @@ const DEFAULT_PERMISSIONS_BY_ROLE: Record<'STAFF' | 'MANAGER', string[]> = {
   MANAGER: ['view_scan', 'view_profile', 'view_scan_logs', 'view_dashboard']
 };
 
+type UserRow = {
+  id: string;
+  username: string;
+  fullName: string;
+  role: string;
+  status: string;
+  permissions: string[];
+  store?: { name: string } | null;
+};
+
 export default function AdminUsersPage() {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [lastResetResult, setLastResetResult] = useState<{
+    username: string;
+    temporaryPassword: string;
+  } | null>(null);
+
   const storesQuery = useQuery({
     queryKey: ['stores-selector'],
     queryFn: () => listStores('')
@@ -101,12 +124,53 @@ export default function AdminUsersPage() {
   });
 
   const actionMutation = useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: 'lock' | 'unlock' | 'reset' }) => {
-      if (action === 'lock') return lockUser(id);
-      if (action === 'unlock') return unlockUser(id);
-      return resetPassword(id, '123456');
+    mutationFn: async ({
+      id,
+      action,
+      username
+    }: {
+      id: string;
+      action: 'lock' | 'unlock' | 'reset';
+      username: string;
+    }) => {
+      if (action === 'lock') {
+        await lockUser(id);
+        return { action, username };
+      }
+
+      if (action === 'unlock') {
+        await unlockUser(id);
+        return { action, username };
+      }
+
+      const resetResult = (await resetPassword(id)) as {
+        userId: string;
+        temporaryPassword: string;
+      };
+
+      return {
+        action,
+        username,
+        userId: resetResult.userId,
+        temporaryPassword: resetResult.temporaryPassword
+      };
     },
-    onSuccess: () => usersQuery.refetch()
+    onSuccess: (data) => {
+      if (
+        data.action === 'reset' &&
+        'temporaryPassword' in data &&
+        typeof data.temporaryPassword === 'string'
+      ) {
+        setLastResetResult({
+          username: data.username,
+          temporaryPassword: data.temporaryPassword
+        });
+      } else {
+        setLastResetResult(null);
+      }
+
+      usersQuery.refetch();
+    }
   });
 
   const transferPermissionMutation = useMutation({
@@ -121,46 +185,38 @@ export default function AdminUsersPage() {
   });
 
   const stores = (storesQuery.data?.data ?? []) as Array<{ id: string; name: string }>;
-  const users = (usersQuery.data?.data ?? []) as Array<{
-    id: string;
-    username: string;
-    fullName: string;
-    role: string;
-    status: string;
-    permissions: string[];
-    store?: { name: string } | null;
-  }>;
+  const users = (usersQuery.data?.data ?? []) as UserRow[];
 
   return (
-    <ProtectedPage title="Quản lý người dùng" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Quan ly nguoi dung" allowedRoles={['ADMIN']}>
       <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px),minmax(0,1fr)]">
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo người dùng mới</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tao nguoi dung moi</h2>
           <form
             className="space-y-4"
             onSubmit={handleSubmit((values) => createMutation.mutate(values))}
           >
-            <Input label="Tên đăng nhập" error={errors.username?.message} {...register('username')} />
-            <Input label="Họ tên" error={errors.fullName?.message} {...register('fullName')} />
+            <Input label="Ten dang nhap" error={errors.username?.message} {...register('username')} />
+            <Input label="Ho ten" error={errors.fullName?.message} {...register('fullName')} />
 
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Vai trò</span>
+              <span className="text-sm font-medium text-brand-900">Vai tro</span>
               <select
                 className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3"
                 {...register('role')}
               >
-                <option value="STAFF">Nhân viên</option>
-                <option value="MANAGER">Quản lý</option>
+                <option value="STAFF">Nhan vien</option>
+                <option value="MANAGER">Quan ly</option>
               </select>
             </label>
 
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Cửa hàng</span>
+              <span className="text-sm font-medium text-brand-900">Cua hang</span>
               <select
                 className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3"
                 {...register('storeId')}
               >
-                <option value="">Chọn cửa hàng</option>
+                <option value="">Chon cua hang</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}
@@ -170,7 +226,7 @@ export default function AdminUsersPage() {
             </label>
 
             <div className="space-y-2">
-              <span className="text-sm font-medium text-brand-900">Thêm quyền truy cập</span>
+              <span className="text-sm font-medium text-brand-900">Them quyen truy cap</span>
               <div className="space-y-2 rounded-xl border border-brand-100 bg-white p-3">
                 {AVAILABLE_PERMISSIONS.map((permission) => (
                   <label key={permission.value} className="flex items-center gap-2">
@@ -196,33 +252,44 @@ export default function AdminUsersPage() {
             </div>
 
             <Input
-              label="Mật khẩu tạm thời"
+              label="Mat khau tam thoi"
               type="password"
               error={errors.temporaryPassword?.message}
               {...register('temporaryPassword')}
             />
+            <p className="-mt-2 text-xs text-slate-500">
+              Dung it nhat {PASSWORD_MIN_LENGTH} ky tu, co chu hoa, chu thuong va so.
+            </p>
 
             {createMutation.error ? (
               <p className="text-sm text-danger">{createMutation.error.message}</p>
             ) : null}
 
             <Button type="submit" fullWidth disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Đang tạo...' : 'Tạo người dùng'}
+              {createMutation.isPending ? 'Dang tao...' : 'Tao nguoi dung'}
             </Button>
           </form>
         </Card>
 
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sách tài khoản</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sach tai khoan</h2>
+          {lastResetResult ? (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Da tao mat khau tam moi cho <span className="font-semibold">{lastResetResult.username}</span>:
+              <span className="ml-2 rounded bg-white px-2 py-1 font-mono text-brand-900">
+                {lastResetResult.temporaryPassword}
+              </span>
+            </div>
+          ) : null}
           <SimpleTable
             columns={[
-              'Tên đăng nhập',
-              'Họ tên',
-              'Vai trò',
-              'Trạng thái',
-              'Cửa hàng',
-              'Chuyển kho',
-              'Thao tác'
+              'Ten dang nhap',
+              'Ho ten',
+              'Vai tro',
+              'Trang thai',
+              'Cua hang',
+              'Chuyen kho',
+              'Thao tac'
             ]}
             rows={users.map((user) => {
               const hasTransferPermission = user.permissions.includes('scan_transfer');
@@ -242,7 +309,7 @@ export default function AdminUsersPage() {
                 user.store?.name ?? '-',
                 <div key={`${user.id}-transfer`} className="flex items-center gap-2">
                   <Badge
-                    label={hasTransferPermission ? 'Đã cấp' : 'Chưa cấp'}
+                    label={hasTransferPermission ? 'Da cap' : 'Chua cap'}
                     tone={hasTransferPermission ? 'success' : 'neutral'}
                   />
                   {user.role !== 'ADMIN' ? (
@@ -256,30 +323,51 @@ export default function AdminUsersPage() {
                       }
                       disabled={transferPermissionMutation.isPending}
                     >
-                      {hasTransferPermission ? 'Thu hồi' : 'Cấp quyền'}
+                      {hasTransferPermission ? 'Thu hoi' : 'Cap quyen'}
                     </Button>
                   ) : null}
                 </div>,
                 <div key={`${user.id}-actions`} className="flex flex-wrap gap-2">
                   <Button
                     variant="secondary"
-                    onClick={() => actionMutation.mutate({ id: user.id, action: 'reset' })}
+                    onClick={() =>
+                      actionMutation.mutate({
+                        id: user.id,
+                        action: 'reset',
+                        username: user.username
+                      })
+                    }
+                    disabled={actionMutation.isPending}
                   >
-                    Đặt lại mật khẩu
+                    Dat lai mat khau
                   </Button>
                   {user.status === 'LOCKED' ? (
                     <Button
                       variant="secondary"
-                      onClick={() => actionMutation.mutate({ id: user.id, action: 'unlock' })}
+                      onClick={() =>
+                        actionMutation.mutate({
+                          id: user.id,
+                          action: 'unlock',
+                          username: user.username
+                        })
+                      }
+                      disabled={actionMutation.isPending}
                     >
-                      Mở khóa
+                      Mo khoa
                     </Button>
                   ) : (
                     <Button
                       variant="danger"
-                      onClick={() => actionMutation.mutate({ id: user.id, action: 'lock' })}
+                      onClick={() =>
+                        actionMutation.mutate({
+                          id: user.id,
+                          action: 'lock',
+                          username: user.username
+                        })
+                      }
+                      disabled={actionMutation.isPending}
                     >
-                      Khóa
+                      Khoa
                     </Button>
                   )}
                 </div>

@@ -1,16 +1,21 @@
 import { JwtService } from '@nestjs/jwt';
 import { UserRole, UserStatus } from '@prisma/client';
-import { comparePassword } from '../../common/utils/password';
+import {
+  assertPasswordPolicy,
+  comparePassword
+} from '../../common/utils/password';
 
 import { AuthService } from './auth.service';
 
 jest.mock('../../common/utils/password', () => ({
   comparePassword: jest.fn().mockResolvedValue(true),
-  hashPassword: jest.fn().mockResolvedValue('hashed-password')
+  hashPassword: jest.fn().mockResolvedValue('hashed-password'),
+  assertPasswordPolicy: jest.fn()
 }));
 
 describe('AuthService', () => {
   const mockedComparePassword = comparePassword as jest.Mock;
+  const mockedAssertPasswordPolicy = assertPasswordPolicy as jest.Mock;
   const usersService = {
     findByUsername: jest.fn(),
     findById: jest.fn(),
@@ -21,6 +26,7 @@ describe('AuthService', () => {
   };
   const prisma = {
     user: {
+      findUnique: jest.fn(),
       update: jest.fn()
     }
   };
@@ -34,6 +40,7 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.user.findUnique.mockResolvedValue({ failedLoginAttempts: 0 });
   });
 
   it('rejects locked users on login', async () => {
@@ -49,10 +56,13 @@ describe('AuthService', () => {
     });
 
     await expect(
-      service.login({
-        username: 'locked',
-        password: '123456'
-      }, '127.0.0.1')
+      service.login(
+        {
+          username: 'locked',
+          password: '123456'
+        },
+        '127.0.0.1'
+      )
     ).rejects.toMatchObject({
       response: {
         code: 'AUTH_ACCOUNT_LOCKED'
@@ -66,7 +76,7 @@ describe('AuthService', () => {
     );
   });
 
-  it('logs invalid password attempts', async () => {
+  it('logs invalid password attempts and increments lockout counters', async () => {
     usersService.findByUsername.mockResolvedValue({
       id: 'user-2',
       username: 'staff1',
@@ -76,8 +86,11 @@ describe('AuthService', () => {
       passwordHash: 'hashed',
       status: UserStatus.ACTIVE,
       permissions: [],
+      failedLoginAttempts: 3,
+      lockoutUntil: null,
       store: null
     });
+    prisma.user.findUnique.mockResolvedValue({ failedLoginAttempts: 3 });
     mockedComparePassword.mockResolvedValueOnce(false);
 
     await expect(
@@ -94,6 +107,14 @@ describe('AuthService', () => {
       }
     });
 
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'user-2' },
+        data: expect.objectContaining({
+          failedLoginAttempts: 4
+        })
+      })
+    );
     expect(auditService.createLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'LOGIN_FAILED',
@@ -131,13 +152,14 @@ describe('AuthService', () => {
         status: UserStatus.MUST_CHANGE_PASSWORD
       },
       {
-        currentPassword: '123456',
-        newPassword: '654321',
-        confirmPassword: '654321'
+        currentPassword: 'OldPass1',
+        newPassword: 'NewPass1',
+        confirmPassword: 'NewPass1'
       }
     );
 
     expect(result.status).toBe(UserStatus.ACTIVE);
+    expect(mockedAssertPasswordPolicy).toHaveBeenCalledWith('NewPass1');
     expect(prisma.user.update).toHaveBeenCalled();
   });
 });

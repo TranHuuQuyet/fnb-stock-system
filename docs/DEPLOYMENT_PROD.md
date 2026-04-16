@@ -162,7 +162,10 @@ Ghi chú:
 
 - `caddy` trong compose sẽ nhận TLS tự động nếu domain và port public đúng.
 - Compose production này không tạo container PostgreSQL vì hướng triển khai đã chốt là `PostgreSQL managed`.
-- Backend container production không chạy `db:seed`; chỉ chạy `prisma migrate deploy` rồi start app.
+- Backend container production không chạy `db:seed`.
+- Compose production hiện tách riêng service `migrate` để chạy `prisma migrate deploy` trước, rồi backend mới start app.
+- Service `migrate` sẽ chạy xong rồi thoát; backend runtime không còn tự migrate lúc boot nên restart và rollback an toàn hơn.
+- Frontend production dùng `Next.js standalone`, còn backend runtime đã prune dev dependencies và chạy non-root.
 
 ## 5. Chuẩn bị máy chủ
 

@@ -24,7 +24,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
+      target: runner
     restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     env_file:
       - ${BACKEND_ENV_FILE:-backend/.env.production}
     environment:
@@ -43,6 +47,17 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+      target: migrate
+    restart: "no"
+    env_file:
+      - ${BACKEND_ENV_FILE:-backend/.env.production}
+    environment:
+      NODE_ENV: production
 
   frontend:
     build:

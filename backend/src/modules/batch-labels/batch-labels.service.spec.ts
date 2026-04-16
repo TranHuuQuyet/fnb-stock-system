@@ -44,7 +44,7 @@ describe('BatchLabelsService', () => {
             batchCode: 'BATCH-001',
             initialQty: 50,
             printedLabelCount: 0,
-            ingredient: { name: 'Tea' },
+            ingredient: { name: 'Tea', unit: 'bag' },
             store: { name: 'Demo' },
             qrCodeValue: 'FNBBATCH:BATCH-001',
             qrGeneratedAt: new Date(),
@@ -59,6 +59,35 @@ describe('BatchLabelsService', () => {
     const result = await service.generateQr('admin-1', 'batch-1');
 
     expect(result.qrCodeValue).toBe('FNBBATCH:BATCH-001');
+  });
+
+  it('requires a reason when issuing more labels for a batch that was already printed', async () => {
+    batchesService.generateQrCodeValue.mockReturnValue('FNBBATCH:BATCH-001');
+    prisma.$transaction.mockImplementation(async (callback: Function) =>
+      callback({
+        ingredientBatch: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'batch-1',
+            batchCode: 'BATCH-001',
+            initialQty: 50,
+            printedLabelCount: 10,
+            ingredient: { name: 'Milk', unit: 'box' },
+            store: { name: 'Demo Store' },
+            qrCodeValue: 'FNBBATCH:BATCH-001',
+            qrGeneratedAt: new Date('2026-04-10T01:00:00.000Z'),
+            labelCreatedAt: new Date('2026-04-10T01:00:00.000Z'),
+            receivedAt: new Date('2026-04-10T00:00:00.000Z'),
+            expiredAt: null
+          })
+        }
+      })
+    );
+
+    await expect(service.issueLabels('admin-1', 'batch-1', 2)).rejects.toMatchObject({
+      response: {
+        code: 'VALIDATION_INVALID_PAYLOAD'
+      }
+    });
   });
 
   it('issues sequential label numbers for a batch', async () => {
@@ -112,7 +141,12 @@ describe('BatchLabelsService', () => {
       })
     );
 
-    const result = await service.issueLabels('admin-1', 'batch-1', 10);
+    const result = await service.issueLabels(
+      'admin-1',
+      'batch-1',
+      10,
+      'In bo sung do tem cu bi hong'
+    );
 
     expect(result.issuedFromNumber).toBe(11);
     expect(result.issuedToNumber).toBe(20);
