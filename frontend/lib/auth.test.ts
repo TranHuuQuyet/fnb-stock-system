@@ -6,7 +6,6 @@ describe('auth session helpers', () => {
   it('detects first login flow', () => {
     expect(
       shouldForcePasswordChange({
-        accessToken: 'token',
         mustChangePassword: true,
         user: {
           id: '1',

@@ -1,6 +1,6 @@
 "use client";
 
-import { clearSession, getAccessToken } from './auth';
+import { clearSession } from './auth';
 import { localizeApiError } from './localization';
 
 type SuccessEnvelope<T> = {
@@ -55,15 +55,9 @@ export async function apiClient<T>(
   headers.set('Content-Type', 'application/json');
   headers.set('x-device-id', typeof window !== 'undefined' ? localStorage.getItem('fnb-stock-device-id') ?? 'browser-device' : 'server-device');
 
-  if (init?.auth !== false) {
-    const token = getAccessToken();
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-  }
-
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
+    credentials: init?.credentials ?? 'include',
     headers
   });
 

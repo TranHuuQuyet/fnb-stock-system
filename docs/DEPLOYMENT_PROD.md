@@ -78,6 +78,14 @@ JWT_REFRESH_EXPIRES_IN=7d
 CORS_ORIGIN=https://fnbstore.store
 APP_TIMEZONE=Asia/Ho_Chi_Minh
 TRUST_PROXY=1
+ENABLE_SWAGGER=false
+ENABLE_LOGIN_RATE_LIMIT=true
+LOGIN_RATE_LIMIT_MAX_ATTEMPTS=5
+LOGIN_RATE_LIMIT_WINDOW_MS=600000
+REQUIRE_STRONG_SECRETS=true
+AUTH_COOKIE_NAME=fnb_stock_session
+AUTH_COOKIE_SECURE=true
+AUTH_COOKIE_SAME_SITE=lax
 ```
 
 Ghi chú:
@@ -85,6 +93,11 @@ Ghi chú:
 - `CORS_ORIGIN` hỗ trợ nhiều origin bằng dấu phẩy, nhưng production nên giữ ít nhất có thể.
 - `JWT_EXPIRES_IN` và `JWT_REFRESH_EXPIRES_IN` cần theo policy của bạn. Repo hiện có refresh config nhưng chưa có luồng refresh token hoàn chỉnh ở frontend.
 - `TRUST_PROXY=1` là cần thiết nếu backend đứng sau reverse proxy.
+- `ENABLE_SWAGGER=false` để không public `api/docs` ra Internet ở production.
+- `REQUIRE_STRONG_SECRETS=true` để app fail fast nếu secret còn yếu hoặc đang là placeholder.
+- `LOGIN_RATE_LIMIT_*` giới hạn số lần gọi `POST /auth/login` theo IP để giảm brute-force.
+- Web app production hiện dùng `HttpOnly cookie` cho phiên đăng nhập; frontend không còn giữ access token trong `localStorage`.
+- `AUTH_COOKIE_SECURE=true` là bắt buộc khi chạy HTTPS public.
 
 ### Frontend
 

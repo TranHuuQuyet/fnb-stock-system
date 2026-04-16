@@ -33,7 +33,6 @@ export default function LoginPage() {
     mutationFn: login,
     onSuccess: (data) => {
       setSession({
-        accessToken: data.accessToken,
         user: {
           ...data.user,
           mustChangePassword: data.mustChangePassword

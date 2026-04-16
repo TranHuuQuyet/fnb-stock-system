@@ -31,6 +31,30 @@ function Get-KeyValueMap {
   return $map
 }
 
+function Test-StrongSecret {
+  param([string]$Value)
+
+  if ([string]::IsNullOrWhiteSpace($Value)) {
+    return $false
+  }
+
+  if ($Value.Length -lt 32) {
+    return $false
+  }
+
+  return $Value -notmatch "replace-with|change-me|super-secret-change-me|example.com|db-host|staging-db-host|YOUR_"
+}
+
+function Test-EmailLike {
+  param([string]$Value)
+
+  if ([string]::IsNullOrWhiteSpace($Value)) {
+    return $false
+  }
+
+  return $Value -match '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+}
+
 if ($Environment -eq "staging") {
   $composePath = ".env.staging.compose"
   $backendPath = "backend/.env.staging"
@@ -49,13 +73,13 @@ $frontend = Get-KeyValueMap -Path $frontendPath
 
 $failures = New-Object System.Collections.Generic.List[string]
 
-foreach ($requiredKey in @("APP_DOMAIN", "NEXT_PUBLIC_API_BASE_URL", "BACKEND_ENV_FILE", "FRONTEND_ENV_FILE")) {
+foreach ($requiredKey in @("APP_DOMAIN", "LETSENCRYPT_EMAIL", "NEXT_PUBLIC_API_BASE_URL", "BACKEND_ENV_FILE", "FRONTEND_ENV_FILE")) {
   if (-not $compose.ContainsKey($requiredKey)) {
     $failures.Add("Missing $requiredKey in $composePath")
   }
 }
 
-foreach ($requiredKey in @("DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET", "CORS_ORIGIN")) {
+foreach ($requiredKey in @("DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET", "CORS_ORIGIN", "TRUST_PROXY", "ENABLE_SWAGGER", "AUTH_COOKIE_SECURE", "AUTH_COOKIE_SAME_SITE")) {
   if (-not $backend.ContainsKey($requiredKey)) {
     $failures.Add("Missing $requiredKey in $backendPath")
   }
@@ -76,8 +100,60 @@ if ($compose["APP_DOMAIN"] -ne $expectedDomain) {
   $failures.Add("APP_DOMAIN should be $expectedDomain but is $($compose["APP_DOMAIN"])")
 }
 
+if (-not (Test-EmailLike -Value $compose["LETSENCRYPT_EMAIL"])) {
+  $failures.Add("LETSENCRYPT_EMAIL must be a valid email address")
+}
+
+if ($compose["BACKEND_ENV_FILE"] -ne $backendPath) {
+  $failures.Add("BACKEND_ENV_FILE should point to $backendPath")
+}
+
+if ($compose["FRONTEND_ENV_FILE"] -ne $frontendPath) {
+  $failures.Add("FRONTEND_ENV_FILE should point to $frontendPath")
+}
+
+if (-not (Test-Path $compose["BACKEND_ENV_FILE"])) {
+  $failures.Add("BACKEND_ENV_FILE does not exist: $($compose["BACKEND_ENV_FILE"])")
+}
+
+if (-not (Test-Path $compose["FRONTEND_ENV_FILE"])) {
+  $failures.Add("FRONTEND_ENV_FILE does not exist: $($compose["FRONTEND_ENV_FILE"])")
+}
+
 if ($backend["CORS_ORIGIN"] -notlike "https://$expectedDomain*") {
   $failures.Add("CORS_ORIGIN should point to https://$expectedDomain")
+}
+
+if (-not (Test-StrongSecret -Value $backend["JWT_SECRET"])) {
+  $failures.Add("JWT_SECRET must be at least 32 characters and must not use a placeholder")
+}
+
+if (-not (Test-StrongSecret -Value $backend["JWT_REFRESH_SECRET"])) {
+  $failures.Add("JWT_REFRESH_SECRET must be at least 32 characters and must not use a placeholder")
+}
+
+if ($backend["JWT_SECRET"] -eq $backend["JWT_REFRESH_SECRET"]) {
+  $failures.Add("JWT_SECRET and JWT_REFRESH_SECRET must not be identical")
+}
+
+if ($backend["TRUST_PROXY"] -ne "1") {
+  $failures.Add("TRUST_PROXY should be set to 1 behind reverse proxy")
+}
+
+if ($Environment -eq "production" -and $backend["ENABLE_SWAGGER"].ToLower() -ne "false") {
+  $failures.Add("ENABLE_SWAGGER should be false in production")
+}
+
+if ($Environment -eq "staging" -and $backend["ENABLE_SWAGGER"].ToLower() -ne "true") {
+  $failures.Add("ENABLE_SWAGGER should be true in staging")
+}
+
+if ($backend["AUTH_COOKIE_SECURE"].ToLower() -ne "true") {
+  $failures.Add("AUTH_COOKIE_SECURE should be true for staging/production HTTPS deployments")
+}
+
+if (@("lax", "strict", "none") -notcontains $backend["AUTH_COOKIE_SAME_SITE"].ToLower()) {
+  $failures.Add("AUTH_COOKIE_SAME_SITE should be one of: lax, strict, none")
 }
 
 if ($frontend["NEXT_PUBLIC_API_BASE_URL"] -notlike "https://$expectedDomain/api/v1*") {

@@ -3,7 +3,6 @@ import { apiClient, unwrapData } from '@/lib/api-client';
 export const login = (payload: { username: string; password: string }) =>
   unwrapData(
     apiClient<{
-      accessToken: string;
       user: {
         id: string;
         username: string;

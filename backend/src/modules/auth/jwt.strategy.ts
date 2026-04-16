@@ -6,12 +6,16 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ERROR_CODES } from '../../common/constants/error-codes';
+import { extractJwtFromCookie } from './auth-cookie';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly prisma: PrismaService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request) => (request ? extractJwtFromCookie(request) : null),
+        ExtractJwt.fromAuthHeaderAsBearerToken()
+      ]),
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_SECRET ?? 'super-secret-change-me'
     });

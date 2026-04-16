@@ -1,11 +1,12 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { AuthService } from './auth.service';
+import { clearAuthCookie, setAuthCookie } from './auth-cookie';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 
@@ -16,16 +17,25 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  async login(@Body() dto: LoginDto, @Req() request: Request) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.authService.login(dto, request.ip ?? '0.0.0.0');
+    setAuthCookie(response, result.accessToken);
+
     return {
-      data: await this.authService.login(dto, request.ip ?? '0.0.0.0'),
-      message: 'Đăng nhập thành công'
+      data: result,
+      message: 'Dang nhap thanh cong'
     };
   }
 
   @ApiBearerAuth()
   @Post('logout')
-  async logout() {
+  async logout(@Res({ passthrough: true }) response: Response) {
+    clearAuthCookie(response);
+
     return {
       data: await this.authService.logout(),
       message: 'Logout successful'
@@ -48,7 +58,7 @@ export class AuthController {
   ) {
     return {
       data: await this.authService.changePassword(user, dto),
-      message: 'Đổi mật khẩu thành công'
+      message: 'Doi mat khau thanh cong'
     };
   }
 }

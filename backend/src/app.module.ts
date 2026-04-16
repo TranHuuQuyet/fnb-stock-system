@@ -1,8 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { BusinessNetworkGuard } from './common/guards/business-network.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
+import { LoginRateLimitMiddleware } from './common/middleware/login-rate-limit.middleware';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { PrismaModule } from './prisma/prisma.module';
@@ -58,5 +59,8 @@ import { ReportsModule } from './modules/reports/reports.module';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(RequestContextMiddleware, RequestLoggingMiddleware).forRoutes('*');
+    consumer
+      .apply(LoginRateLimitMiddleware)
+      .forRoutes({ path: 'auth/login', method: RequestMethod.POST });
   }
 }

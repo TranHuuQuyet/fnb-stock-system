@@ -159,7 +159,22 @@ JWT_REFRESH_EXPIRES_IN=7d
 CORS_ORIGIN=https://staging.fnbstore.store
 APP_TIMEZONE=Asia/Ho_Chi_Minh
 TRUST_PROXY=1
+ENABLE_SWAGGER=true
+ENABLE_LOGIN_RATE_LIMIT=true
+LOGIN_RATE_LIMIT_MAX_ATTEMPTS=5
+LOGIN_RATE_LIMIT_WINDOW_MS=600000
+REQUIRE_STRONG_SECRETS=true
+AUTH_COOKIE_NAME=fnb_stock_session
+AUTH_COOKIE_SECURE=true
+AUTH_COOKIE_SAME_SITE=lax
 ```
+
+Ghi chu:
+
+- `ENABLE_SWAGGER=true` de staging van mo `api/docs` cho test va debug.
+- `REQUIRE_STRONG_SECRETS=true` de app fail fast neu secret con yeu hoac dang la placeholder.
+- Login production/staging da co rate limit theo IP; neu can dieu chinh, doi `LOGIN_RATE_LIMIT_*`.
+- Web app da chuyen sang `HttpOnly cookie`; staging nen chay bang HTTPS de cookie secure hoat dong dung.
 
 ### `frontend/.env.staging`
 

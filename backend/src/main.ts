@@ -11,8 +11,11 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
+import { readBooleanEnv, validateRuntimeSecurityConfig } from './common/utils/runtime-config';
 
 async function bootstrap() {
+  validateRuntimeSecurityConfig();
+
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true
   });
@@ -42,15 +45,22 @@ async function bootstrap() {
     app.get(BusinessNetworkGuard)
   );
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('API quản lý tồn kho F&B')
-    .setDescription('API kiểm soát sử dụng nguyên liệu theo lô')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  const enableSwagger = readBooleanEnv(
+    process.env.ENABLE_SWAGGER,
+    process.env.NODE_ENV !== 'production'
+  );
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  if (enableSwagger) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('API quan ly ton kho F&B')
+      .setDescription('API kiem soat su dung nguyen lieu theo lo')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   await app.listen(Number(process.env.PORT ?? 4000));
 }

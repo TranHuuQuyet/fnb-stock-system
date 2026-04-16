@@ -51,6 +51,11 @@ Tài liệu này dùng cho ngày mở hệ thống thực tế tại `fnbstore.s
    - `JWT_REFRESH_SECRET`
    - `CORS_ORIGIN=https://fnbstore.store`
    - `NEXT_PUBLIC_API_BASE_URL=https://fnbstore.store/api/v1`
+   - `ENABLE_SWAGGER=false`
+   - `TRUST_PROXY=1`
+   - `REQUIRE_STRONG_SECRETS=true`
+   - `AUTH_COOKIE_SECURE=true`
+   - `AUTH_COOKIE_SAME_SITE=lax`
 6. Chạy preflight check:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment production`
 7. Xác nhận production không chạy `db:seed`

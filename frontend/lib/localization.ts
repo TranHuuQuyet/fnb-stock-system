@@ -80,6 +80,7 @@ const apiErrorLabels: Record<string, string> = {
   AUTH_ACCOUNT_LOCKED: 'Tài khoản đã bị khóa',
   AUTH_ACCOUNT_INACTIVE: 'Tài khoản đang bị vô hiệu hóa',
   AUTH_MUST_CHANGE_PASSWORD: 'Bạn cần đổi mật khẩu trước khi tiếp tục',
+  AUTH_RATE_LIMITED: 'Bạn đăng nhập quá nhanh, vui lòng thử lại sau ít phút',
   VALIDATION_ERROR: 'Dữ liệu chưa hợp lệ',
   VALIDATION_INVALID_PAYLOAD: 'Dữ liệu gửi lên chưa hợp lệ',
   VALIDATION_INVALID_QUERY: 'Điều kiện tìm kiếm chưa hợp lệ',

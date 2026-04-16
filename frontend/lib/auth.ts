@@ -35,7 +35,6 @@ export type SessionUser = {
 };
 
 export type SessionState = {
-  accessToken: string;
   user: SessionUser;
   mustChangePassword: boolean;
 };
@@ -83,8 +82,6 @@ export const setSession = (session: SessionState) => {
 export const clearSession = () => {
   window.localStorage.removeItem(SESSION_KEY);
 };
-
-export const getAccessToken = () => getSession()?.accessToken ?? null;
 
 export const updateSessionUser = (user: SessionUser) => {
   const session = getSession();
