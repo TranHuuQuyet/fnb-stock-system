@@ -6,5 +6,8 @@ coverage
 .env.local
 .env.production
 .env.production.compose
+.env.staging.compose
+backend/.env.staging
+frontend/.env.staging
 *.log
 postgres_data

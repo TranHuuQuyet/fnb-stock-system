@@ -67,7 +67,7 @@ if (-not $frontend.ContainsKey("NEXT_PUBLIC_API_BASE_URL")) {
 
 $allValues = @($compose.Values + $backend.Values + $frontend.Values)
 foreach ($value in $allValues) {
-  if ($value -match "replace-with|localhost|example.com|db-host|staging-db-host") {
+  if ($value -match "replace-with|localhost|example.com|db-host|staging-db-host|CHANGE_ME|YOUR_") {
     $failures.Add("Placeholder value still present: $value")
   }
 }
