@@ -23,6 +23,7 @@ docs/        Architecture, API overview, operation manual, production deployment
 - `docs/OPERATION_MANUAL.md`: hướng dẫn vận hành hằng ngày
 - `docs/DEPLOYMENT_PROD.md`: hướng dẫn triển khai production
 - `docs/BACKUP_RESTORE.md`: runbook backup và restore
+- `docs/BUY_AND_SETUP_CHECKLIST.md`: checklist mua dịch vụ, cấu hình VPS và dựng staging
 - `docs/RELEASE_RUNBOOK.md`: runbook staging, release tag, deploy và rollback
 - `docs/PILOT_RUNBOOK.md`: runbook pilot 2 chi nhánh đầu tiên
 - `docs/RELEASE_TEMPLATE.md`: mẫu biên bản release trước pilot/go-live
@@ -190,6 +191,7 @@ Chi tiết triển khai và vận hành nằm trong:
 - `docs/OPERATION_MANUAL.md`
 - `docs/DEPLOYMENT_PROD.md`
 - `docs/BACKUP_RESTORE.md`
+- `docs/BUY_AND_SETUP_CHECKLIST.md`
 - `docs/RELEASE_RUNBOOK.md`
 - `docs/PILOT_RUNBOOK.md`
 - `docs/RELEASE_TEMPLATE.md`
