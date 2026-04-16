@@ -33,12 +33,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       });
     }
 
+    if (user.sessionVersion !== payload.sessionVersion) {
+      throw new UnauthorizedException({
+        code: ERROR_CODES.AUTH_UNAUTHORIZED,
+        message: 'User session has expired'
+      });
+    }
+
     return {
       userId: user.id,
       username: user.username,
       role: user.role,
       storeId: user.storeId,
-      status: user.status
+      status: user.status,
+      sessionVersion: user.sessionVersion
     };
   }
 }

@@ -7,6 +7,7 @@ export type JwtUser = {
   role: UserRole;
   storeId: string | null;
   status: UserStatus;
+  sessionVersion: number;
 };
 
 export type RequestWithContext = Request & {

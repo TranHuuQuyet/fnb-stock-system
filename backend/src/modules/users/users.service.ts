@@ -201,6 +201,13 @@ export class UsersService {
         ...(dto.role ? { role: dto.role } : {}),
         ...(dto.storeId !== undefined ? { storeId: dto.storeId } : {}),
         ...(dto.status ? { status: dto.status } : {}),
+        ...(this.shouldRotateSession(dto)
+          ? {
+              sessionVersion: {
+                increment: 1
+              }
+            }
+          : {}),
         ...(dto.permissions !== undefined
           ? { permissions: normalizePermissions(dto.permissions) }
           : {})
@@ -250,6 +257,9 @@ export class UsersService {
       data: {
         passwordHash: await hashPassword(temporaryPassword),
         status: UserStatus.MUST_CHANGE_PASSWORD,
+        sessionVersion: {
+          increment: 1
+        },
         failedLoginAttempts: 0,
         lastFailedLoginAt: null,
         lockoutUntil: null
@@ -292,6 +302,9 @@ export class UsersService {
       where: { id },
       data: {
         status,
+        sessionVersion: {
+          increment: 1
+        },
         ...(status === UserStatus.ACTIVE
           ? {
               failedLoginAttempts: 0,
@@ -334,5 +347,9 @@ export class UsersService {
     const tail = Array.from({ length: 5 }, () => pick(alphabet)).join('');
 
     return `Tmp${pick(upper)}${pick(lower)}${pick(digits)}${tail}`;
+  }
+
+  private shouldRotateSession(dto: UpdateUserDto) {
+    return dto.role !== undefined || dto.storeId !== undefined || dto.status !== undefined;
   }
 }

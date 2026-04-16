@@ -108,6 +108,14 @@ CI/CD hiện có tại `.github/workflows/docker-image.yml`:
 - `push main`: chỉ build/push image GHCR sau khi job verify pass
 - `push tag v*`: push thêm image tag theo release để chốt mốc deploy/rollback rõ ràng hơn
 
+Production hardening update:
+
+- login production chỉ trả `user` + `mustChangePassword`; `accessToken` chỉ còn nằm trong `HttpOnly cookie`
+- JWT có `sessionVersion` để logout, reset password, lock/unlock user và đổi mật khẩu có thể revoke session cũ ngay
+- `docker-compose.prod.yml` dùng readiness check `/api/v1/health/ready` cho backend
+- có thêm script `deploy/scripts/backup-postgres.ps1` và `deploy/scripts/restore-postgres.ps1`
+- xem thêm `docs/PRODUCTION_HARDENING.md`
+
 Repo cũng đã có script smoke test nhanh sau deploy:
 
 - `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store`

@@ -19,6 +19,20 @@ import { LoginDto } from './dto/login.dto';
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCKOUT_MINUTES = 15;
 
+type LoginResult = {
+  accessToken: string;
+  user: {
+    id: string;
+    username: string;
+    fullName: string;
+    role: string;
+    status: UserStatus;
+    permissions: string[];
+    store: unknown;
+  };
+  mustChangePassword: boolean;
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -28,7 +42,7 @@ export class AuthService {
     private readonly prisma: PrismaService
   ) {}
 
-  async login(dto: LoginDto, ipAddress = '0.0.0.0') {
+  async login(dto: LoginDto, ipAddress = '0.0.0.0'): Promise<LoginResult> {
     const user = await this.usersService.findByUsername(dto.username);
     const now = new Date();
 
@@ -84,7 +98,8 @@ export class AuthService {
       username: user.username,
       role: user.role,
       storeId: user.storeId ?? null,
-      status: user.status
+      status: user.status,
+      sessionVersion: user.sessionVersion
     };
 
     await this.prisma.user.update({
@@ -120,7 +135,16 @@ export class AuthService {
     };
   }
 
-  async logout() {
+  async logout(currentUser: JwtUser) {
+    await this.bumpSessionVersion(currentUser.userId);
+
+    await this.auditService.createLog({
+      actorUserId: currentUser.userId,
+      action: 'LOGOUT',
+      entityType: 'Auth',
+      entityId: currentUser.userId
+    });
+
     return {
       loggedOut: true
     };
@@ -159,6 +183,9 @@ export class AuthService {
       where: { id: currentUser.userId },
       data: {
         passwordHash: await hashPassword(dto.newPassword),
+        sessionVersion: {
+          increment: 1
+        },
         failedLoginAttempts: 0,
         lastFailedLoginAt: null,
         lockoutUntil: null,
@@ -229,6 +256,17 @@ export class AuthService {
         username,
         ipAddress,
         reason
+      }
+    });
+  }
+
+  private async bumpSessionVersion(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        sessionVersion: {
+          increment: 1
+        }
       }
     });
   }

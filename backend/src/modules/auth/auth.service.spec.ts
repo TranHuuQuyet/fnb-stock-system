@@ -52,6 +52,7 @@ describe('AuthService', () => {
       storeId: 'store-1',
       passwordHash: 'hashed',
       status: UserStatus.LOCKED,
+      sessionVersion: 0,
       store: null
     });
 
@@ -86,6 +87,7 @@ describe('AuthService', () => {
       passwordHash: 'hashed',
       status: UserStatus.ACTIVE,
       permissions: [],
+      sessionVersion: 0,
       failedLoginAttempts: 3,
       lockoutUntil: null,
       store: null
@@ -135,6 +137,7 @@ describe('AuthService', () => {
       storeId: 'store-1',
       passwordHash: 'hashed',
       status: UserStatus.MUST_CHANGE_PASSWORD,
+      sessionVersion: 0,
       store: null
     });
     prisma.user.update.mockResolvedValue({
@@ -149,7 +152,8 @@ describe('AuthService', () => {
         username: 'staff2',
         role: UserRole.STAFF,
         storeId: 'store-1',
-        status: UserStatus.MUST_CHANGE_PASSWORD
+        status: UserStatus.MUST_CHANGE_PASSWORD,
+        sessionVersion: 0
       },
       {
         currentPassword: 'OldPass1',
@@ -161,5 +165,28 @@ describe('AuthService', () => {
     expect(result.status).toBe(UserStatus.ACTIVE);
     expect(mockedAssertPasswordPolicy).toHaveBeenCalledWith('NewPass1');
     expect(prisma.user.update).toHaveBeenCalled();
+  });
+
+  it('revokes the current session on logout', async () => {
+    prisma.user.update.mockResolvedValue({ id: 'user-1' });
+
+    const result = await service.logout({
+      userId: 'user-1',
+      username: 'staff1',
+      role: UserRole.STAFF,
+      storeId: 'store-1',
+      status: UserStatus.ACTIVE,
+      sessionVersion: 0
+    });
+
+    expect(result).toEqual({ loggedOut: true });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: {
+        sessionVersion: {
+          increment: 1
+        }
+      }
+    });
   });
 });

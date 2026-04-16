@@ -75,7 +75,8 @@ describe('PosService', () => {
         username: 'manager1',
         role: UserRole.MANAGER,
         storeId: 'store-1',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        sessionVersion: 0
       },
       'store-1',
       '2026-04-08'

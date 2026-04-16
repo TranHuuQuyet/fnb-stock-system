@@ -23,6 +23,7 @@ describe('BusinessNetworkGuard', () => {
     role: UserRole;
     storeId: string | null;
     status: UserStatus;
+    sessionVersion: number;
   }) =>
     ({
       getHandler: jest.fn(),
@@ -56,7 +57,8 @@ describe('BusinessNetworkGuard', () => {
           username: 'admin',
           role: UserRole.ADMIN,
           storeId: null,
-          status: UserStatus.ACTIVE
+          status: UserStatus.ACTIVE,
+          sessionVersion: 0
         })
       )
     ).resolves.toBe(true);
@@ -77,7 +79,8 @@ describe('BusinessNetworkGuard', () => {
           username: 'staff1',
           role: UserRole.STAFF,
           storeId: 'store-1',
-          status: UserStatus.ACTIVE
+          status: UserStatus.ACTIVE,
+          sessionVersion: 0
         })
       )
     ).resolves.toBe(true);
@@ -97,7 +100,8 @@ describe('BusinessNetworkGuard', () => {
           username: 'staff1',
           role: UserRole.STAFF,
           storeId: 'store-1',
-          status: UserStatus.ACTIVE
+          status: UserStatus.ACTIVE,
+          sessionVersion: 0
         })
       )
     ).rejects.toBeInstanceOf(HttpException);

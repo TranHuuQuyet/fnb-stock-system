@@ -166,7 +166,8 @@ describe('API routes (e2e)', () => {
         username: 'admin',
         role: 'ADMIN',
         storeId: 'store-1',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        sessionVersion: 0
       };
       next();
     });

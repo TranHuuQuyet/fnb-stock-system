@@ -24,20 +24,24 @@ export class AuthController {
   ) {
     const result = await this.authService.login(dto, request.ip ?? '0.0.0.0');
     setAuthCookie(response, result.accessToken);
+    const { accessToken: _accessToken, ...session } = result;
 
     return {
-      data: result,
+      data: session,
       message: 'Dang nhap thanh cong'
     };
   }
 
   @ApiBearerAuth()
   @Post('logout')
-  async logout(@Res({ passthrough: true }) response: Response) {
+  async logout(
+    @CurrentUser() user: JwtUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
     clearAuthCookie(response);
 
     return {
-      data: await this.authService.logout(),
+      data: await this.authService.logout(user),
       message: 'Logout successful'
     };
   }

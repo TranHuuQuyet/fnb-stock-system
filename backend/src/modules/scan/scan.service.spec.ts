@@ -41,7 +41,8 @@ describe('ScanService', () => {
     username: 'staff1',
     role: UserRole.STAFF,
     storeId: 'store-1',
-    status: UserStatus.ACTIVE
+    status: UserStatus.ACTIVE,
+    sessionVersion: 0
   };
 
   beforeEach(() => {

@@ -102,6 +102,7 @@ model User {
   storeId       String?
   status        UserStatus   @default(MUST_CHANGE_PASSWORD)
   permissions   String[]     @default([])
+  sessionVersion Int         @default(0)
   failedLoginAttempts Int    @default(0)
   lastFailedLoginAt DateTime?
   lockoutUntil  DateTime?

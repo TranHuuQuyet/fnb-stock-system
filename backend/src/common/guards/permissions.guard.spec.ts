@@ -21,6 +21,7 @@ describe('PermissionsGuard', () => {
     role: UserRole;
     storeId: string | null;
     status: UserStatus;
+    sessionVersion: number;
   }) =>
     ({
       getHandler: jest.fn(),
@@ -46,7 +47,8 @@ describe('PermissionsGuard', () => {
           username: 'staff',
           role: UserRole.STAFF,
           storeId: 'store-1',
-          status: UserStatus.ACTIVE
+          status: UserStatus.ACTIVE,
+          sessionVersion: 0
         })
       )
     ).resolves.toBe(true);
@@ -62,7 +64,8 @@ describe('PermissionsGuard', () => {
           username: 'admin',
           role: UserRole.ADMIN,
           storeId: null,
-          status: UserStatus.ACTIVE
+          status: UserStatus.ACTIVE,
+          sessionVersion: 0
         })
       )
     ).resolves.toBe(true);
@@ -82,7 +85,8 @@ describe('PermissionsGuard', () => {
           username: 'manager',
           role: UserRole.MANAGER,
           storeId: 'store-1',
-          status: UserStatus.ACTIVE
+          status: UserStatus.ACTIVE,
+          sessionVersion: 0
         })
       )
     ).rejects.toBeInstanceOf(ForbiddenException);
