@@ -1,118 +1,120 @@
 # Staging Checklist
 
-Tài liệu này dùng để dựng môi trường staging gần giống production nhất có thể trước khi chạy UAT và pilot. Nếu cần chốt tag release, rollback hoặc bàn giao deploy, xem thêm [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md).
+Tai lieu nay dung de dung moi truong staging gan giong production nhat co the truoc khi chay UAT va pilot. Neu can chot tag release, rollback hoac ban giao deploy, xem them [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md).
 
-## 1. Mục tiêu staging
+## 1. Muc tieu staging
 
-- Kiểm tra quy trình deploy không dùng dữ liệu demo
-- Kiểm tra migrate, bootstrap admin, backup và smoke test trên môi trường gần production
-- Tạo nơi để test nghiệp vụ trước khi mở cho chi nhánh thật
+- Kiem tra quy trinh deploy khong dung du lieu demo
+- Kiem tra migrate, bootstrap admin, backup va smoke test tren moi truong gan production
+- Tao noi de test nghiep vu truoc khi mo cho chi nhanh that
 
-## 2. Cấu hình khuyến nghị
+## 2. Cau hinh khuyen nghi
 
-- Domain chính production: `https://fnbstore.store`
-- Gợi ý staging:
+- Domain chinh production: `https://fnbstore.store`
+- Goi y staging:
   - `https://staging.fnbstore.store`
-  - hoặc 1 URL tạm riêng chỉ cho đội triển khai
-- Frontend và backend đi cùng 1 domain, API theo dạng `/api/v1`
-- Dùng cùng kiểu hạ tầng với production:
-  - `1 VPS chạy app`
+  - hoac 1 URL tam rieng chi cho doi trien khai
+- Frontend va backend di cung 1 domain, API theo dang `/api/v1`
+- Dung cung kieu ha tang voi production:
+  - `1 VPS chay app`
   - `1 PostgreSQL managed`
 
-## 3. Checklist hạ tầng
+## 3. Checklist ha tang
 
-1. VPS đã sẵn sàng:
-   - tối thiểu `2 vCPU`, `4 GB RAM`, `40 GB SSD`
-2. PostgreSQL staging đã tạo riêng
-3. DNS hoặc URL staging đã trỏ đúng
-4. HTTPS đã sẵn sàng
-5. Có user chạy service riêng, không chạy dưới `root`
-6. Có thư mục chứa log và backup
+1. VPS da san sang:
+   - toi thieu `2 vCPU`, `4 GB RAM`, `40 GB SSD`
+2. PostgreSQL staging da tao rieng
+3. DNS hoac URL staging da tro dung
+4. HTTPS da san sang
+5. Co user chay service rieng, khong chay duoi `root`
+6. Co thu muc chua log va backup
 
-## 4. Checklist cấu hình
+## 4. Checklist cau hinh
 
-1. Tạo `.env.staging.compose` cho staging
-2. Tạo `backend/.env.staging` cho staging
-3. Tạo `frontend/.env.staging` cho staging
-4. Kiểm tra các biến bắt buộc:
+1. Tao `.env.staging.compose` cho staging
+2. Tao `backend/.env.staging` cho staging
+3. Tao `frontend/.env.staging` cho staging
+4. Kiem tra cac bien bat buoc:
    - `DATABASE_URL`
    - `JWT_SECRET`
    - `JWT_REFRESH_SECRET`
    - `CORS_ORIGIN`
    - `NEXT_PUBLIC_API_BASE_URL`
-5. Xác nhận `NEXT_PUBLIC_API_BASE_URL` dùng đúng domain staging
-6. Xác nhận không còn giá trị `localhost` trong env staging
-7. Khuyến nghị copy từ các file mẫu:
+5. Xac nhan `NEXT_PUBLIC_API_BASE_URL` dung dung domain staging
+6. Xac nhan khong con gia tri `localhost` trong env staging
+7. Khuyen nghi copy tu cac file mau:
    - `.env.staging.compose.example`
    - `backend/.env.staging.example`
    - `frontend/.env.staging.example`
 
 ## 5. Checklist deploy
 
-1. Pull code đúng branch hoặc tag cần kiểm thử
-2. Nếu dùng compose staging, chạy:
+1. Pull code dung branch hoac tag can kiem thu
+2. Neu dung compose staging, chay:
    - `docker compose --env-file .env.staging.compose -f docker-compose.prod.yml up -d --build`
-3. Nếu không dùng compose, cài dependencies bằng `npm ci`
-4. Chạy:
+3. Neu khong dung compose, cai dependencies bang `npm ci`
+4. Chay:
    - `cd backend && npm run prisma:generate`
    - `cd backend && npm run prisma:deploy`
-5. Không chạy `npm run db:seed`
-6. Chạy `bootstrap:admin` để tạo admin đầu tiên
+5. Khong chay `npm run db:seed`
+6. Chay `bootstrap:admin` de tao admin dau tien
 7. Build:
    - `cd backend && npm run build`
    - `cd frontend && npm run build`
-8. Start service backend và frontend
-9. Kiểm tra reverse proxy và TLS
+8. Start service backend va frontend
+9. Kiem tra reverse proxy va TLS
 
 ## 6. Checklist smoke test staging
 
-1. Mở frontend staging
-2. Đăng nhập bằng admin bootstrap
-3. Kiểm tra:
+1. Mo frontend staging
+2. Dang nhap bang admin bootstrap
+3. Kiem tra:
    - `/api/v1/health`
    - `/api/v1/health/ready`
-4. Tạo 2 chi nhánh test
-5. Tạo manager và staff cho mỗi chi nhánh
-6. Tạo ingredient unit, ingredient group, ingredient
-7. Tạo batch, in tem, quét online
-8. Thử scan offline ở chế độ `Sử dụng tại quán`
-9. Thử chuyển kho:
-   - tạo phiếu ở chi nhánh A
-   - xác nhận nhận ở chi nhánh B
-10. Thử `Ca làm việc`:
-   - nhập giờ
-   - nhập phụ cấp
-   - nhập đi trễ hoặc về sớm
-   - in bảng lương
-   - xuất Excel
-11. Mở `Admin > Reports`
-12. Thử cấu hình `IP whitelist` và `Emergency bypass`
+4. Tao 2 chi nhanh test
+5. Tao manager va staff cho moi chi nhanh
+6. Tao ingredient unit, ingredient group, ingredient
+7. Tao batch, in tem, quet online
+8. Thu scan offline o che do `Su dung tai quan`
+9. Thu chuyen kho:
+   - tao phieu o chi nhanh A
+   - xac nhan nhan o chi nhanh B
+10. Thu `Ca lam viec`:
+   - nhap gio
+   - nhap phu cap
+   - nhap di tre hoac ve som
+   - in bang luong
+   - xuat Excel
+11. Mo `Admin > Reports`
+12. Thu cau hinh `IP whitelist` va `Emergency bypass`
+13. Chay workflow GitHub Actions `Post-Deploy Smoke Test` voi `target_environment=staging`
 
-## 7. Checklist dữ liệu test
+## 7. Checklist du lieu test
 
-1. Không dùng dữ liệu demo mặc định của local để kiểm thử staging
-2. Tạo dữ liệu test gần giống thật:
-   - 2 chi nhánh
-   - ít nhất 5 nhân viên
-   - ít nhất 5 batch
-   - ít nhất 2 phiếu chuyển kho
-   - ít nhất 1 bảng chấm công tháng
-3. Ghi rõ dữ liệu nào là dữ liệu test để xóa hoặc reset trước khi go-live production
+1. Khong dung du lieu demo mac dinh cua local de kiem thu staging
+2. Tao du lieu test gan giong that:
+   - 2 chi nhanh
+   - it nhat 5 nhan vien
+   - it nhat 5 batch
+   - it nhat 2 phieu chuyen kho
+   - it nhat 1 bang cham cong thang
+3. Ghi ro du lieu nao la du lieu test de xoa hoac reset truoc khi go-live production
 
-## 8. Checklist backup và restore trên staging
+## 8. Checklist backup va restore tren staging
 
-1. Tạo 1 bản backup staging
-2. Restore bản đó vào database test riêng
-3. Kiểm tra dữ liệu sau restore
-4. Ghi lại thời gian backup và thời gian restore thực tế
-5. Xác nhận người phụ trách kỹ thuật nắm được quy trình restore
+1. Tao 1 ban backup staging
+   - luu lai `backup manifest` hoac duong dan file backup
+2. Restore ban do vao database test rieng
+3. Kiem tra du lieu sau restore
+4. Ghi lai thoi gian backup va thoi gian restore thuc te
+5. Xac nhan nguoi phu trach ky thuat nam duoc quy trinh restore
 
-## 9. Điều kiện pass staging
+## 9. Dieu kien pass staging
 
-Staging được coi là sẵn sàng cho UAT khi:
+Staging duoc coi la san sang cho UAT khi:
 
-1. Deploy thành công không dùng `db:seed`
-2. Admin bootstrap đăng nhập được
-3. Các smoke test chính đều pass
-4. Đã test backup và restore ít nhất 1 lần
-5. Tài liệu [DEPLOYMENT_PROD.md](./DEPLOYMENT_PROD.md) và [BACKUP_RESTORE.md](./BACKUP_RESTORE.md) đủ để người triển khai khác làm lại được
+1. Deploy thanh cong khong dung `db:seed`
+2. Admin bootstrap dang nhap duoc
+3. Cac smoke test chinh deu pass
+4. Da test backup va restore it nhat 1 lan
+5. Tai lieu [DEPLOYMENT_PROD.md](./DEPLOYMENT_PROD.md) va [BACKUP_RESTORE.md](./BACKUP_RESTORE.md) du de nguoi trien khai khac lam lai duoc

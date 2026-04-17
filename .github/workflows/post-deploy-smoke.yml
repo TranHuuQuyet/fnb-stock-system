@@ -1,0 +1,99 @@
+name: Post-Deploy Smoke Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Target environment to verify
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      base_url:
+        description: Optional override for the deployed base URL
+        required: false
+        type: string
+      git_ref:
+        description: Optional git ref to checkout for the smoke script
+        required: false
+        type: string
+      skip_frontend:
+        description: Skip frontend homepage check
+        required: false
+        type: boolean
+        default: false
+      skip_ready:
+        description: Skip readiness endpoint check
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    runs-on: windows-latest
+    environment: ${{ inputs.target_environment }}
+    env:
+      STAGING_SMOKE_TEST_URL: ${{ vars.STAGING_SMOKE_TEST_URL }}
+      PRODUCTION_SMOKE_TEST_URL: ${{ vars.PRODUCTION_SMOKE_TEST_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref != '' && inputs.git_ref || github.ref }}
+
+      - name: Resolve smoke test base URL
+        id: resolve
+        shell: pwsh
+        run: |
+          $inputUrl = "${{ inputs.base_url }}".Trim()
+          $targetEnvironment = "${{ inputs.target_environment }}"
+
+          if (-not [string]::IsNullOrWhiteSpace($inputUrl)) {
+            $baseUrl = $inputUrl
+          } elseif ($targetEnvironment -eq "staging" -and -not [string]::IsNullOrWhiteSpace($env:STAGING_SMOKE_TEST_URL)) {
+            $baseUrl = $env:STAGING_SMOKE_TEST_URL
+          } elseif ($targetEnvironment -eq "production" -and -not [string]::IsNullOrWhiteSpace($env:PRODUCTION_SMOKE_TEST_URL)) {
+            $baseUrl = $env:PRODUCTION_SMOKE_TEST_URL
+          } else {
+            throw "No base URL provided. Set workflow input 'base_url' or repository variable for the target environment."
+          }
+
+          "base_url=$baseUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Run post-deploy smoke test
+        shell: pwsh
+        run: |
+          $arguments = @(
+            "-ExecutionPolicy", "Bypass",
+            "-File", "deploy/scripts/smoke-test.ps1",
+            "-BaseUrl", "${{ steps.resolve.outputs.base_url }}"
+          )
+
+          if ("${{ inputs.skip_frontend }}" -eq "true") {
+            $arguments += "-SkipFrontend"
+          }
+
+          if ("${{ inputs.skip_ready }}" -eq "true") {
+            $arguments += "-SkipReady"
+          }
+
+          & powershell @arguments
+
+      - name: Write workflow summary
+        shell: pwsh
+        run: |
+          @"
+          ## Post-deploy smoke test
+
+          - Environment: `${{ inputs.target_environment }}`
+          - Base URL: `${{ steps.resolve.outputs.base_url }}`
+          - Git ref: `${{ inputs.git_ref != '' && inputs.git_ref || github.ref }}`
+          - Skip frontend: `${{ inputs.skip_frontend }}`
+          - Skip readiness: `${{ inputs.skip_ready }}`
+          - Result: `passed`
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append

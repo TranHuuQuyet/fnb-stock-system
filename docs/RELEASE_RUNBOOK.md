@@ -37,6 +37,7 @@ Moi tag release can tro toi mot commit da:
 1. pass test/build
 2. pass staging smoke test
 3. co bien ban UAT hoac ghi chu loi con lai
+4. co moc rollback ro rang: tag cu, image cu, backup moi nhat
 
 ## 3. Quy trinh staging
 
@@ -89,6 +90,12 @@ Co the chay nhanh bang script:
 powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://staging.fnbstore.store
 ```
 
+Hoac chay workflow CI sau deploy:
+
+- GitHub Actions > `Post-Deploy Smoke Test`
+- `target_environment=staging`
+- nhap `base_url` neu khong dung repo variable
+
 Va preflight env truoc khi deploy:
 
 ```powershell
@@ -120,14 +127,23 @@ Workflow CI/CD se build image tu tag nay. Can ghi lai:
 - tag release
 - ngay deploy
 - nguoi deploy
+- backend image tag
+- frontend image tag
+- artifact `release-metadata-<tag>` tu workflow `CI and Docker Images`
 
 ## 5. Truoc khi deploy production
 
 1. Xac nhan tag dung
 2. Xac nhan `fnbstore.store` dang tro dung VPS
 3. Xac nhan backup production vua duoc tao
+   - co `backup manifest` hoac `backup id`
+   - biet ro file backup dang nam o dau
+   - biet nguoi se thao tac restore neu can
 4. Xac nhan env production khong dung gia tri staging/demo
 5. Xac nhan co ban release truoc do de rollback
+   - tag release truoc do
+   - image backend/frontend truoc do
+   - ghi chu migration cua ban truoc do
 6. Chay preflight check:
 
 ```powershell
@@ -162,6 +178,17 @@ docker compose --env-file .env.production.compose -f docker-compose.prod.yml up 
 powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store
 ```
 
+7. Chay workflow CI sau deploy:
+   - GitHub Actions > `Post-Deploy Smoke Test`
+   - `target_environment=production`
+   - `base_url=https://fnbstore.store`
+8. Chay workflow `Release Evidence` de luu lai:
+   - release tag
+   - image da deploy
+   - backup manifest
+   - smoke run URL
+   - rollback tag
+
 ### Neu dung image tu GHCR
 
 Can ghi ro tag image da deploy:
@@ -175,9 +202,15 @@ Moi dot deploy nen luu lai:
 
 - release tag
 - commit SHA
+- backend image tag
+- frontend image tag
 - migration moi
 - backup id hoac timestamp truoc deploy
+- duong dan hoac manifest cua backup moi nhat
 - ket qua smoke test
+- link workflow `Post-Deploy Smoke Test` neu co
+- artifact `release-metadata`
+- artifact `release-evidence`
 - loi con lai duoc chap nhan
 
 Nen dung mau tai lieu tai [RELEASE_TEMPLATE.md](./RELEASE_TEMPLATE.md).
@@ -195,18 +228,22 @@ Trinh tu:
 
 1. Dung thay doi nghiep vu moi
 2. Xac dinh tag on dinh gan nhat, vi du `v2026.04.10.1`
-3. Checkout lai tag hoac doi image ve ban cu
-4. Redeploy app
-5. Chay smoke test toi thieu:
+3. Xac dinh image backend/frontend tuong ung voi tag cu
+4. Checkout lai tag hoac doi image ve ban cu
+5. Xac nhan migration moi co an toan khi app rollback ma khong rollback data hay khong
+6. Redeploy app
+7. Chay smoke test toi thieu:
    - login admin
    - health/ready
    - scan co ban
    - transfer co ban
+8. Chay them workflow `Post-Deploy Smoke Test` neu server da mo traffic lai
 
 Luu y:
 
 - Rollback app khong dong nghia rollback data
 - Neu migration moi da thay doi data, can danh gia rieng truoc khi rollback database
+- Khong rollback database chi vi app loi giao dien neu du lieu van con dung
 
 ## 9. Rollback database
 
@@ -219,6 +256,7 @@ Chi lam khi:
 Trinh tu:
 
 1. Chon ban backup gan nhat con dung
+   - uu tien backup co `latest-backup.json` hoac backup manifest ro rang
 2. Restore vao DB test truoc
 3. Kiem tra:
    - login
@@ -228,6 +266,11 @@ Trinh tu:
    - work schedules
 4. Neu dung moi restore production
 5. Sau restore, chay smoke test toi thieu va ghi bien ban su co
+6. Ghi lai ro:
+   - backup nao da dung
+   - ai phe duyet restore
+   - mat bao lau
+   - co can rotate secret hay force logout user sau su co hay khong
 
 ## 10. Sau moi dot release
 

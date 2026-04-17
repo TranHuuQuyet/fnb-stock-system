@@ -1,51 +1,52 @@
 # Go-Live Checklist
 
-Tài liệu này dùng cho ngày mở hệ thống thực tế tại `fnbstore.store`. Nên chạy theo đúng thứ tự để giảm rủi ro khi triển khai cho 2 chi nhánh đầu tiên. Nếu cần chốt tag release, image tag hoặc rollback chi tiết, xem thêm [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md). Nếu đang chạy thử 2 chi nhánh đầu tiên, xem thêm [PILOT_RUNBOOK.md](./PILOT_RUNBOOK.md).
+Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay theo dung thu tu de giam rui ro khi trien khai cho 2 chi nhanh dau tien. Neu can chot tag release, image tag hoac rollback chi tiet, xem them [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md). Neu dang chay thu 2 chi nhanh dau tien, xem them [PILOT_RUNBOOK.md](./PILOT_RUNBOOK.md).
 
-## 1. Quyết định đã chốt
+## 1. Quyet dinh da chot
 
-- Hệ thống dùng nội bộ cho chuỗi cửa hàng
-- Giai đoạn đầu triển khai cho `2` chi nhánh
-- Frontend và backend đi cùng 1 domain: `https://fnbstore.store`
+- He thong dung noi bo cho chuoi cua hang
+- Giai doan dau trien khai cho `2` chi nhanh
+- Frontend va backend di cung 1 domain: `https://fnbstore.store`
 - API production: `https://fnbstore.store/api/v1`
-- Hạ tầng khuyến nghị: `1 VPS chạy app + PostgreSQL managed`
-- Chuyển kho theo flow:
-  - chi nhánh A gửi hàng
-  - hàng vào trạng thái `IN_TRANSIT`
-  - chi nhánh B xác nhận nhận
-  - chỉ khi đó kho B mới tăng
-- Offline chỉ áp dụng cho `Sử dụng tại quán`
-- Chính sách backup:
-  - `14` bản daily
-  - `8` bản weekly
-  - `3` bản monthly
+- Ha tang khuyen nghi: `1 VPS chay app + PostgreSQL managed`
+- Chuyen kho theo flow:
+  - chi nhanh A gui hang
+  - hang vao trang thai `IN_TRANSIT`
+  - chi nhanh B xac nhan nhan
+  - chi khi do kho B moi tang
+- Offline chi ap dung cho `Su dung tai quan`
+- Chinh sach backup:
+  - `14` ban daily
+  - `8` ban weekly
+  - `3` ban monthly
 
-## 2. Trước ngày go-live 3 đến 7 ngày
+## 2. Truoc ngay go-live 3 den 7 ngay
 
-1. Hoàn thành [STAGING_CHECKLIST.md](./STAGING_CHECKLIST.md)
-2. Hoàn thành [UAT_CHECKLIST.md](./UAT_CHECKLIST.md)
-3. Chốt branch hoặc tag sẽ deploy production theo [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md)
-4. Chốt danh sách user đầu tiên:
+1. Hoan thanh [STAGING_CHECKLIST.md](./STAGING_CHECKLIST.md)
+2. Hoan thanh [UAT_CHECKLIST.md](./UAT_CHECKLIST.md)
+3. Chot branch hoac tag se deploy production theo [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md)
+4. Chot danh sach user dau tien:
    - `ADMIN`
-   - `MANAGER` từng chi nhánh
-   - `STAFF` từng chi nhánh
-5. Chốt danh mục ban đầu:
+   - `MANAGER` tung chi nhanh
+   - `STAFF` tung chi nhanh
+5. Chot danh muc ban dau:
    - store
    - ingredient unit
    - ingredient group
    - ingredient
-6. Chuẩn bị danh sách IP whitelist của từng chi nhánh
-7. In thử tem trên khổ giấy hoặc máy in thực tế
-8. Kiểm tra thiết bị dùng để scan ở 2 chi nhánh
-9. Chuẩn bị hướng dẫn vận hành ngắn cho quản lý và nhân viên
+6. Chuan bi danh sach IP whitelist cua tung chi nhanh
+7. In thu tem tren kho giay hoac may in thuc te
+8. Kiem tra thiet bi dung de scan o 2 chi nhanh
+9. Chuan bi huong dan van hanh ngan cho quan ly va nhan vien
 
-## 3. Trước giờ go-live
+## 3. Truoc gio go-live
 
-1. Xác nhận backup production đang hoạt động
-2. Chạy thêm 1 bản backup thủ công trước deploy
-3. Kiểm tra dung lượng đĩa và trạng thái database
-4. Kiểm tra domain `fnbstore.store` và chứng chỉ TLS
-5. Kiểm tra env production:
+1. Xac nhan backup production dang hoat dong
+2. Chay them 1 ban backup thu cong truoc deploy
+   - luu lai `backup manifest` hoac duong dan file backup vua tao
+3. Kiem tra dung luong dia va trang thai database
+4. Kiem tra domain `fnbstore.store` va chung chi TLS
+5. Kiem tra env production:
    - `DATABASE_URL`
    - `JWT_SECRET`
    - `JWT_REFRESH_SECRET`
@@ -56,98 +57,100 @@ Tài liệu này dùng cho ngày mở hệ thống thực tế tại `fnbstore.s
    - `REQUIRE_STRONG_SECRETS=true`
    - `AUTH_COOKIE_SECURE=true`
    - `AUTH_COOKIE_SAME_SITE=lax`
-6. Chạy preflight check:
+6. Chay preflight check:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment production`
-7. Xác nhận production không chạy `db:seed`
-8. Xác nhận đã có lệnh `bootstrap:admin`
+7. Xac nhan production khong chay `db:seed`
+8. Xac nhan da co lenh `bootstrap:admin`
 
-## 4. Các bước go-live
+## 4. Cac buoc go-live
 
-1. Bật maintenance window nội bộ nếu cần
-2. Pull đúng branch hoặc tag đã chốt
-3. Chạy:
+1. Bat maintenance window noi bo neu can
+2. Pull dung branch hoac tag da chot
+3. Chay:
    - `cd backend && npm run prisma:generate`
    - `cd backend && npm run prisma:deploy`
-4. Chạy `bootstrap:admin` nếu là database production mới hoàn toàn
-5. Build backend và frontend
-6. Restart service backend và frontend
-7. Kiểm tra reverse proxy
-8. Kiểm tra:
+4. Chay `bootstrap:admin` neu la database production moi hoan toan
+5. Build backend va frontend
+6. Restart service backend va frontend
+7. Kiem tra reverse proxy
+8. Kiem tra:
    - `GET /api/v1/health`
    - `GET /api/v1/health/ready`
-9. Chạy script smoke test nhanh:
+9. Chay script smoke test nhanh:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store`
+10. Chay workflow GitHub Actions `Post-Deploy Smoke Test` cho `production`
 
-## 5. Smoke test bắt buộc ngay sau deploy
+## 5. Smoke test bat buoc ngay sau deploy
 
-1. Đăng nhập bằng admin
-2. Tạo hoặc kiểm tra store, user, ingredient unit, ingredient group, ingredient
-3. Tạo 1 batch test và in tem
-4. Quét 1 lượt `Sử dụng tại quán`
-5. Thử scan offline rồi sync lại
-6. Tạo 1 phiếu `Chuyển kho` từ chi nhánh A sang B
-7. Đăng nhập manager hoặc admin ở chi nhánh B để xác nhận nhận
-8. Mở `Control > Kho nguyên liệu` và kiểm tra số liệu
-9. Mở `Control > Ca làm việc`, nhập thử phụ cấp và đi trễ hoặc về sớm
-10. Thử `In bảng lương` hoặc `Xuất Excel`
-11. Mở `Admin > Reports`
-12. Kiểm tra `IP whitelist`, `scan/network-status`, `Emergency bypass`
+1. Dang nhap bang admin
+2. Tao hoac kiem tra store, user, ingredient unit, ingredient group, ingredient
+3. Tao 1 batch test va in tem
+4. Quet 1 luot `Su dung tai quan`
+5. Thu scan offline roi sync lai
+6. Tao 1 phieu `Chuyen kho` tu chi nhanh A sang B
+7. Dang nhap manager hoac admin o chi nhanh B de xac nhan nhan
+8. Mo `Control > Kho nguyen lieu` va kiem tra so lieu
+9. Mo `Control > Ca lam viec`, nhap thu phu cap va di tre hoac ve som
+10. Thu `In bang luong` hoac `Xuat Excel`
+11. Mo `Admin > Reports`
+12. Kiem tra `IP whitelist`, `scan/network-status`, `Emergency bypass`
 
-## 6. Trong 24 giờ đầu
+## 6. Trong 24 gio dau
 
-1. Theo dõi:
-   - login thất bại
+1. Theo doi:
+   - login that bai
    - scan reject
-   - sync offline lỗi
-   - chuyển kho chờ xác nhận quá lâu
-   - lỗi mở bảng lương hoặc export Excel
-2. Kiểm tra định kỳ:
+   - sync offline loi
+   - chuyen kho cho xac nhan qua lau
+   - loi mo bang luong hoac export Excel
+2. Kiem tra dinh ky:
    - dashboard
    - scan logs
-   - kho nguyên liệu
+   - kho nguyen lieu
    - admin reports
-3. Ghi lại tất cả lỗi phát sinh và workaround
+3. Ghi lai tat ca loi phat sinh va workaround
 
-## 7. Quy trình dự phòng khi có sự cố
+## 7. Quy trinh du phong khi co su co
 
-### Khi mất mạng tại chi nhánh
+### Khi mat mang tai chi nhanh
 
-1. Tiếp tục dùng chế độ `Sử dụng tại quán` trên thiết bị đã đăng nhập
-2. Không thực hiện `Chuyển kho` trong lúc offline
-3. Khi có mạng lại, mở màn scan để hệ thống tự sync
-4. Quản lý chi nhánh kiểm tra lại `Scan Logs`
+1. Tiep tuc dung che do `Su dung tai quan` tren thiet bi da dang nhap
+2. Khong thuc hien `Chuyen kho` trong luc offline
+3. Khi co mang lai, mo man scan de he thong tu sync
+4. Quan ly chi nhanh kiem tra lai `Scan Logs`
 
-### Khi backend production lỗi
+### Khi backend production loi
 
-1. Tạm dừng thao tác quản trị mới
-2. Giữ lại bằng chứng lỗi:
-   - thời điểm xảy ra
-   - màn hình lỗi
-   - user bị ảnh hưởng
-3. Người phụ trách kỹ thuật kiểm tra:
+1. Tam dung thao tac quan tri moi
+2. Giu lai bang chung loi:
+   - thoi diem xay ra
+   - man hinh loi
+   - user bi anh huong
+3. Nguoi phu trach ky thuat kiem tra:
    - `health/ready`
    - log backend
-   - trạng thái database
-4. Nếu lỗi do bản deploy mới:
-   - rollback ứng dụng về bản ổn định gần nhất
-   - chạy lại smoke test tối thiểu
-5. Nếu nghi ngờ lỗi dữ liệu:
-   - restore vào database test trước
-   - chỉ restore production sau khi xác nhận dữ liệu đúng
+   - trang thai database
+4. Neu loi do ban deploy moi:
+   - rollback ung dung ve ban on dinh gan nhat
+   - chay lai smoke test toi thieu
+5. Neu nghi ngo loi du lieu:
+   - restore vao database test truoc
+   - chi restore production sau khi xac nhan du lieu dung
 
-## 8. Điều kiện rollback
+## 8. Dieu kien rollback
 
-Rollback nên được thực hiện nếu xảy ra một trong các tình huống sau:
+Rollback nen duoc thuc hien neu xay ra mot trong cac tinh huong sau:
 
-1. User không đăng nhập được hàng loạt
-2. Scan thành công nhưng số liệu tồn kho sai rõ ràng
-3. Chuyển kho không tạo được hoặc xác nhận nhận làm lệch kho
-4. Bảng lương tính sai hàng loạt
-5. Hệ thống lỗi liên tục trong giờ vận hành mà không có workaround an toàn
+1. User khong dang nhap duoc hang loat
+2. Scan thanh cong nhung so lieu ton kho sai ro rang
+3. Chuyen kho khong tao duoc hoac xac nhan nhan lam lech kho
+4. Bang luong tinh sai hang loat
+5. He thong loi lien tuc trong gio van hanh ma khong co workaround an toan
 
-## 9. Chốt sau go-live
+## 9. Chot sau go-live
 
-1. Xác nhận backup đêm đầu tiên chạy thành công
-2. Ghi lại các lỗi ngày đầu và mức độ ảnh hưởng
-3. Chốt danh sách cải tiến sau pilot
-4. Chỉ mở rộng thêm chi nhánh khi 2 chi nhánh đầu đã vận hành ổn định
+1. Xac nhan backup dem dau tien chay thanh cong
+2. Xac nhan file `latest-backup.json` hoac metadata backup duoc cap nhat dung
+3. Ghi lai cac loi ngay dau va muc do anh huong
+4. Chot danh sach cai tien sau pilot
+5. Chi mo rong them chi nhanh khi 2 chi nhanh dau da van hanh on dinh

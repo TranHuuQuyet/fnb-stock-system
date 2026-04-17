@@ -8,6 +8,8 @@ Commit SHA:
 Ngay deploy:
 Nguoi deploy:
 Moi truong: staging / production
+Backend image tag:
+Frontend image tag:
 
 Pham vi thay doi:
 - 
@@ -15,6 +17,7 @@ Pham vi thay doi:
 Migration moi:
 - co / khong
 - ten migration:
+- ghi chu anh huong du lieu:
 
 Env can kiem tra:
 - DATABASE_URL
@@ -34,12 +37,20 @@ Smoke test:
 Backup truoc deploy:
 - timestamp:
 - nguoi thuc hien:
+- backup manifest / backup id:
+
+Smoke evidence:
+- workflow smoke test URL:
+- artifact release metadata:
+- artifact release evidence:
 
 Risk con lai:
 - 
 
 Rollback plan:
 - app rollback tag:
+- backend image rollback:
+- frontend image rollback:
 - co can rollback database khong:
 
 Ket luan:

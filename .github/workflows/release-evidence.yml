@@ -1,0 +1,112 @@
+name: Release Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag or release identifier
+        required: true
+        type: string
+      target_environment:
+        description: Deployment environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      commit_sha:
+        description: Commit SHA that was deployed
+        required: true
+        type: string
+      backend_image:
+        description: Backend image tag that was deployed
+        required: true
+        type: string
+      frontend_image:
+        description: Frontend image tag that was deployed
+        required: true
+        type: string
+      backup_manifest:
+        description: Backup manifest path, backup id, or backup timestamp
+        required: true
+        type: string
+      smoke_run_url:
+        description: URL of the Post-Deploy Smoke Test run or manual record
+        required: true
+        type: string
+      rollback_tag:
+        description: Last known stable rollback tag
+        required: true
+        type: string
+      migration_summary:
+        description: Short note about migrations in this release
+        required: false
+        type: string
+      notes:
+        description: Residual risk or operator notes
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  capture-evidence:
+    runs-on: windows-latest
+
+    steps:
+      - name: Build release evidence markdown
+        shell: pwsh
+        run: |
+          $releaseTag = "${{ inputs.release_tag }}"
+          $targetEnvironment = "${{ inputs.target_environment }}"
+          $commitSha = "${{ inputs.commit_sha }}"
+          $backendImage = "${{ inputs.backend_image }}"
+          $frontendImage = "${{ inputs.frontend_image }}"
+          $backupManifest = "${{ inputs.backup_manifest }}"
+          $smokeRunUrl = "${{ inputs.smoke_run_url }}"
+          $rollbackTag = "${{ inputs.rollback_tag }}"
+          $migrationSummary = "${{ inputs.migration_summary }}"
+          $notes = "${{ inputs.notes }}"
+          $generatedAt = (Get-Date).ToUniversalTime().ToString("o")
+
+          $content = @"
+          # Release Evidence
+
+          - Release tag: $releaseTag
+          - Environment: $targetEnvironment
+          - Commit SHA: $commitSha
+          - Generated at: $generatedAt
+          - Backend image: $backendImage
+          - Frontend image: $frontendImage
+          - Backup manifest or backup id: $backupManifest
+          - Smoke run URL: $smokeRunUrl
+          - Rollback tag: $rollbackTag
+          - Migration summary: $migrationSummary
+          - Notes: $notes
+          "@
+
+          New-Item -ItemType Directory -Path release-evidence -Force | Out-Null
+          $content | Set-Content -LiteralPath "release-evidence/release-evidence.md"
+
+      - name: Upload release evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-${{ inputs.release_tag }}-${{ inputs.target_environment }}
+          path: release-evidence/release-evidence.md
+
+      - name: Write workflow summary
+        shell: pwsh
+        run: |
+          @"
+          ## Release evidence captured
+
+          - Release tag: `${{ inputs.release_tag }}`
+          - Environment: `${{ inputs.target_environment }}`
+          - Commit SHA: `${{ inputs.commit_sha }}`
+          - Backend image: `${{ inputs.backend_image }}`
+          - Frontend image: `${{ inputs.frontend_image }}`
+          - Backup manifest or backup id: `${{ inputs.backup_manifest }}`
+          - Smoke run URL: `${{ inputs.smoke_run_url }}`
+          - Rollback tag: `${{ inputs.rollback_tag }}`
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append

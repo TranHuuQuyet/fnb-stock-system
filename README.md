@@ -107,6 +107,8 @@ CI/CD hiện có tại `.github/workflows/docker-image.yml`:
 - `pull_request`: chạy test/build cho backend + frontend và validate `docker-compose.prod.yml`
 - `push main`: chỉ build/push image GHCR sau khi job verify pass
 - `push tag v*`: push thêm image tag theo release để chốt mốc deploy/rollback rõ ràng hơn
+- `.github/workflows/post-deploy-smoke.yml`: workflow chạy tay sau deploy để smoke test staging hoặc production trên URL thật
+- `.github/workflows/release-evidence.yml`: workflow chạy tay để lưu artifact biên bản release với backup manifest, smoke run và rollback tag
 
 Production hardening update:
 
