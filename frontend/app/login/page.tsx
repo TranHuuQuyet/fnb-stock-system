@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { setSession } from '@/lib/auth';
+import { getDefaultRouteForRole, setSession, toSessionState } from '@/lib/auth';
 import { login } from '@/services/auth';
 
 const schema = z.object({
@@ -32,15 +32,19 @@ export default function LoginPage() {
   const mutation = useMutation({
     mutationFn: login,
     onSuccess: (data) => {
-      setSession({
-        user: {
-          ...data.user,
-          mustChangePassword: data.mustChangePassword
-        },
-        mustChangePassword: data.mustChangePassword
-      });
+      setSession(
+        toSessionState(
+          {
+            ...data.user,
+            mustChangePassword: data.mustChangePassword
+          },
+          data.mustChangePassword
+        )
+      );
 
-      router.replace(data.mustChangePassword ? '/change-password' : data.user.role === 'STAFF' ? '/scan' : '/dashboard');
+      router.replace(
+        data.mustChangePassword ? '/change-password' : getDefaultRouteForRole(data.user.role)
+      );
     }
   });
 

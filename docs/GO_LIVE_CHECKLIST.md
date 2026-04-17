@@ -19,6 +19,9 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
   - `14` ban daily
   - `8` ban weekly
   - `3` ban monthly
+- Staging phai tach khoi production:
+  - `staging.fnbstore.store` cho staging/UAT/pilot
+  - `fnbstore.store` cho production
 
 ## 2. Truoc ngay go-live 3 den 7 ngay
 
@@ -51,7 +54,7 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
    - `JWT_SECRET`
    - `JWT_REFRESH_SECRET`
    - `CORS_ORIGIN=https://fnbstore.store`
-   - `NEXT_PUBLIC_API_BASE_URL=https://fnbstore.store/api/v1`
+   - `NEXT_PUBLIC_API_BASE_URL=/api/v1`
    - `ENABLE_SWAGGER=false`
    - `TRUST_PROXY=1`
    - `REQUIRE_STRONG_SECRETS=true`
@@ -61,6 +64,8 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment production`
 7. Xac nhan production khong chay `db:seed`
 8. Xac nhan da co lenh `bootstrap:admin`
+9. Xac nhan backup job luu ra storage ngoai app disk va co `latest-backup.json`
+10. Xac nhan da co kenh alert cho readiness fail, database down, disk cao va backup fail
 
 ## 4. Cac buoc go-live
 

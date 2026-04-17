@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/table';
-import { getSession } from '@/lib/auth';
+import { useResolvedSession } from '@/hooks/use-resolved-session';
 import {
   localizeOperationType,
   localizeResultStatus,
@@ -72,7 +72,8 @@ const transferStatusTone = (status: TransferStatus) => {
 };
 
 export default function ScanLogsPageContent() {
-  const session = getSession();
+  const sessionQuery = useResolvedSession();
+  const session = sessionQuery.session;
   const isAdmin = session?.user.role === 'ADMIN';
   const isManager = session?.user.role === 'MANAGER';
   const canViewTransfers =
@@ -97,7 +98,7 @@ export default function ScanLogsPageContent() {
   const storesQuery = useQuery({
     queryKey: ['scan-log-stores'],
     queryFn: () => listStores(''),
-    enabled: isAdmin
+    enabled: sessionQuery.isSuccess && isAdmin
   });
 
   const queryString = useMemo(() => {
@@ -149,7 +150,8 @@ export default function ScanLogsPageContent() {
   const query = useQuery({
     queryKey: [activeView === 'TRANSFER' ? 'transfers' : 'scan-logs', queryString],
     queryFn: () =>
-      activeView === 'TRANSFER' ? listTransfers(queryString) : listScanLogs(queryString)
+      activeView === 'TRANSFER' ? listTransfers(queryString) : listScanLogs(queryString),
+    enabled: sessionQuery.isSuccess
   });
 
   const confirmMutation = useMutation({

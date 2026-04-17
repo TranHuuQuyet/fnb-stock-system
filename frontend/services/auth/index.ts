@@ -1,4 +1,21 @@
+import type { Permission, Role, UserStatus } from '@/lib/auth';
 import { apiClient, unwrapData } from '@/lib/api-client';
+
+export type AuthSessionPayload = {
+  id: string;
+  username: string;
+  fullName: string;
+  role: Role;
+  status: UserStatus;
+  permissions?: Permission[];
+  store?: {
+    id: string;
+    code: string;
+    name: string;
+    timezone: string;
+  } | null;
+  mustChangePassword: boolean;
+};
 
 export const login = (payload: { username: string; password: string }) =>
   unwrapData(
@@ -7,8 +24,9 @@ export const login = (payload: { username: string; password: string }) =>
         id: string;
         username: string;
         fullName: string;
-        role: 'ADMIN' | 'MANAGER' | 'STAFF';
-        status: 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'MUST_CHANGE_PASSWORD';
+        role: Role;
+        status: UserStatus;
+        permissions?: Permission[];
         store?: {
           id: string;
           code: string;
@@ -24,7 +42,7 @@ export const login = (payload: { username: string; password: string }) =>
     })
   );
 
-export const fetchMe = () => unwrapData(apiClient('/auth/me'));
+export const fetchMe = () => unwrapData<AuthSessionPayload>(apiClient('/auth/me'));
 
 export const changePassword = (payload: {
   currentPassword: string;

@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { getSession, Role } from '@/lib/auth';
+import { Role } from '@/lib/auth';
+import { useResolvedSession } from '@/hooks/use-resolved-session';
 import { listStores } from '@/services/admin/stores';
 import { getWorkSchedule, saveWorkSchedule } from '@/services/work-schedules';
 
@@ -673,7 +674,8 @@ const buildPayrollExcelXml = ({
 };
 
 export function WorkSchedulesPageContent() {
-  const session = getSession();
+  const sessionQuery = useResolvedSession();
+  const session = sessionQuery.session;
   const queryClient = useQueryClient();
   const isAdmin = session?.user.role === 'ADMIN';
   const baseStoreId = session?.user.store?.id ?? '';
@@ -688,7 +690,7 @@ export function WorkSchedulesPageContent() {
   const storesQuery = useQuery({
     queryKey: ['stores-selector-for-work-schedules'],
     queryFn: () => listStores(''),
-    enabled: isAdmin
+    enabled: sessionQuery.isSuccess && isAdmin
   });
 
   const stores = useMemo(
@@ -723,7 +725,7 @@ export function WorkSchedulesPageContent() {
         year: selectedYear,
         month: selectedMonth
       }) as Promise<WorkSchedulePayload>,
-    enabled: Boolean(activeStoreId)
+    enabled: sessionQuery.isSuccess && Boolean(activeStoreId)
   });
 
   useEffect(() => {

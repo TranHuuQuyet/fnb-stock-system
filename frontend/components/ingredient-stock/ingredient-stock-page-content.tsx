@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { getSession } from '@/lib/auth';
+import { useResolvedSession } from '@/hooks/use-resolved-session';
 import { localizeRole } from '@/lib/localization';
 import { listStores } from '@/services/admin/stores';
 import {
@@ -162,7 +162,8 @@ const getCellQuantity = (item: BoardItem, day: number, shiftKey: string) =>
   item.dailyTotals.find((cell) => cell.day === day && cell.shiftKey === shiftKey)?.quantity ?? 0;
 
 export function IngredientStockPageContent() {
-  const session = getSession();
+  const sessionQuery = useResolvedSession();
+  const session = sessionQuery.session;
   const queryClient = useQueryClient();
   const isAdmin = session?.user.role === 'ADMIN';
   const baseStoreId = session?.user.store?.id ?? '';
@@ -184,7 +185,7 @@ export function IngredientStockPageContent() {
   const storesQuery = useQuery({
     queryKey: ['stores-selector-for-ingredient-stock'],
     queryFn: () => listStores(''),
-    enabled: isAdmin
+    enabled: sessionQuery.isSuccess && isAdmin
   });
 
   const stores = useMemo(
@@ -233,7 +234,7 @@ export function IngredientStockPageContent() {
         month: selectedMonth,
         operationType
       }) as Promise<BoardPayload>,
-    enabled: Boolean(activeStoreId)
+    enabled: sessionQuery.isSuccess && Boolean(activeStoreId)
   });
 
   useEffect(() => {

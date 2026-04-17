@@ -140,7 +140,7 @@ Ban can xac nhan:
 COMPOSE_PROJECT_NAME=fnbstore-staging
 APP_DOMAIN=staging.fnbstore.store
 LETSENCRYPT_EMAIL=<email-that>
-NEXT_PUBLIC_API_BASE_URL=https://staging.fnbstore.store/api/v1
+NEXT_PUBLIC_API_BASE_URL=/api/v1
 BACKEND_ENV_FILE=backend/.env.staging
 FRONTEND_ENV_FILE=frontend/.env.staging
 ```
@@ -179,7 +179,7 @@ Ghi chu:
 ### `frontend/.env.staging`
 
 ```dotenv
-NEXT_PUBLIC_API_BASE_URL=https://staging.fnbstore.store/api/v1
+NEXT_PUBLIC_API_BASE_URL=/api/v1
 ```
 
 ## 7. Preflight check truoc khi deploy

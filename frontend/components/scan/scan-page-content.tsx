@@ -7,7 +7,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useOfflineSync } from '@/hooks/use-offline-sync';
-import { getDeviceId, getSession } from '@/lib/auth';
+import { useResolvedSession } from '@/hooks/use-resolved-session';
+import { getDeviceId } from '@/lib/auth';
 import { parseBatchQrValue } from '@/lib/batch-qr';
 import { queueOfflineScan } from '@/lib/indexeddb';
 import { localizeResultCode, localizeSyncState } from '@/lib/localization';
@@ -127,7 +128,8 @@ const playSuccessBeep = async () => {
 const toStoreQuery = (storeId: string) => `?storeId=${encodeURIComponent(storeId)}`;
 
 export default function ScanPageContent() {
-  const session = getSession();
+  const sessionQuery = useResolvedSession();
+  const session = sessionQuery.session;
   const isAdmin = session?.user.role === 'ADMIN';
   const isManager = session?.user.role === 'MANAGER';
   const canTransfer =
@@ -194,6 +196,21 @@ export default function ScanPageContent() {
     }
   }, [canTransfer, operationType, setValue]);
 
+  useEffect(() => {
+    const currentStoreId = session?.user.store?.id;
+    if (!sessionQuery.isSuccess || !currentStoreId) {
+      return;
+    }
+
+    if (!storeId) {
+      setValue('storeId', currentStoreId, { shouldValidate: true });
+    }
+
+    if (!sourceStoreId) {
+      setValue('sourceStoreId', currentStoreId, { shouldValidate: true });
+    }
+  }, [session?.user.store?.id, sessionQuery.isSuccess, setValue, sourceStoreId, storeId]);
+
   // Persist store selections when they change
   useEffect(() => {
     if (storeId) persistStoreId('usage-store', storeId);
@@ -210,13 +227,17 @@ export default function ScanPageContent() {
   const storesQuery = useQuery<Array<{ id: string; name: string }>>({
     queryKey: ['scan-stores'],
     queryFn: () => listTransferStores(),
-    enabled: isAdmin || canTransfer
+    enabled: sessionQuery.isSuccess && (isAdmin || canTransfer)
   });
 
   const destinationInventoryQuery = useQuery({
     queryKey: ['scan-transfer-destination-batches', destinationStoreId],
     queryFn: () => listBatches(toStoreQuery(destinationStoreId ?? '')),
-    enabled: isAdmin && operationType === 'TRANSFER' && Boolean(destinationStoreId)
+    enabled:
+      sessionQuery.isSuccess &&
+      isAdmin &&
+      operationType === 'TRANSFER' &&
+      Boolean(destinationStoreId)
   });
 
   const networkStatusQuery = useQuery<NetworkStatus>({
@@ -229,7 +250,10 @@ export default function ScanPageContent() {
       const query = params.toString();
       return getScanNetworkStatus(query ? `?${query}` : '');
     },
-    enabled: isOnline && (!isAdmin || Boolean(networkStatusStoreId))
+    enabled:
+      sessionQuery.isSuccess &&
+      isOnline &&
+      (!isAdmin || Boolean(networkStatusStoreId))
   });
 
   const destinationInventory = useMemo(() => {

@@ -55,6 +55,19 @@ function Test-EmailLike {
   return $Value -match '^[^@\s]+@[^@\s]+\.[^@\s]+$'
 }
 
+function Test-FrontendApiBaseUrl {
+  param(
+    [string]$Value,
+    [string]$ExpectedDomain
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Value)) {
+    return $false
+  }
+
+  return $Value -eq "/api/v1" -or $Value -like "https://$ExpectedDomain/api/v1*"
+}
+
 if ($Environment -eq "staging") {
   $composePath = ".env.staging.compose"
   $backendPath = "backend/.env.staging"
@@ -79,7 +92,7 @@ foreach ($requiredKey in @("APP_DOMAIN", "LETSENCRYPT_EMAIL", "NEXT_PUBLIC_API_B
   }
 }
 
-foreach ($requiredKey in @("DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET", "CORS_ORIGIN", "TRUST_PROXY", "ENABLE_SWAGGER", "AUTH_COOKIE_SECURE", "AUTH_COOKIE_SAME_SITE")) {
+foreach ($requiredKey in @("DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET", "CORS_ORIGIN", "TRUST_PROXY", "ENABLE_SWAGGER", "REQUIRE_STRONG_SECRETS", "AUTH_COOKIE_SECURE", "AUTH_COOKIE_SAME_SITE")) {
   if (-not $backend.ContainsKey($requiredKey)) {
     $failures.Add("Missing $requiredKey in $backendPath")
   }
@@ -140,24 +153,28 @@ if ($backend["TRUST_PROXY"] -ne "1") {
   $failures.Add("TRUST_PROXY should be set to 1 behind reverse proxy")
 }
 
-if ($Environment -eq "production" -and $backend["ENABLE_SWAGGER"].ToLower() -ne "false") {
+if (([string]$backend["REQUIRE_STRONG_SECRETS"]).ToLowerInvariant() -ne "true") {
+  $failures.Add("REQUIRE_STRONG_SECRETS should be true for staging/production")
+}
+
+if ($Environment -eq "production" -and ([string]$backend["ENABLE_SWAGGER"]).ToLowerInvariant() -ne "false") {
   $failures.Add("ENABLE_SWAGGER should be false in production")
 }
 
-if ($Environment -eq "staging" -and $backend["ENABLE_SWAGGER"].ToLower() -ne "true") {
+if ($Environment -eq "staging" -and ([string]$backend["ENABLE_SWAGGER"]).ToLowerInvariant() -ne "true") {
   $failures.Add("ENABLE_SWAGGER should be true in staging")
 }
 
-if ($backend["AUTH_COOKIE_SECURE"].ToLower() -ne "true") {
+if (([string]$backend["AUTH_COOKIE_SECURE"]).ToLowerInvariant() -ne "true") {
   $failures.Add("AUTH_COOKIE_SECURE should be true for staging/production HTTPS deployments")
 }
 
-if (@("lax", "strict", "none") -notcontains $backend["AUTH_COOKIE_SAME_SITE"].ToLower()) {
+if (@("lax", "strict", "none") -notcontains ([string]$backend["AUTH_COOKIE_SAME_SITE"]).ToLowerInvariant()) {
   $failures.Add("AUTH_COOKIE_SAME_SITE should be one of: lax, strict, none")
 }
 
-if ($frontend["NEXT_PUBLIC_API_BASE_URL"] -notlike "https://$expectedDomain/api/v1*") {
-  $failures.Add("Frontend API base URL should point to https://$expectedDomain/api/v1")
+if (-not (Test-FrontendApiBaseUrl -Value $frontend["NEXT_PUBLIC_API_BASE_URL"] -ExpectedDomain $expectedDomain)) {
+  $failures.Add("Frontend API base URL should be /api/v1 or https://$expectedDomain/api/v1")
 }
 
 if ($compose["NEXT_PUBLIC_API_BASE_URL"] -ne $frontend["NEXT_PUBLIC_API_BASE_URL"]) {

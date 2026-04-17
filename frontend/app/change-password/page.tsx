@@ -1,15 +1,17 @@
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { getSession, setSession } from '@/lib/auth';
+import { AUTH_SESSION_QUERY_KEY, useResolvedSession } from '@/hooks/use-resolved-session';
+import { clearSession, getDefaultRouteForRole, shouldForcePasswordChange } from '@/lib/auth';
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_POLICY_MESSAGE,
@@ -37,7 +39,9 @@ type FormValues = z.infer<typeof schema>;
 
 export default function ChangePasswordPage() {
   const router = useRouter();
-  const session = getSession();
+  const queryClient = useQueryClient();
+  const sessionQuery = useResolvedSession();
+  const session = sessionQuery.session;
   const {
     register,
     handleSubmit,
@@ -46,24 +50,46 @@ export default function ChangePasswordPage() {
     resolver: zodResolver(schema)
   });
 
+  useEffect(() => {
+    if (sessionQuery.isPending) {
+      return;
+    }
+
+    if (sessionQuery.isUnauthorized || !session) {
+      router.replace('/login');
+      return;
+    }
+
+    if (!shouldForcePasswordChange(session)) {
+      router.replace(getDefaultRouteForRole(session.user.role));
+    }
+  }, [router, session, sessionQuery.isPending, sessionQuery.isUnauthorized]);
+
   const mutation = useMutation({
     mutationFn: changePassword,
-    onSuccess: () => {
-      if (session) {
-        setSession({
-          ...session,
-          mustChangePassword: false,
-          user: {
-            ...session.user,
-            status: 'ACTIVE',
-            mustChangePassword: false
-          }
-        });
-      }
-
-      router.replace(session?.user.role === 'STAFF' ? '/scan' : '/dashboard');
+    onSuccess: async () => {
+      clearSession();
+      await queryClient.removeQueries({ queryKey: AUTH_SESSION_QUERY_KEY });
+      router.replace('/login');
     }
   });
+
+  if (sessionQuery.isError && !sessionQuery.isUnauthorized) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-4 py-10">
+        <Card className="w-full max-w-md">
+          <h1 className="text-lg font-semibold text-brand-900">Không tải được phiên đăng nhập</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            {(sessionQuery.error as Error).message}
+          </p>
+        </Card>
+      </main>
+    );
+  }
+
+  if (sessionQuery.isPending || !session || sessionQuery.isUnauthorized) {
+    return null;
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">

@@ -68,6 +68,21 @@ Script se tao file backup va cap nhat `latest-backup.json` trong thu muc backup.
 5. Co restore drill it nhat moi thang tren DB test rieng
 6. Co ghi bien ban restore drill: backup nao, ai chay, mat bao lau, co smoke test sau restore hay khong
 
+## 7.1. Mo hinh van hanh khuyen nghi
+
+Neu muon chay on dinh va de ban giao:
+
+1. Dung `pg_dump` cho backup logic hang ngay
+2. Luu file backup va `latest-backup.json` sang storage rieng, khong chi nam tren app disk
+3. Giữ retention theo chinh sach `14` daily, `8` weekly, `3` monthly
+4. Test restore it nhat 1 lan truoc go-live va sau do lap lai theo lich
+5. Ghi ro trong bien ban:
+   - backup nao duoc dung
+   - ai thuc hien restore
+   - restore mat bao lau
+   - smoke test sau restore co pass hay khong
+6. Neu co PITR cua nha cung cap DB thi bat them, nhung van phai co restore drill thu cong
+
 ## 8. Vi du backup PostgreSQL
 
 ```bash

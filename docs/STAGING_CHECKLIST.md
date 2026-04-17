@@ -18,6 +18,7 @@ Tai lieu nay dung de dung moi truong staging gan giong production nhat co the tr
 - Dung cung kieu ha tang voi production:
   - `1 VPS chay app`
   - `1 PostgreSQL managed`
+- Staging phai dung secret va database rieng, khong dung chung file production
 
 ## 3. Checklist ha tang
 
@@ -40,7 +41,7 @@ Tai lieu nay dung de dung moi truong staging gan giong production nhat co the tr
    - `JWT_REFRESH_SECRET`
    - `CORS_ORIGIN`
    - `NEXT_PUBLIC_API_BASE_URL`
-5. Xac nhan `NEXT_PUBLIC_API_BASE_URL` dung dung domain staging
+5. Khuyen nghi dat `NEXT_PUBLIC_API_BASE_URL=/api/v1`; neu tach backend rieng domain thi dung URL public cua staging
 6. Xac nhan khong con gia tri `localhost` trong env staging
 7. Khuyen nghi copy tu cac file mau:
    - `.env.staging.compose.example`
@@ -108,6 +109,7 @@ Tai lieu nay dung de dung moi truong staging gan giong production nhat co the tr
 3. Kiem tra du lieu sau restore
 4. Ghi lai thoi gian backup va thoi gian restore thuc te
 5. Xac nhan nguoi phu trach ky thuat nam duoc quy trinh restore
+6. Neu co the, chay restore drill bang cung script dung cho production de tranh sai khac giua moi truong
 
 ## 9. Dieu kien pass staging
 

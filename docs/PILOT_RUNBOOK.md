@@ -25,6 +25,7 @@ Nen dung kem:
   - `2-3 STAFF`
 - thoi gian pilot:
   - `3-7 ngay`
+- neu chua chot ten chi nhanh, dung placeholder `Chi nhanh A` va `Chi nhanh B` trong bien ban tam thoi
 
 Khuyen nghi:
 
@@ -55,7 +56,7 @@ Khuyen nghi:
 3. Chay preflight check:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment staging`
 4. Chay smoke test:
-   - `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store`
+   - `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://staging.fnbstore.store`
 5. Dang nhap admin
 6. Kiem tra:
    - store

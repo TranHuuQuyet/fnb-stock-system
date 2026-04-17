@@ -79,6 +79,17 @@ export const setSession = (session: SessionState) => {
   window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 };
 
+export const toSessionState = (
+  user: SessionUser,
+  mustChangePassword = user.mustChangePassword ?? false
+): SessionState => ({
+  user: {
+    ...user,
+    mustChangePassword
+  },
+  mustChangePassword
+});
+
 export const clearSession = () => {
   window.localStorage.removeItem(SESSION_KEY);
 };
@@ -98,3 +109,6 @@ export const updateSessionUser = (user: SessionUser) => {
 
 export const shouldForcePasswordChange = (session: SessionState | null) =>
   Boolean(session?.mustChangePassword || session?.user.status === 'MUST_CHANGE_PASSWORD');
+
+export const getDefaultRouteForRole = (role: Role) =>
+  role === 'STAFF' ? '/scan' : '/dashboard';

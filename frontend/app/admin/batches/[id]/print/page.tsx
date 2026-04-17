@@ -11,8 +11,12 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useResolvedSession } from '@/hooks/use-resolved-session';
 import { Input } from '@/components/ui/input';
-import { getSession, shouldForcePasswordChange } from '@/lib/auth';
+import {
+  getDefaultRouteForRole,
+  shouldForcePasswordChange
+} from '@/lib/auth';
 import { buildIssuedLabelQrValue } from '@/lib/batch-qr';
 import { getBatchLabel, issueBatchLabels } from '@/services/batches';
 
@@ -90,7 +94,8 @@ export default function BatchPrintPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const session = useMemo(() => getSession(), []);
+  const sessionQuery = useResolvedSession();
+  const session = sessionQuery.session;
   const batchId = Array.isArray(params.id) ? params.id[0] : params.id;
   const qtyParam = searchParams.get('qty');
   const [issuedJob, setIssuedJob] = useState<IssuedLabelJob | null>(null);
@@ -119,7 +124,11 @@ export default function BatchPrintPage() {
   });
 
   useEffect(() => {
-    if (!session) {
+    if (sessionQuery.isPending) {
+      return;
+    }
+
+    if (sessionQuery.isUnauthorized || !session) {
       router.replace('/login');
       return;
     }
@@ -130,9 +139,9 @@ export default function BatchPrintPage() {
     }
 
     if (session.user.role !== 'ADMIN') {
-      router.replace('/dashboard');
+      router.replace(getDefaultRouteForRole(session.user.role));
     }
-  }, [router, session]);
+  }, [router, session, sessionQuery.isPending, sessionQuery.isUnauthorized]);
 
   useEffect(() => {
     setValue('quantity', initialQuantity);
@@ -141,7 +150,7 @@ export default function BatchPrintPage() {
   const query = useQuery({
     queryKey: ['batch-print', batchId],
     queryFn: () => getBatchLabel(batchId),
-    enabled: Boolean(batchId && session?.user.role === 'ADMIN')
+    enabled: sessionQuery.isSuccess && Boolean(batchId && session?.user.role === 'ADMIN')
   });
 
   const label = query.data as BatchLabel | undefined;
@@ -210,7 +219,20 @@ export default function BatchPrintPage() {
     };
   }, [issuedJob, pendingAutoPrint]);
 
-  if (!session) {
+  if (sessionQuery.isError && !sessionQuery.isUnauthorized) {
+    return (
+      <div className="min-h-screen px-4 py-10">
+        <Card className="mx-auto max-w-xl">
+          <h1 className="text-lg font-semibold text-brand-900">Không xác minh được phiên đăng nhập</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            {(sessionQuery.error as Error).message}
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (sessionQuery.isPending || !session) {
     return null;
   }
 

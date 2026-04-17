@@ -26,9 +26,9 @@ Tài liệu nên được dùng cùng các file sau:
    - secret trong compose là giá trị mẫu
    - frontend/backend còn mặc định `localhost`
    - nếu dùng container production, phải dùng `docker-compose.prod.yml`, `backend/Dockerfile.prod`, `frontend/Dockerfile.prod`
-2. Repo chưa có luồng bootstrap admin production-safe riêng; `db:seed` đang tạo user/demo password mẫu.
-3. Frontend hiện lưu access token trong `localStorage`; đây là điểm cần cân nhắc kỹ trước khi public ra Internet.
-4. Repo chưa có sẵn runbook backup/restore, monitoring, alerting và rollback cho production.
+2. Repo đã có `bootstrap:admin` riêng; production cần dùng script này thay cho `db:seed` và chốt sẵn người giữ credential bootstrap.
+3. Frontend production đã dùng `HttpOnly cookie`; nếu còn lưu state trong `localStorage` thì chỉ nên giữ UI/session metadata, không được lưu JWT.
+4. Repo đã có runbook backup/restore và rollback; monitoring/alerting vẫn cần được triển khai hoặc nối vào công cụ vận hành thật.
 
 ### Checklist bắt buộc
 
@@ -43,6 +43,11 @@ Tài liệu nên được dùng cùng các file sau:
 5. Chuẩn bị cách tạo tài khoản admin đầu tiên ngoài `db:seed`.
 6. Cấu hình HTTPS trước khi cho user thật truy cập.
 7. Thiết lập monitoring tối thiểu cho API, database, disk và backup job.
+8. Tách rõ staging và production:
+   - `staging.fnbstore.store` cho staging/UAT/pilot
+   - `fnbstore.store` cho production
+9. Không để backup chỉ nằm trên cùng disk với app; nên đẩy backup ra storage riêng hoặc object storage.
+10. Chốt sẵn kênh nhận cảnh báo cho readiness fail, database down, disk cao và backup fail.
 
 ## 3. Kiến trúc production khuyến nghị
 
@@ -104,13 +109,13 @@ Ghi chú:
 Tạo file `frontend/.env.production`:
 
 ```dotenv
-NEXT_PUBLIC_API_BASE_URL=https://fnbstore.store/api/v1
+NEXT_PUBLIC_API_BASE_URL=/api/v1
 ```
 
 Ghi chú:
 
-- Nếu tách backend riêng domain, ví dụ `https://api.example.com/api/v1`, hãy cập nhật `CORS_ORIGIN` tương ứng ở backend.
-- Giá trị `NEXT_PUBLIC_API_BASE_URL` được dùng khi build frontend; phải đúng domain production trước khi chạy `npm run build`.
+- Khuyen nghi dung `/api/v1` de frontend image co the tai su dung giua staging va production khi reverse proxy cung host.
+- Neu tach backend rieng domain, vi du `https://api.example.com/api/v1`, hay cap nhat `CORS_ORIGIN` tuong ung o backend.
 
 ### Compose env cho production
 
@@ -120,7 +125,7 @@ Repo có sẵn file `.env.production.compose.example` để phục vụ `docker-
 COMPOSE_PROJECT_NAME=fnbstore
 APP_DOMAIN=fnbstore.store
 LETSENCRYPT_EMAIL=ops@fnbstore.store
-NEXT_PUBLIC_API_BASE_URL=https://fnbstore.store/api/v1
+NEXT_PUBLIC_API_BASE_URL=/api/v1
 BACKEND_ENV_FILE=backend/.env.production
 FRONTEND_ENV_FILE=frontend/.env.production
 ```
@@ -128,7 +133,7 @@ FRONTEND_ENV_FILE=frontend/.env.production
 Ghi chú:
 
 - `APP_DOMAIN` là domain public của hệ thống.
-- `NEXT_PUBLIC_API_BASE_URL` phải trùng domain backend public vì frontend build-time sẽ bake giá trị này vào bundle.
+- `NEXT_PUBLIC_API_BASE_URL=/api/v1` là lựa chọn khuyến nghị khi frontend và backend cùng đi qua một domain public.
 - `BACKEND_ENV_FILE` và `FRONTEND_ENV_FILE` cho phép bạn đổi sang file env khác nếu muốn dùng staging hoặc file secret riêng.
 
 ## 4.1. Bộ file container production có sẵn
@@ -490,6 +495,22 @@ Nên theo dõi thêm:
 - import POS lỗi
 - tăng trưởng bất thường của `ScanLog`, `AuditLog`
 
+### 11.1 Gợi ý triển khai tối thiểu
+
+Nếu chưa muốn dựng một stack observability lớn ngay từ đầu, có thể bắt đầu bằng:
+
+1. Một job check URL cho `https://fnbstore.store/api/v1/health`
+2. Một job check URL cho `https://fnbstore.store/api/v1/health/ready`
+3. Một alert disk cho server app và server backup
+4. Một alert backup job khi không tạo được file mới hoặc `latest-backup.json`
+5. Một kênh alert chung mà đội vận hành thật sự đọc được, ví dụ email, Slack hoặc Telegram
+
+Lưu ý:
+
+- Không dựa hoàn toàn vào review log thủ công.
+- Readiness fail và backup fail nên là alert bắt buộc trước go-live.
+- Nếu có điều kiện, tách backup sang storage khác máy chủ app.
+
 ## 12. Rollback
 
 ### Khi deploy ứng dụng lỗi
@@ -512,7 +533,7 @@ Các hạng mục sau không chặn việc viết tài liệu, nhưng rất nên
 
 1. Tách hẳn `docker-compose.prod.yml` hoặc manifest production riêng.
 2. Tách `seed demo` và `bootstrap admin` thành hai luồng khác nhau.
-3. Chuyển auth từ lưu token trong `localStorage` sang phương án an toàn hơn như `HttpOnly cookie`.
+3. Rà soát các màn hình cũ để không còn phụ thuộc vào token trong `localStorage`.
 4. Thêm brute-force protection và password reset an toàn hơn.
 5. Thêm CI/CD với smoke test sau deploy.
 6. Thêm runbook rotation secret, certificate renewal và lịch test restore.

@@ -1,13 +1,17 @@
 "use client";
 
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useState } from 'react';
 
+import { AUTH_SESSION_QUERY_KEY } from '@/hooks/use-resolved-session';
 import { useOfflineSync } from '@/hooks/use-offline-sync';
 import { clearSession, getSession, Permission, Role } from '@/lib/auth';
 import { localizeSyncState } from '@/lib/localization';
+import { ApiError } from '@/lib/api-client';
+import { logout } from '@/services/auth';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { BusinessNetworkBanner } from './business-network-banner';
@@ -129,6 +133,7 @@ export function AppShell({
   const session = getSession();
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { syncState } = useOfflineSync();
 
   const role = session?.user.role;
@@ -145,6 +150,22 @@ export function AppShell({
       ? 'fixed inset-y-0 left-0 z-50 h-full w-72 translate-x-0 overflow-auto shadow-2xl transition-transform duration-300 ease-in-out lg:static lg:h-[calc(100vh-2rem)] lg:translate-x-0 lg:overflow-auto lg:shadow-none'
       : 'fixed inset-y-0 left-0 z-50 h-full w-72 -translate-x-full overflow-auto shadow-2xl transition-transform duration-300 ease-in-out lg:static lg:h-[calc(100vh-2rem)] lg:translate-x-0 lg:overflow-auto lg:shadow-none'
   );
+
+  const logoutMutation = useMutation({
+    mutationFn: logout,
+    onSuccess: async () => {
+      clearSession();
+      await queryClient.removeQueries({ queryKey: AUTH_SESSION_QUERY_KEY });
+      router.replace('/login');
+    },
+    onError: async (error: Error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        clearSession();
+        await queryClient.removeQueries({ queryKey: AUTH_SESSION_QUERY_KEY });
+        router.replace('/login');
+      }
+    }
+  });
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -244,13 +265,17 @@ export function AppShell({
             className="mt-6"
             variant="secondary"
             fullWidth
-            onClick={() => {
-              clearSession();
-              router.replace('/login');
-            }}
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
           >
-            Đăng xuất
+            {logoutMutation.isPending ? 'Đang đăng xuất...' : 'Đăng xuất'}
           </Button>
+          {logoutMutation.isError &&
+          !(logoutMutation.error instanceof ApiError && logoutMutation.error.status === 401) ? (
+            <p className="mt-2 text-sm text-brand-100">
+              {(logoutMutation.error as Error).message}
+            </p>
+          ) : null}
         </aside>
 
         <main className="min-w-0 flex-1 space-y-4 overflow-y-auto lg:h-[calc(100vh-2rem)] lg:min-h-0">

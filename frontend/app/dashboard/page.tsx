@@ -6,8 +6,8 @@ import { ProtectedPage } from '@/components/layout/protected-page';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useResolvedSession } from '@/hooks/use-resolved-session';
 import { SimpleTable } from '@/components/ui/table';
-import { getSession } from '@/lib/auth';
 import { localizeResultStatus } from '@/lib/localization';
 import { getDashboardSummary, runAnomalies } from '@/services/dashboard';
 
@@ -19,11 +19,13 @@ const today = new Intl.DateTimeFormat('en-CA', {
 }).format(new Date());
 
 export default function DashboardPage() {
-  const session = getSession();
+  const sessionQuery = useResolvedSession();
+  const session = sessionQuery.session;
   const storeId = session?.user.store?.id;
   const summaryQuery = useQuery({
     queryKey: ['dashboard-summary', storeId, today],
-    queryFn: () => getDashboardSummary(storeId, today)
+    queryFn: () => getDashboardSummary(storeId, today),
+    enabled: sessionQuery.isSuccess
   });
 
   const anomalyMutation = useMutation({

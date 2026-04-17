@@ -1,10 +1,12 @@
 "use client";
 
 import { usePathname, useRouter } from 'next/navigation';
-import { ReactNode, useEffect, useMemo } from 'react';
+import { ReactNode, useEffect } from 'react';
 
 import { AppShell, getRoutePermission } from './app-shell-v2';
-import { getSession, shouldForcePasswordChange } from '@/lib/auth';
+import { Card } from '@/components/ui/card';
+import { getDefaultRouteForRole, shouldForcePasswordChange } from '@/lib/auth';
+import { useResolvedSession } from '@/hooks/use-resolved-session';
 
 export function ProtectedPage({
   title,
@@ -19,10 +21,19 @@ export function ProtectedPage({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const session = useMemo(() => getSession(), []);
+  const sessionQuery = useResolvedSession();
+  const session = sessionQuery.session;
 
   useEffect(() => {
-    if (!session) {
+    if (sessionQuery.isPending) {
+      return;
+    }
+
+    if (sessionQuery.isError && !sessionQuery.isUnauthorized) {
+      return;
+    }
+
+    if (sessionQuery.isUnauthorized || !session) {
       router.replace('/login');
       return;
     }
@@ -35,17 +46,30 @@ export function ProtectedPage({
     const routePermission = getRoutePermission(pathname ?? '');
     if (routePermission) {
       if (session.user.role !== 'ADMIN' && !(session.user.permissions ?? []).includes(routePermission)) {
-        router.replace(session.user.role === 'STAFF' ? '/scan' : '/dashboard');
+        router.replace(getDefaultRouteForRole(session.user.role));
       }
       return;
     }
 
     if (allowedRoles && !allowedRoles.includes(session.user.role)) {
-      router.replace(session.user.role === 'STAFF' ? '/scan' : '/dashboard');
+      router.replace(getDefaultRouteForRole(session.user.role));
     }
-  }, [allowedRoles, pathname, router, session]);
+  }, [allowedRoles, pathname, router, session, sessionQuery.isPending, sessionQuery.isUnauthorized]);
 
-  if (!session) {
+  if (sessionQuery.isError && !sessionQuery.isUnauthorized) {
+    return (
+      <div className="min-h-screen px-4 py-10">
+        <Card className="mx-auto max-w-xl">
+          <h1 className="text-lg font-semibold text-brand-900">Không xác minh được phiên đăng nhập</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            {(sessionQuery.error as Error).message}
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (sessionQuery.isPending || !session) {
     return null;
   }
 
