@@ -57,6 +57,7 @@ Khuyen nghi:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment staging`
 4. Chay smoke test:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://staging.fnbstore.store`
+   - hoac `powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment staging`
 5. Dang nhap admin
 6. Kiem tra:
    - store

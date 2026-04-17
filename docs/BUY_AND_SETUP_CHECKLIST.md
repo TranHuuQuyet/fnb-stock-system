@@ -128,6 +128,7 @@ Neu dang thao tac tren Linux server, co the tao file thu cong:
 cp .env.staging.compose.example .env.staging.compose
 cp backend/.env.staging.example backend/.env.staging
 cp frontend/.env.staging.example frontend/.env.staging
+cp deploy/.env.ops.example deploy/.env.ops
 ```
 
 ## 6. Gia tri can dien vao env staging
@@ -182,6 +183,17 @@ Ghi chu:
 NEXT_PUBLIC_API_BASE_URL=/api/v1
 ```
 
+### `deploy/.env.ops`
+
+```dotenv
+ALERT_WEBHOOK_URL=
+BACKUP_ROOT_DIR=E:\fnb-backups
+STAGING_BASE_URL=https://staging.fnbstore.store
+STAGING_BACKUP_MANIFEST_PATH=E:\fnb-backups\staging\latest-backup.json
+STAGING_SMOKE_ADMIN_USERNAME=
+STAGING_SMOKE_ADMIN_PASSWORD=
+```
+
 ## 7. Preflight check truoc khi deploy
 
 ```powershell
@@ -189,6 +201,12 @@ powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Env
 ```
 
 Chi duoc deploy khi script nay pass.
+
+Khuyen nghi chay them gate day du:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment staging
+```
 
 ## 8. Lenh deploy staging
 

@@ -28,6 +28,11 @@ on:
         required: false
         type: boolean
         default: false
+      require_auth:
+        description: Require admin login/me/logout check with environment secrets
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -39,6 +44,10 @@ jobs:
     env:
       STAGING_SMOKE_TEST_URL: ${{ vars.STAGING_SMOKE_TEST_URL }}
       PRODUCTION_SMOKE_TEST_URL: ${{ vars.PRODUCTION_SMOKE_TEST_URL }}
+      STAGING_SMOKE_ADMIN_USERNAME: ${{ secrets.STAGING_SMOKE_ADMIN_USERNAME }}
+      STAGING_SMOKE_ADMIN_PASSWORD: ${{ secrets.STAGING_SMOKE_ADMIN_PASSWORD }}
+      PRODUCTION_SMOKE_ADMIN_USERNAME: ${{ secrets.PRODUCTION_SMOKE_ADMIN_USERNAME }}
+      PRODUCTION_SMOKE_ADMIN_PASSWORD: ${{ secrets.PRODUCTION_SMOKE_ADMIN_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -74,12 +83,34 @@ jobs:
             "-BaseUrl", "${{ steps.resolve.outputs.base_url }}"
           )
 
+          if ("${{ inputs.target_environment }}" -eq "staging") {
+            $adminUsername = $env:STAGING_SMOKE_ADMIN_USERNAME
+            $adminPassword = $env:STAGING_SMOKE_ADMIN_PASSWORD
+          } else {
+            $adminUsername = $env:PRODUCTION_SMOKE_ADMIN_USERNAME
+            $adminPassword = $env:PRODUCTION_SMOKE_ADMIN_PASSWORD
+          }
+
           if ("${{ inputs.skip_frontend }}" -eq "true") {
             $arguments += "-SkipFrontend"
           }
 
           if ("${{ inputs.skip_ready }}" -eq "true") {
             $arguments += "-SkipReady"
+          }
+
+          if ("${{ inputs.require_auth }}" -eq "true") {
+            $arguments += "-RequireAuth"
+
+            if (-not [string]::IsNullOrWhiteSpace($adminUsername)) {
+              $arguments += @("-AdminUsername", $adminUsername)
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($adminPassword)) {
+              $arguments += @("-AdminPassword", $adminPassword)
+            }
+          } else {
+            $arguments += "-SkipAuth"
           }
 
           & powershell @arguments
@@ -95,5 +126,6 @@ jobs:
           - Git ref: `${{ inputs.git_ref != '' && inputs.git_ref || github.ref }}`
           - Skip frontend: `${{ inputs.skip_frontend }}`
           - Skip readiness: `${{ inputs.skip_ready }}`
+          - Require auth: `${{ inputs.require_auth }}`
           - Result: `passed`
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append

@@ -48,6 +48,7 @@ Repo da co san:
 - `.env.staging.compose.example`
 - `backend/.env.staging.example`
 - `frontend/.env.staging.example`
+- `deploy/.env.ops.example`
 
 Copy thanh file that:
 
@@ -55,6 +56,7 @@ Copy thanh file that:
 cp .env.staging.compose.example .env.staging.compose
 cp backend/.env.staging.example backend/.env.staging
 cp frontend/.env.staging.example frontend/.env.staging
+cp deploy/.env.ops.example deploy/.env.ops
 ```
 
 Sau do dien gia tri staging that:
@@ -87,6 +89,12 @@ docker compose --env-file .env.staging.compose -f docker-compose.prod.yml up -d 
 Co the chay nhanh bang script:
 
 ```powershell
+powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment staging
+```
+
+Neu muon chay rieng smoke test sau deploy:
+
+```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://staging.fnbstore.store
 ```
 
@@ -94,13 +102,11 @@ Hoac chay workflow CI sau deploy:
 
 - GitHub Actions > `Post-Deploy Smoke Test`
 - `target_environment=staging`
+- `require_auth=true` neu da cap environment secrets cho admin smoke test
 - nhap `base_url` neu khong dung repo variable
+- environment secrets can tao: `STAGING_SMOKE_ADMIN_USERNAME`, `STAGING_SMOKE_ADMIN_PASSWORD`
 
-Va preflight env truoc khi deploy:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment staging
-```
+Release gate da gom san `preflight + backup manifest guard + smoke test`.
 
 Neu chua pass, khong duoc tag release.
 
@@ -147,7 +153,7 @@ Workflow CI/CD se build image tu tag nay. Can ghi lai:
 6. Chay preflight check:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment production
+powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment production -RequireAuth
 ```
 
 ## 6. Trinh tu deploy production
@@ -172,16 +178,18 @@ docker compose --env-file .env.production.compose -f docker-compose.prod.yml up 
    - `https://fnbstore.store/api/v1/health`
    - `https://fnbstore.store/api/v1/health/ready`
 5. Chay smoke test bat buoc theo [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md)
-6. Chay them script smoke test nhanh:
+6. Chay them release gate:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store
+powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment production -RequireAuth
 ```
 
 7. Chay workflow CI sau deploy:
    - GitHub Actions > `Post-Deploy Smoke Test`
    - `target_environment=production`
    - `base_url=https://fnbstore.store`
+   - `require_auth=true`
+   - environment secrets can tao: `PRODUCTION_SMOKE_ADMIN_USERNAME`, `PRODUCTION_SMOKE_ADMIN_PASSWORD`
 8. Chay workflow `Release Evidence` de luu lai:
    - release tag
    - image da deploy

@@ -45,15 +45,37 @@ Tai lieu nay mo ta cach sao luu va khoi phuc du lieu production cho he thong `fn
 Neu may van hanh dung PowerShell, co the dat lich job hang ngay bang script:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File deploy/scripts/backup-postgres.ps1 `
-  -DatabaseUrl "postgresql://fnb_user:strong-password@db-host:5432/fnb_stock" `
-  -OutputDir "D:\fnb-backups" `
-  -Label "production-daily" `
-  -RetentionDays 30 `
-  -PruneOldBackups
+powershell -ExecutionPolicy Bypass -File deploy/scripts/run-backup-job.ps1 `
+  -Environment production
 ```
 
-Script se tao file backup va cap nhat `latest-backup.json` trong thu muc backup. File manifest nay nen duoc luu vao bien ban release hoac nhat ky van hanh.
+Script wrapper nay se:
+
+1. Doc `DATABASE_URL` tu `backend/.env.production` hoac `backend/.env.staging`
+2. Tao backup daily
+3. Tu dong promote sang weekly/monthly theo lich
+4. Cap nhat `latest-backup.json`
+5. Mirror sang `BACKUP_MIRROR_DIR` neu da cau hinh
+6. Gọi alert webhook neu job loi
+
+File `deploy/.env.ops` la noi chot cac gia tri van hanh:
+
+```dotenv
+ALERT_WEBHOOK_URL=
+ALERT_WEBHOOK_HEADERS_JSON=
+ALERT_NOTIFY_ON_SUCCESS=false
+BACKUP_ROOT_DIR=E:\fnb-backups
+BACKUP_MIRROR_DIR=
+BACKUP_DAILY_RETENTION=14
+BACKUP_WEEKLY_RETENTION=8
+BACKUP_MONTHLY_RETENTION=3
+BACKUP_WEEKLY_DAY=Sunday
+BACKUP_MINIMUM_SIZE_BYTES=10240
+PRODUCTION_BACKUP_MANIFEST_PATH=E:\fnb-backups\production\latest-backup.json
+STAGING_BACKUP_MANIFEST_PATH=E:\fnb-backups\staging\latest-backup.json
+```
+
+File manifest nay nen duoc luu vao bien ban release hoac nhat ky van hanh.
 
 ## 7. Checklist backup automation chat hon
 
@@ -82,6 +104,23 @@ Neu muon chay on dinh va de ban giao:
    - restore mat bao lau
    - smoke test sau restore co pass hay khong
 6. Neu co PITR cua nha cung cap DB thi bat them, nhung van phai co restore drill thu cong
+
+### 7.2. Goi y dat lich backup
+
+Neu chay tren Windows Server:
+
+1. Tao mot `Task Scheduler` job chay moi ngay
+2. Lenh de xuat:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File E:\fnb-stock-system\deploy\scripts\run-backup-job.ps1 -Environment production
+```
+
+Neu chay tren Linux:
+
+1. Dung `cron` hoac `systemd timer`
+2. Gọi PowerShell 7 neu doi van hanh da chuan hoa theo script `.ps1`
+3. Luu output vao file log rieng de doi voi alert webhook
 
 ## 8. Vi du backup PostgreSQL
 

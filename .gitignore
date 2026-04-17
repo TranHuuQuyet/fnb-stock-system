@@ -7,7 +7,10 @@ coverage
 .env.production
 .env.production.compose
 .env.staging.compose
+deploy/.env.ops
+backend/.env.production
 backend/.env.staging
+frontend/.env.production
 frontend/.env.staging
 *.log
 postgres_data

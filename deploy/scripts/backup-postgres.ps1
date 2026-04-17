@@ -5,7 +5,8 @@ param(
   [string]$Label = "manual",
   [int]$RetentionDays = 30,
   [string]$ManifestPath = "",
-  [switch]$PruneOldBackups
+  [switch]$PruneOldBackups,
+  [switch]$PassThru
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,3 +57,7 @@ $manifest | ConvertTo-Json | Set-Content -LiteralPath $ManifestPath
 
 Write-Host "Backup completed: $outputPath"
 Write-Host "Backup manifest updated: $ManifestPath"
+
+if ($PassThru) {
+  [pscustomobject]$manifest
+}

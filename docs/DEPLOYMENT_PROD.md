@@ -8,6 +8,7 @@ Tài liệu nên được dùng cùng các file sau:
 - [UAT_CHECKLIST.md](./UAT_CHECKLIST.md)
 - [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md)
 - [BACKUP_RESTORE.md](./BACKUP_RESTORE.md)
+- [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md)
 
 ## 1. Phạm vi và giả định
 
@@ -136,6 +137,39 @@ Ghi chú:
 - `NEXT_PUBLIC_API_BASE_URL=/api/v1` là lựa chọn khuyến nghị khi frontend và backend cùng đi qua một domain public.
 - `BACKEND_ENV_FILE` và `FRONTEND_ENV_FILE` cho phép bạn đổi sang file env khác nếu muốn dùng staging hoặc file secret riêng.
 
+### Ops env cho backup, alerting và release gate
+
+Tạo file `deploy/.env.ops`:
+
+```dotenv
+ALERT_WEBHOOK_URL=
+ALERT_WEBHOOK_HEADERS_JSON=
+ALERT_NOTIFY_ON_SUCCESS=false
+BACKUP_ROOT_DIR=E:\fnb-backups
+BACKUP_MIRROR_DIR=
+BACKUP_DAILY_RETENTION=14
+BACKUP_WEEKLY_RETENTION=8
+BACKUP_MONTHLY_RETENTION=3
+BACKUP_WEEKLY_DAY=Sunday
+BACKUP_MINIMUM_SIZE_BYTES=10240
+STAGING_BASE_URL=https://staging.fnbstore.store
+STAGING_BACKUP_MANIFEST_PATH=E:\fnb-backups\staging\latest-backup.json
+STAGING_BACKUP_MAX_AGE_HOURS=168
+STAGING_SMOKE_ADMIN_USERNAME=
+STAGING_SMOKE_ADMIN_PASSWORD=
+PRODUCTION_BASE_URL=https://fnbstore.store
+PRODUCTION_BACKUP_MANIFEST_PATH=E:\fnb-backups\production\latest-backup.json
+PRODUCTION_BACKUP_MAX_AGE_HOURS=36
+PRODUCTION_SMOKE_ADMIN_USERNAME=
+PRODUCTION_SMOKE_ADMIN_PASSWORD=
+```
+
+Ghi chú:
+
+- File này không commit vào git; dùng để cấu hình backup job, alert webhook và release gate.
+- `BACKUP_MIRROR_DIR` nên trỏ tới NAS, ổ mount, hoặc storage khác máy app nếu có.
+- `PRODUCTION_SMOKE_ADMIN_*` nên là tài khoản admin riêng cho smoke test, không dùng tài khoản cá nhân.
+
 ## 4.1. Bộ file container production có sẵn
 
 Repo hiện đã có sẵn:
@@ -145,6 +179,7 @@ Repo hiện đã có sẵn:
 - `frontend/Dockerfile.prod`
 - `deploy/caddy/Caddyfile`
 - `.env.production.compose.example`
+- `deploy/.env.ops.example`
 
 Luồng này phù hợp khi bạn muốn chạy:
 
@@ -161,9 +196,16 @@ Luồng này phù hợp khi bạn muốn chạy:
 cp .env.production.compose.example .env.production.compose
 cp backend/.env.production.example backend/.env.production
 cp frontend/.env.production.example frontend/.env.production
+cp deploy/.env.ops.example deploy/.env.ops
 ```
 
-2. Điền giá trị production thật vào 3 file trên.
+Hoặc chạy nhanh:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy/scripts/init-production.ps1
+```
+
+2. Điền giá trị production thật vào 4 file trên.
 3. Đảm bảo DNS của `fnbstore.store` đã trỏ về VPS và port `80/443` mở ra Internet.
 4. Chạy:
 
@@ -231,6 +273,7 @@ npm ci
 ```bash
 cp /srv/fnb-stock-system/backend/.env.production.example /srv/fnb-stock-system/backend/.env.production
 cp /srv/fnb-stock-system/frontend/.env.production.example /srv/fnb-stock-system/frontend/.env.production
+cp /srv/fnb-stock-system/deploy/.env.ops.example /srv/fnb-stock-system/deploy/.env.ops
 ```
 
 Sau đó thay toàn bộ giá trị demo bằng giá trị production thật.
@@ -415,21 +458,14 @@ sudo systemctl reload nginx
 
 ## 8. Tạo admin đầu tiên
 
-Hiện repo chưa có luồng bootstrap admin riêng cho production. Đây là việc cần xử lý trước khi go-live.
+Repo hiện đã có luồng `bootstrap:admin` riêng cho production.
 
 Khuyến nghị:
 
-1. Tạo script bootstrap riêng chỉ để:
-   - tạo 1 store gốc nếu cần
-   - tạo 1 tài khoản admin đầu tiên
-   - không tạo dữ liệu demo khác
-2. Chạy script này đúng 1 lần trên database trống.
-3. Đăng nhập admin vừa tạo và đổi mật khẩu ngay.
-4. Ghi lại tài khoản bootstrap trong runbook nội bộ.
-
-Không khuyến nghị:
-
-- Dùng `db:seed` của repo hiện tại trên production thật, vì seed tạo sẵn user/demo password và dữ liệu mẫu.
+1. Chạy bootstrap đúng 1 lần trên database trống hoặc môi trường mới.
+2. Dùng mật khẩu mạnh và đặt `BOOTSTRAP_ADMIN_FORCE_RESET=true`.
+3. Đăng nhập admin vừa tạo, đổi mật khẩu, rồi lưu credential bootstrap theo runbook nội bộ.
+4. Không dùng `db:seed` cho production vì seed vẫn phục vụ local/demo.
 
 ## 9. Smoke test sau deploy
 
@@ -459,8 +495,8 @@ Thực hiện toàn bộ trước khi mở cho người dùng thật:
 
 ### Ví dụ backup
 
-```bash
-pg_dump -Fc -d "postgresql://fnb_user:strong-password@db-host:5432/fnb_stock" > /backups/fnb_stock_$(date +%F).dump
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy/scripts/run-backup-job.ps1 -Environment production
 ```
 
 ### Ví dụ restore
@@ -505,6 +541,12 @@ Nếu chưa muốn dựng một stack observability lớn ngay từ đầu, có 
 4. Một alert backup job khi không tạo được file mới hoặc `latest-backup.json`
 5. Một kênh alert chung mà đội vận hành thật sự đọc được, ví dụ email, Slack hoặc Telegram
 
+Script hỗ trợ sẵn trong repo:
+
+- `deploy/scripts/send-ops-alert.ps1`: đẩy alert ra webhook chung
+- `deploy/scripts/run-backup-job.ps1`: backup có retention theo tier, manifest và mirror off-host nếu cấu hình
+- `deploy/scripts/run-release-gate.ps1`: chạy preflight + kiểm tra backup manifest + smoke test theo đúng môi trường
+
 Lưu ý:
 
 - Không dựa hoàn toàn vào review log thủ công.
@@ -520,6 +562,12 @@ Lưu ý:
 3. Build lại backend/frontend từ commit cũ.
 4. Restart service.
 5. Chạy lại smoke test tối thiểu.
+
+Lệnh khuyến nghị:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment production -RequireAuth
+```
 
 ### Khi migration gây lỗi
 

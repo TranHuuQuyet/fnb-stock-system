@@ -60,12 +60,15 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
    - `REQUIRE_STRONG_SECRETS=true`
    - `AUTH_COOKIE_SECURE=true`
    - `AUTH_COOKIE_SAME_SITE=lax`
+   - `deploy/.env.ops` da duoc dien cho backup, alerting va smoke admin
 6. Chay preflight check:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment production`
-7. Xac nhan production khong chay `db:seed`
-8. Xac nhan da co lenh `bootstrap:admin`
-9. Xac nhan backup job luu ra storage ngoai app disk va co `latest-backup.json`
-10. Xac nhan da co kenh alert cho readiness fail, database down, disk cao va backup fail
+7. Khuyen nghi chay gate day du:
+   - `powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment production -RequireAuth`
+8. Xac nhan production khong chay `db:seed`
+9. Xac nhan da co lenh `bootstrap:admin`
+10. Xac nhan backup job luu ra storage ngoai app disk va co `latest-backup.json`
+11. Xac nhan da co kenh alert cho readiness fail, database down, disk cao va backup fail
 
 ## 4. Cac buoc go-live
 
@@ -83,7 +86,7 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
    - `GET /api/v1/health/ready`
 9. Chay script smoke test nhanh:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store`
-10. Chay workflow GitHub Actions `Post-Deploy Smoke Test` cho `production`
+10. Chay workflow GitHub Actions `Post-Deploy Smoke Test` cho `production` voi `require_auth=true`
 
 ## 5. Smoke test bat buoc ngay sau deploy
 
