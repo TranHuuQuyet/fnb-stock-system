@@ -373,27 +373,29 @@ export class WorkSchedulesService {
       );
     }
 
-    const savedSchedule = await this.prisma.$transaction(async (tx) => {
-      const schedule =
-        existing
-          ? await tx.workSchedule.update({
-              where: { id: existing.id },
-              data: {
-                title: dto.title.trim(),
-                notes: dto.notes?.trim() || null,
-                status: dto.status ?? existing.status
-              }
-            })
-          : await tx.workSchedule.create({
-              data: {
-                storeId: store.id,
-                year: dto.year,
-                month: dto.month,
-                title: dto.title.trim(),
-                notes: dto.notes?.trim() || null,
-                status: dto.status ?? WorkScheduleStatus.DRAFT
-              }
-            });
+    const savedSchedule = await this.prisma.runInTransaction(async (tx) => {
+      const schedule = await tx.workSchedule.upsert({
+        where: {
+          storeId_year_month: {
+            storeId: store.id,
+            year: dto.year,
+            month: dto.month
+          }
+        },
+        update: {
+          title: dto.title.trim(),
+          notes: dto.notes?.trim() || null,
+          status: dto.status ?? existing?.status ?? WorkScheduleStatus.DRAFT
+        },
+        create: {
+          storeId: store.id,
+          year: dto.year,
+          month: dto.month,
+          title: dto.title.trim(),
+          notes: dto.notes?.trim() || null,
+          status: dto.status ?? WorkScheduleStatus.DRAFT
+        }
+      });
 
       if (existing?.employees.length) {
         await tx.workScheduleEntry.deleteMany({

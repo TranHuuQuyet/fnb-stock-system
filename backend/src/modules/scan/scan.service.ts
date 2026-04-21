@@ -227,28 +227,40 @@ export class ScanService {
       };
     }
 
-    await this.devicesService.upsert({
-      deviceId: params.deviceId,
-      storeId,
-      userId: params.currentUser.userId
-    });
+    try {
+      await this.devicesService.upsert({
+        deviceId: params.deviceId,
+        storeId,
+        userId: params.currentUser.userId
+      });
 
-    const config = await this.configService.getConfig();
-    const batch = await this.batchesService.findByBatchCode(storeId, params.dto.batchCode);
-    const validationError = await this.validateScanInput(params, batch, config.allowFifoBypass);
+      const config = await this.configService.getConfig();
+      const batch = await this.batchesService.findByBatchCode(storeId, params.dto.batchCode);
+      const validationError = await this.validateScanInput(params, batch, config.allowFifoBypass);
 
-    if (validationError) {
-      return validationError;
-    }
+      if (validationError) {
+        return validationError;
+      }
 
-    const processed = await this.prisma.$transaction(async (tx) => {
+      const processed = await this.prisma.runInTransaction(async (tx) => {
       const freshBatch = await tx.ingredientBatch.findUniqueOrThrow({
         where: {
           id: batch!.id
         }
       });
 
-      const olderBatch = await this.batchesService.findOlderActiveBatch(freshBatch);
+      const freshValidationError = await this.validateFreshBatchInTransaction(
+        tx,
+        params,
+        storeId,
+        freshBatch,
+        ScanOperationType.STORE_USAGE
+      );
+      if (freshValidationError) {
+        return freshValidationError;
+      }
+
+      const olderBatch = await this.batchesService.findOlderActiveBatch(freshBatch, tx);
       let resultStatus: ScanResultStatus = ScanResultStatus.SUCCESS;
       let resultCode = ERROR_CODES.SCAN_OK as string;
       let message = 'Đã ghi nhận lượt quét thành công';
@@ -309,9 +321,17 @@ export class ScanService {
         remainingQty: updatedBatch.remainingQty,
         scanLogId: scanLog.id
       } satisfies ProcessScanResult;
-    });
+      });
 
-    return processed;
+      return processed;
+    } catch (error) {
+      const duplicated = await this.resolveDuplicateClientEvent(params, error);
+      if (duplicated) {
+        return duplicated;
+      }
+
+      throw error;
+    }
   }
 
   private async validateScanInput(
@@ -400,7 +420,7 @@ export class ScanService {
   ): Promise<ProcessScanResult> {
     const detail = `IP ${params.ipAddress} không nằm trong danh sách mạng được phép`;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.runInTransaction(async (tx) => {
       await tx.fraudAttemptLog.create({
         data: {
           storeId,
@@ -455,7 +475,7 @@ export class ScanService {
       message: string;
     }
   ): Promise<ProcessScanResult> {
-    return this.prisma.$transaction((tx) =>
+    return this.prisma.runInTransaction((tx) =>
       this.createErrorLogAndResult(tx, params, payload)
     );
   }
@@ -637,27 +657,28 @@ export class ScanService {
       };
     }
 
-    await this.devicesService.upsert({
-      deviceId: params.deviceId,
-      storeId,
-      userId: params.currentUser.userId
-    });
+    try {
+      await this.devicesService.upsert({
+        deviceId: params.deviceId,
+        storeId,
+        userId: params.currentUser.userId
+      });
 
-    const config = await this.configService.getConfig();
-    const batch = await this.batchesService.findByBatchCode(storeId, params.dto.batchCode);
-    const validationError = await this.validateScanRequest(
-      params,
-      storeId,
-      operationType,
-      batch,
-      config.allowFifoBypass
-    );
+      const config = await this.configService.getConfig();
+      const batch = await this.batchesService.findByBatchCode(storeId, params.dto.batchCode);
+      const validationError = await this.validateScanRequest(
+        params,
+        storeId,
+        operationType,
+        batch,
+        config.allowFifoBypass
+      );
 
-    if (validationError) {
-      return validationError;
-    }
+      if (validationError) {
+        return validationError;
+      }
 
-    if (operationType === ScanOperationType.TRANSFER) {
+      if (operationType === ScanOperationType.TRANSFER) {
       const destinationStore = await this.prisma.store.findUnique({
         where: { id: params.dto.destinationStoreId! },
         select: {
@@ -677,17 +698,25 @@ export class ScanService {
         });
       }
 
-      return this.processTransferRequest(
-        params,
-        storeId,
-        batch!,
-        destinationStore.id,
-        destinationStore.name,
-        config.allowFifoBypass
-      );
-    }
+        return this.processTransferRequest(
+          params,
+          storeId,
+          batch!,
+          destinationStore.id,
+          destinationStore.name,
+          config.allowFifoBypass
+        );
+      }
 
-    return this.processStoreUsageRequest(params, storeId, batch!, config.allowFifoBypass);
+      return this.processStoreUsageRequest(params, storeId, batch!, config.allowFifoBypass);
+    } catch (error) {
+      const duplicated = await this.resolveDuplicateClientEvent(params, error);
+      if (duplicated) {
+        return duplicated;
+      }
+
+      throw error;
+    }
   }
 
   private getStoreIdForScanRequest(currentUser: JwtUser, dto: ScanDto) {
@@ -825,12 +854,23 @@ export class ScanService {
     batch: NonNullable<Awaited<ReturnType<BatchesService['findByBatchCode']>>>,
     allowFifoBypass: boolean
   ): Promise<ProcessScanResult> {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.runInTransaction(async (tx) => {
       const freshBatch = await tx.ingredientBatch.findUniqueOrThrow({
         where: {
           id: batch.id
         }
       });
+
+      const freshValidationError = await this.validateFreshBatchInTransaction(
+        tx,
+        params,
+        storeId,
+        freshBatch,
+        ScanOperationType.STORE_USAGE
+      );
+      if (freshValidationError) {
+        return freshValidationError;
+      }
 
       if (params.dto.quantityUsed > freshBatch.remainingQty) {
         return this.createErrorLogAndResultV2(tx, params, {
@@ -842,7 +882,7 @@ export class ScanService {
         });
       }
 
-      const olderBatch = await this.batchesService.findOlderActiveBatch(freshBatch);
+      const olderBatch = await this.batchesService.findOlderActiveBatch(freshBatch, tx);
       let resultStatus: ScanResultStatus = ScanResultStatus.SUCCESS;
       let resultCode: string = ERROR_CODES.SCAN_OK;
       let message = 'Đã ghi nhận sử dụng nguyên liệu tại quán thành công';
@@ -918,12 +958,23 @@ export class ScanService {
     destinationStoreName: string,
     allowFifoBypass: boolean
   ): Promise<ProcessScanResult> {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.runInTransaction(async (tx) => {
       const freshBatch = await tx.ingredientBatch.findUniqueOrThrow({
         where: {
           id: batch.id
         }
       });
+
+      const freshValidationError = await this.validateFreshBatchInTransaction(
+        tx,
+        params,
+        storeId,
+        freshBatch,
+        ScanOperationType.TRANSFER
+      );
+      if (freshValidationError) {
+        return freshValidationError;
+      }
 
       if (params.dto.quantityUsed > freshBatch.remainingQty) {
         return this.createErrorLogAndResultV2(tx, params, {
@@ -935,7 +986,7 @@ export class ScanService {
         });
       }
 
-      const olderBatch = await this.batchesService.findOlderActiveBatch(freshBatch);
+      const olderBatch = await this.batchesService.findOlderActiveBatch(freshBatch, tx);
       let resultStatus: ScanResultStatus = ScanResultStatus.SUCCESS;
       let resultCode: string = ERROR_CODES.TRANSFER_PENDING_RECEIPT;
       let message = `Đã chuyển nguyên liệu sang chi nhánh ${destinationStoreName} thành công`;
@@ -1131,7 +1182,7 @@ export class ScanService {
   ): Promise<ProcessScanResult> {
     const detail = `IP ${params.ipAddress} không nằm trong danh sách mạng được phép`;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.runInTransaction(async (tx) => {
       await tx.fraudAttemptLog.create({
         data: {
           storeId,
@@ -1191,7 +1242,7 @@ export class ScanService {
       operationType: ScanOperationType;
     }
   ): Promise<ProcessScanResult> {
-    return this.prisma.$transaction((tx) =>
+    return this.prisma.runInTransaction((tx) =>
       this.createErrorLogAndResultV2(tx, params, payload)
     );
   }
@@ -1240,6 +1291,95 @@ export class ScanService {
       batchId: payload.batchId,
       destinationStoreId: params.dto.destinationStoreId,
       scanLogId: scanLog.id
+    };
+  }
+
+  private async validateFreshBatchInTransaction(
+    tx: Prisma.TransactionClient,
+    params: ProcessScanParams,
+    storeId: string,
+    batch: {
+      id: string;
+      expiredAt: Date | null;
+      status: BatchStatus;
+      remainingQty: number;
+    },
+    operationType: ScanOperationType
+  ): Promise<ProcessScanResult | null> {
+    const scannedAt = new Date(params.dto.scannedAt);
+    const isExpired = batch.expiredAt ? batch.expiredAt <= scannedAt : false;
+    if (isExpired || batch.status === BatchStatus.EXPIRED) {
+      return this.createErrorLogAndResultV2(tx, params, {
+        storeId,
+        batchId: batch.id,
+        resultCode: ERROR_CODES.ERROR_BATCH_EXPIRED,
+        message: 'LÃ´ nguyÃªn liá»‡u Ä‘Ã£ háº¿t háº¡n',
+        operationType
+      });
+    }
+
+    if (batch.status === BatchStatus.SOFT_LOCKED) {
+      return this.createErrorLogAndResultV2(tx, params, {
+        storeId,
+        batchId: batch.id,
+        resultCode: ERROR_CODES.ERROR_SOFT_LOCKED,
+        message: 'LÃ´ nguyÃªn liá»‡u Ä‘ang bá»‹ khÃ³a má»m',
+        operationType
+      });
+    }
+
+    if (batch.status !== BatchStatus.ACTIVE || batch.remainingQty <= 0) {
+      return this.createErrorLogAndResultV2(tx, params, {
+        storeId,
+        batchId: batch.id,
+        resultCode: ERROR_CODES.ERROR_BATCH_DEPLETED,
+        message: 'LÃ´ nguyÃªn liá»‡u Ä‘Ã£ háº¿t sá»‘ lÆ°á»£ng',
+        operationType
+      });
+    }
+
+    if (params.dto.quantityUsed > batch.remainingQty) {
+      return this.createErrorLogAndResultV2(tx, params, {
+        storeId,
+        batchId: batch.id,
+        resultCode: ERROR_CODES.ERROR_INSUFFICIENT_QTY,
+        message: 'Sá»‘ lÆ°á»£ng cÃ²n láº¡i cá»§a lÃ´ khÃ´ng Ä‘á»§',
+        operationType
+      });
+    }
+
+    return null;
+  }
+
+  private async resolveDuplicateClientEvent(
+    params: ProcessScanParams,
+    error: unknown
+  ): Promise<ProcessScanResult | null> {
+    if (!this.prisma.isUniqueConstraintError(error, ['clientEventId'])) {
+      return null;
+    }
+
+    const existing = await this.prisma.scanLog.findUnique({
+      where: {
+        clientEventId: params.dto.clientEventId
+      }
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    return {
+      duplicated: true,
+      clientEventId: existing.clientEventId,
+      resultStatus: existing.resultStatus,
+      resultCode: existing.resultCode,
+      message: existing.message,
+      batchCode: params.dto.batchCode,
+      operationType: existing.operationType,
+      batchId: existing.batchId,
+      destinationStoreId: existing.destinationStoreId,
+      scanLogId: existing.id
     };
   }
 

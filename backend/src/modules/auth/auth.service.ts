@@ -219,25 +219,32 @@ export class AuthService {
   }
 
   private async registerFailedLogin(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        failedLoginAttempts: true
-      }
-    });
-    const failedLoginAttempts = (user?.failedLoginAttempts ?? 0) + 1;
-    const lockoutUntil =
-      failedLoginAttempts >= MAX_FAILED_LOGIN_ATTEMPTS
-        ? new Date(Date.now() + LOGIN_LOCKOUT_MINUTES * 60 * 1000)
-        : null;
+    await this.prisma.runInTransaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: {
+          failedLoginAttempts: true
+        }
+      });
 
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        failedLoginAttempts,
-        lastFailedLoginAt: new Date(),
-        lockoutUntil
+      if (!user) {
+        return;
       }
+
+      const failedLoginAttempts = (user.failedLoginAttempts ?? 0) + 1;
+      const lockoutUntil =
+        failedLoginAttempts >= MAX_FAILED_LOGIN_ATTEMPTS
+          ? new Date(Date.now() + LOGIN_LOCKOUT_MINUTES * 60 * 1000)
+          : null;
+
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          failedLoginAttempts,
+          lastFailedLoginAt: new Date(),
+          lockoutUntil
+        }
+      });
     });
   }
 

@@ -154,7 +154,7 @@ export class PosService {
 
   async replaceRecipe(actorUserId: string, productId: string, dto: ReplaceRecipeDto) {
     const existing = await this.getRecipesByProduct(productId);
-    const replaced = await this.prisma.$transaction(async (tx) => {
+    const replaced = await this.prisma.runInTransaction(async (tx) => {
       await tx.recipe.deleteMany({
         where: { productId }
       });

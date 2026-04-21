@@ -31,22 +31,30 @@ export class StockAdjustmentsService {
       );
     }
 
-    if (
-      dto.adjustmentType === StockAdjustmentType.DECREASE &&
-      dto.quantity > batch.remainingQty
-    ) {
-      throw appException(
-        HttpStatus.CONFLICT,
-        ERROR_CODES.STOCK_ADJUSTMENT_EXCEEDS_REMAINING,
-        'Adjustment exceeds remaining quantity'
-      );
-    }
+    const result = await this.prisma.runInTransaction(async (tx) => {
+      const freshBatch = await tx.ingredientBatch.findUniqueOrThrow({
+        where: { id: batchId },
+        include: {
+          ingredient: true,
+          store: true
+        }
+      });
 
-    const result = await this.prisma.$transaction(async (tx) => {
+      if (
+        dto.adjustmentType === StockAdjustmentType.DECREASE &&
+        dto.quantity > freshBatch.remainingQty
+      ) {
+        throw appException(
+          HttpStatus.CONFLICT,
+          ERROR_CODES.STOCK_ADJUSTMENT_EXCEEDS_REMAINING,
+          'Adjustment exceeds remaining quantity'
+        );
+      }
+
       const nextQty =
         dto.adjustmentType === StockAdjustmentType.INCREASE
-          ? batch.remainingQty + dto.quantity
-          : batch.remainingQty - dto.quantity;
+          ? freshBatch.remainingQty + dto.quantity
+          : freshBatch.remainingQty - dto.quantity;
 
       const updatedBatch = await tx.ingredientBatch.update({
         where: { id: batchId },
@@ -55,9 +63,9 @@ export class StockAdjustmentsService {
           status:
             nextQty <= 0
               ? BatchStatus.DEPLETED
-              : batch.status === BatchStatus.DEPLETED
+              : freshBatch.status === BatchStatus.DEPLETED
                 ? BatchStatus.ACTIVE
-                : batch.status
+                : freshBatch.status
         },
         include: {
           ingredient: true,
@@ -67,7 +75,7 @@ export class StockAdjustmentsService {
 
       const adjustment = await tx.stockAdjustment.create({
         data: {
-          storeId: batch.storeId,
+          storeId: freshBatch.storeId,
           batchId,
           adjustmentType: dto.adjustmentType,
           quantity: dto.quantity,

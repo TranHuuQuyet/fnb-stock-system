@@ -14,7 +14,8 @@ describe('ScanService', () => {
     scanLog: {
       findUnique: jest.fn()
     },
-    $transaction: jest.fn()
+    runInTransaction: jest.fn(),
+    isUniqueConstraintError: jest.fn().mockReturnValue(false)
   };
   const devicesService = {
     upsert: jest.fn()
@@ -96,7 +97,7 @@ describe('ScanService', () => {
     batchesService.findOlderActiveBatch.mockResolvedValue({
       id: 'older-batch'
     });
-    prisma.$transaction.mockImplementation(async (callback: Function) =>
+    prisma.runInTransaction.mockImplementation(async (callback: Function) =>
       callback({
         ingredientBatch: {
           findUniqueOrThrow: jest.fn().mockResolvedValue({

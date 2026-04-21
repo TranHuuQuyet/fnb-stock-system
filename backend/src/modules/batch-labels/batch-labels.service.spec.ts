@@ -2,7 +2,7 @@ import { BatchLabelsService } from './batch-labels.service';
 
 describe('BatchLabelsService', () => {
   const prisma = {
-    $transaction: jest.fn()
+    runInTransaction: jest.fn()
   };
   const batchesService = {
     getById: jest.fn(),
@@ -36,7 +36,7 @@ describe('BatchLabelsService', () => {
       expiredAt: null
     });
     batchesService.generateQrCodeValue.mockReturnValue('FNBBATCH:BATCH-001');
-    prisma.$transaction.mockImplementation(async (callback: Function) =>
+    prisma.runInTransaction.mockImplementation(async (callback: Function) =>
       callback({
         ingredientBatch: {
           update: jest.fn().mockResolvedValue({
@@ -63,7 +63,7 @@ describe('BatchLabelsService', () => {
 
   it('requires a reason when issuing more labels for a batch that was already printed', async () => {
     batchesService.generateQrCodeValue.mockReturnValue('FNBBATCH:BATCH-001');
-    prisma.$transaction.mockImplementation(async (callback: Function) =>
+    prisma.runInTransaction.mockImplementation(async (callback: Function) =>
       callback({
         ingredientBatch: {
           findUnique: jest.fn().mockResolvedValue({
@@ -92,7 +92,7 @@ describe('BatchLabelsService', () => {
 
   it('issues sequential label numbers for a batch', async () => {
     batchesService.generateQrCodeValue.mockReturnValue('FNBBATCH:BATCH-001');
-    prisma.$transaction.mockImplementation(async (callback: Function) =>
+    prisma.runInTransaction.mockImplementation(async (callback: Function) =>
       callback({
         ingredientBatch: {
           findUnique: jest

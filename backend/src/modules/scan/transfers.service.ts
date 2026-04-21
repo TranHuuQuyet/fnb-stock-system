@@ -179,17 +179,40 @@ export class TransfersService {
       );
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.runInTransaction(async (tx) => {
+      const freshTransfer = await tx.stockTransfer.findUnique({
+        where: { id: existing.id },
+        include: {
+          sourceBatch: true
+        }
+      });
+
+      if (!freshTransfer) {
+        throw appException(
+          HttpStatus.NOT_FOUND,
+          ERROR_CODES.ERROR_TRANSFER_NOT_FOUND,
+          'KhÃ´ng tÃ¬m tháº¥y phiáº¿u chuyá»ƒn kho'
+        );
+      }
+
+      if (freshTransfer.status === StockTransferStatus.RECEIVED) {
+        throw appException(
+          HttpStatus.CONFLICT,
+          ERROR_CODES.ERROR_TRANSFER_ALREADY_RECEIVED,
+          'Phiáº¿u chuyá»ƒn kho Ä‘Ã£ Ä‘Æ°á»£c xÃ¡c nháº­n trÆ°á»›c Ä‘Ã³'
+        );
+      }
+
       const targetBatch = await tx.ingredientBatch.findUnique({
         where: {
           storeId_batchCode: {
-            storeId: existing.destinationStoreId,
-            batchCode: existing.batchCode
+            storeId: freshTransfer.destinationStoreId,
+            batchCode: freshTransfer.batchCode
           }
         }
       });
 
-      if (targetBatch && targetBatch.ingredientId !== existing.ingredientId) {
+      if (targetBatch && targetBatch.ingredientId !== freshTransfer.ingredientId) {
         throw appException(
           HttpStatus.CONFLICT,
           ERROR_CODES.ERROR_TRANSFER_BATCH_CONFLICT,
@@ -216,18 +239,18 @@ export class TransfersService {
         } else {
           const createdTargetBatch = await tx.ingredientBatch.create({
             data: {
-              ingredientId: existing.sourceBatch.ingredientId,
-              storeId: existing.destinationStoreId,
-              batchCode: existing.sourceBatch.batchCode,
-              receivedAt: existing.sourceBatch.receivedAt,
-              expiredAt: existing.sourceBatch.expiredAt,
+              ingredientId: freshTransfer.sourceBatch.ingredientId,
+              storeId: freshTransfer.destinationStoreId,
+              batchCode: freshTransfer.sourceBatch.batchCode,
+              receivedAt: freshTransfer.sourceBatch.receivedAt,
+              expiredAt: freshTransfer.sourceBatch.expiredAt,
               initialQty: dto.receivedQty,
               remainingQty: dto.receivedQty,
               status: BatchStatus.ACTIVE,
               softLockReason: null,
-              qrCodeValue: existing.sourceBatch.qrCodeValue,
-              qrGeneratedAt: existing.sourceBatch.qrGeneratedAt,
-              labelCreatedAt: existing.sourceBatch.labelCreatedAt,
+              qrCodeValue: freshTransfer.sourceBatch.qrCodeValue,
+              qrGeneratedAt: freshTransfer.sourceBatch.qrGeneratedAt,
+              labelCreatedAt: freshTransfer.sourceBatch.labelCreatedAt,
               printedLabelCount: 0
             }
           });
@@ -236,7 +259,7 @@ export class TransfersService {
       }
 
       return tx.stockTransfer.update({
-        where: { id: existing.id },
+        where: { id: freshTransfer.id },
         data: {
           quantityReceived: dto.receivedQty,
           status: StockTransferStatus.RECEIVED,
@@ -286,6 +309,10 @@ export class TransfersService {
           }
         }
       });
+    }, {
+      shouldRetry: (error: unknown) =>
+        this.prisma.isRetryableTransactionError(error) ||
+        this.prisma.isUniqueConstraintError(error, ['storeId', 'batchCode'])
     });
 
     await this.auditService.createLog({

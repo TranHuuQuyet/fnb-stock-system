@@ -16,6 +16,8 @@ const batchInclude = {
   store: true
 } satisfies Prisma.IngredientBatchInclude;
 
+type IngredientBatchReader = Pick<Prisma.TransactionClient, 'ingredientBatch'>;
+
 @Injectable()
 export class BatchesService {
   constructor(
@@ -104,7 +106,7 @@ export class BatchesService {
 
   async update(actorUserId: string, id: string, dto: UpdateBatchDto) {
     const existing = await this.getById(id);
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.runInTransaction(async (tx) => {
       return tx.ingredientBatch.update({
         where: { id },
         data: {
@@ -180,8 +182,12 @@ export class BatchesService {
     return updated;
   }
 
-  async findByBatchCode(storeId: string, batchCode: string) {
-    return this.prisma.ingredientBatch.findUnique({
+  async findByBatchCode(
+    storeId: string,
+    batchCode: string,
+    db: IngredientBatchReader = this.prisma
+  ) {
+    return db.ingredientBatch.findUnique({
       where: {
         storeId_batchCode: {
           storeId,
@@ -192,8 +198,11 @@ export class BatchesService {
     });
   }
 
-  async findOlderActiveBatch(batch: { ingredientId: string; storeId: string; receivedAt: Date; id: string }) {
-    return this.prisma.ingredientBatch.findFirst({
+  async findOlderActiveBatch(
+    batch: { ingredientId: string; storeId: string; receivedAt: Date; id: string },
+    db: IngredientBatchReader = this.prisma
+  ) {
+    return db.ingredientBatch.findFirst({
       where: {
         ingredientId: batch.ingredientId,
         storeId: batch.storeId,

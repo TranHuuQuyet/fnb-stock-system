@@ -38,7 +38,7 @@ export class BatchLabelsService {
       );
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.runInTransaction(async (tx) => {
       return tx.ingredientBatch.update({
         where: { id: batchId },
         data: {
@@ -92,7 +92,7 @@ export class BatchLabelsService {
   }
 
   async issueLabels(actorUserId: string, batchId: string, quantity: number, reason?: string) {
-    const issued = await this.prisma.$transaction(async (tx) => {
+    const issued = await this.prisma.runInTransaction(async (tx) => {
       const batch = await tx.ingredientBatch.findUnique({
         where: { id: batchId },
         include: {

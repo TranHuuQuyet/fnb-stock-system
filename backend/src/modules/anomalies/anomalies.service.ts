@@ -34,7 +34,7 @@ export class AnomaliesService {
 
     const alerts = reconciliation.items.filter((item) => item.belowThreshold);
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.runInTransaction(async (tx) => {
       await tx.anomalyAlert.deleteMany({
         where: {
           storeId: scopedStoreId,

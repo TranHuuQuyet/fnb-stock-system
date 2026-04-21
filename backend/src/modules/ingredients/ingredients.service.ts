@@ -263,7 +263,7 @@ export class IngredientsService {
     });
 
     if (duplicate && duplicate.id !== id) {
-      const merged = await this.prisma.$transaction(async (tx) => {
+      const merged = await this.prisma.runInTransaction(async (tx) => {
         const target = await tx.ingredientUnit.update({
           where: { id: duplicate.id },
           data: {
@@ -304,7 +304,7 @@ export class IngredientsService {
       return view;
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.runInTransaction(async (tx) => {
       const unit = await tx.ingredientUnit.update({
         where: { id },
         data: {

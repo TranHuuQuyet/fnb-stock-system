@@ -363,15 +363,20 @@ export class IngredientStockBoardService {
       }
     });
 
-    const savedLayout = await this.prisma.$transaction(async (tx) => {
-      const layout =
-        existingLayout ??
-        (await tx.ingredientStockLayout.create({
-          data: {
+    const savedLayout = await this.prisma.runInTransaction(async (tx) => {
+      const layout = await tx.ingredientStockLayout.upsert({
+        where: {
+          storeId_operationType: {
             storeId: store.id,
             operationType: dto.operationType
           }
-        }));
+        },
+        update: {},
+        create: {
+          storeId: store.id,
+          operationType: dto.operationType
+        }
+      });
 
       await tx.ingredientStockLayoutGroup.deleteMany({
         where: {

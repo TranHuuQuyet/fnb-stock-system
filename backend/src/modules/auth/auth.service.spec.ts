@@ -28,7 +28,8 @@ describe('AuthService', () => {
     user: {
       findUnique: jest.fn(),
       update: jest.fn()
-    }
+    },
+    runInTransaction: jest.fn()
   };
 
   const service = new AuthService(
@@ -41,6 +42,14 @@ describe('AuthService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     prisma.user.findUnique.mockResolvedValue({ failedLoginAttempts: 0 });
+    prisma.runInTransaction.mockImplementation(async (callback: Function) =>
+      callback({
+        user: {
+          findUnique: prisma.user.findUnique,
+          update: prisma.user.update
+        }
+      })
+    );
   });
 
   it('rejects locked users on login', async () => {
@@ -117,6 +126,7 @@ describe('AuthService', () => {
         })
       })
     );
+    expect(prisma.runInTransaction).toHaveBeenCalled();
     expect(auditService.createLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'LOGIN_FAILED',
