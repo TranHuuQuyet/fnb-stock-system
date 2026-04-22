@@ -4,11 +4,21 @@ Tài liệu này mô tả cách triển khai hệ thống ở môi trường pro
 
 Tài liệu nên được dùng cùng các file sau:
 
+- [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
 - [STAGING_CHECKLIST.md](./STAGING_CHECKLIST.md)
 - [UAT_CHECKLIST.md](./UAT_CHECKLIST.md)
 - [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md)
 - [BACKUP_RESTORE.md](./BACKUP_RESTORE.md)
 - [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md)
+
+## 0. Trạng thái rollout hiện tại
+
+Trước khi tiếp tục deploy hoặc go-live, hãy cập nhật [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md) để ghi rõ mốc đang ở đâu. Trạng thái đã xác nhận gần nhất là:
+
+- `2026-04-22`: admin production đầu tiên đã được tạo thành công
+- `2026-04-22`: đã đăng nhập và đổi mật khẩu của admin bootstrap
+
+Những bước còn lại như smoke test, backup, release gate và alerting nên tiếp tục được đánh dấu ở file trạng thái này.
 
 ## 1. Phạm vi và giả định
 
@@ -326,6 +336,7 @@ Ghi chú:
 - Script này chỉ tạo tối thiểu `AppConfig`, admin đầu tiên, và tùy chọn 1 store.
 - Không dùng script này để nạp dữ liệu demo.
 - Không chạy lặp lại với cùng `username`.
+- Nếu admin đầu tiên đã được tạo và đã đổi mật khẩu, không chạy lại bước này; hãy cập nhật `docs/DEPLOYMENT_STATUS.md` rồi tiếp tục smoke test.
 
 ### Bước 5: build backend và frontend
 
@@ -466,6 +477,7 @@ Khuyến nghị:
 2. Dùng mật khẩu mạnh và đặt `BOOTSTRAP_ADMIN_FORCE_RESET=true`.
 3. Đăng nhập admin vừa tạo, đổi mật khẩu, rồi lưu credential bootstrap theo runbook nội bộ.
 4. Không dùng `db:seed` cho production vì seed vẫn phục vụ local/demo.
+5. Sau khi hoàn tất đổi mật khẩu lần đầu, cập nhật `docs/DEPLOYMENT_STATUS.md` để tránh chạy lại `bootstrap:admin` nhầm ở các vòng deploy sau.
 
 ## 9. Smoke test sau deploy
 

@@ -6,6 +6,8 @@ Tài liệu này dùng để kiểm thử chấp nhận người dùng trước 
 2. Chạy toàn bộ checklist UAT trong tài liệu này
 3. Chỉ go-live sau khi đã chốt lại các lỗi còn lại và hoàn thành [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md)
 
+Trạng thái rollout mới nhất nên được ghi song song tại [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md).
+
 ## 1. Mục tiêu UAT
 
 - Xác nhận các luồng kho và nhân sự đang chạy đúng như nghiệp vụ đã chốt
@@ -15,18 +17,19 @@ Tài liệu này dùng để kiểm thử chấp nhận người dùng trước 
 ## 2. Điều kiện trước khi test
 
 1. Đã deploy staging và chạy migrate mới nhất
-2. Đã có ít nhất 2 chi nhánh test, ví dụ `CN01` và `CN02`
-3. Đã tạo sẵn user test:
+2. Nếu môi trường mới vừa bootstrap admin, tài khoản đó đã đăng nhập và đổi mật khẩu lần đầu
+3. Đã có ít nhất 2 chi nhánh test, ví dụ `CN01` và `CN02`
+4. Đã tạo sẵn user test:
    - `ADMIN`
    - `MANAGER` cho mỗi chi nhánh
    - `STAFF` cho mỗi chi nhánh
-4. Đã có tối thiểu:
+5. Đã có tối thiểu:
    - 3 nguyên liệu
    - 2 nhóm nguyên liệu
    - 1 đơn vị nguyên liệu
    - 3 batch còn hạn dùng
-5. Đã có ít nhất 2 thiết bị thật để test scan và chuyển kho giữa 2 chi nhánh
-6. Đã cấu hình `IP whitelist` cho mạng test của từng chi nhánh
+6. Đã có ít nhất 2 thiết bị thật để test scan và chuyển kho giữa 2 chi nhánh
+7. Đã cấu hình `IP whitelist` cho mạng test của từng chi nhánh
 
 ## 3. Tiêu chí pass/fail
 
@@ -182,3 +185,4 @@ Chỉ nên chuyển sang bước go-live khi:
 2. Các lỗi `Conditional pass` đều đã có workaround rõ ràng
 3. Người vận hành đã được hướng dẫn theo [OPERATION_MANUAL.md](./OPERATION_MANUAL.md)
 4. Đã chốt ngày pilot hoặc ngày go-live cụ thể
+5. `DEPLOYMENT_STATUS.md` đã được cập nhật đúng trạng thái hiện tại trước khi chuyển sang go-live

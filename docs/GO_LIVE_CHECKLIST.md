@@ -1,6 +1,6 @@
 # Go-Live Checklist
 
-Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay theo dung thu tu de giam rui ro khi trien khai cho 2 chi nhanh dau tien. Neu can chot tag release, image tag hoac rollback chi tiet, xem them [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md). Neu dang chay thu 2 chi nhanh dau tien, xem them [PILOT_RUNBOOK.md](./PILOT_RUNBOOK.md).
+Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay theo dung thu tu de giam rui ro khi trien khai cho 2 chi nhanh dau tien. Neu can chot tag release, image tag hoac rollback chi tiet, xem them [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md). Neu dang chay thu 2 chi nhanh dau tien, xem them [PILOT_RUNBOOK.md](./PILOT_RUNBOOK.md). Trang thai rollout hien tai nen duoc ghi song song tai [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md).
 
 ## 1. Quyet dinh da chot
 
@@ -66,7 +66,7 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
 7. Khuyen nghi chay gate day du:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment production -RequireAuth`
 8. Xac nhan production khong chay `db:seed`
-9. Xac nhan da co lenh `bootstrap:admin`
+9. Xac nhan da co lenh `bootstrap:admin` hoac da hoan tat bootstrap admin dau tien va doi mat khau
 10. Xac nhan backup job luu ra storage ngoai app disk va co `latest-backup.json`
 11. Xac nhan da co kenh alert cho readiness fail, database down, disk cao va backup fail
 
@@ -77,7 +77,8 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
 3. Chay:
    - `cd backend && npm run prisma:generate`
    - `cd backend && npm run prisma:deploy`
-4. Chay `bootstrap:admin` neu la database production moi hoan toan
+4. Chi chay `bootstrap:admin` neu la database production moi hoan toan va chua co admin
+   - neu admin dau tien da duoc tao va da doi mat khau, cap nhat `DEPLOYMENT_STATUS.md` va bo qua buoc nay
 5. Build backend va frontend
 6. Restart service backend va frontend
 7. Kiem tra reverse proxy

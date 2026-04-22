@@ -4,6 +4,7 @@ Tai lieu nay dung de chot ban staging, tag release, deploy production va rollbac
 
 Nen dung kem cac tai lieu sau:
 
+- [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
 - [DEPLOYMENT_PROD.md](./DEPLOYMENT_PROD.md)
 - [STAGING_CHECKLIST.md](./STAGING_CHECKLIST.md)
 - [UAT_CHECKLIST.md](./UAT_CHECKLIST.md)
@@ -18,6 +19,7 @@ Nen dung kem cac tai lieu sau:
 - Xac dinh ro ban nao da deploy production
 - Co moc rollback ro rang neu ban moi co su co
 - Dam bao nguoi khac trong doi van co the lam lai dung quy trinh
+- Cap nhat [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md) sau moi moc quan trong de ca doi cung theo doi cung 1 trang thai rollout
 
 ## 2. Quy uoc branch va tag
 
@@ -110,6 +112,8 @@ Release gate da gom san `preflight + backup manifest guard + smoke test`.
 
 Neu chua pass, khong duoc tag release.
 
+Neu staging la moi truong moi va vua bootstrap admin, hay cap nhat `DEPLOYMENT_STATUS.md` sau khi admin dang nhap va doi mat khau lan dau.
+
 ## 4. Chot release candidate
 
 Sau khi staging pass:
@@ -136,6 +140,7 @@ Workflow CI/CD se build image tu tag nay. Can ghi lai:
 - backend image tag
 - frontend image tag
 - artifact `release-metadata-<tag>` tu workflow `CI and Docker Images`
+- moc cap nhat moi nhat trong `DEPLOYMENT_STATUS.md`
 
 ## 5. Truoc khi deploy production
 
@@ -150,7 +155,12 @@ Workflow CI/CD se build image tu tag nay. Can ghi lai:
    - tag release truoc do
    - image backend/frontend truoc do
    - ghi chu migration cua ban truoc do
-6. Chay preflight check:
+6. Cap nhat `DEPLOYMENT_STATUS.md` voi trang thai truoc deploy:
+   - admin bootstrap da xong chua
+   - backup da co chua
+   - smoke account da san sang chua
+   - buoc nao van con pending
+7. Chay preflight check:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment production -RequireAuth
@@ -165,32 +175,39 @@ powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -En
    - `.env.production.compose`
    - `backend/.env.production`
    - `frontend/.env.production`
-3. Chay:
+3. Neu admin dau tien da duoc tao va da doi mat khau truoc do, khong chay lai `bootstrap:admin`
+4. Chay:
 
 ```bash
 docker compose --env-file .env.production.compose -f docker-compose.prod.yml pull
 docker compose --env-file .env.production.compose -f docker-compose.prod.yml up -d --build
 ```
 
-4. Kiem tra:
+5. Kiem tra:
    - `docker compose ... ps`
    - `https://fnbstore.store`
    - `https://fnbstore.store/api/v1/health`
    - `https://fnbstore.store/api/v1/health/ready`
-5. Chay smoke test bat buoc theo [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md)
-6. Chay them release gate:
+6. Chay smoke test bat buoc theo [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md)
+7. Chay them release gate:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment production -RequireAuth
 ```
 
-7. Chay workflow CI sau deploy:
+8. Chay workflow CI sau deploy:
    - GitHub Actions > `Post-Deploy Smoke Test`
    - `target_environment=production`
    - `base_url=https://fnbstore.store`
    - `require_auth=true`
    - environment secrets can tao: `PRODUCTION_SMOKE_ADMIN_USERNAME`, `PRODUCTION_SMOKE_ADMIN_PASSWORD`
-8. Chay workflow `Release Evidence` de luu lai:
+9. Cap nhat `DEPLOYMENT_STATUS.md` sau deploy:
+   - health/ready
+   - smoke test
+   - backup manifest
+   - trang thai admin bootstrap
+   - cac viec con lai can chot
+10. Chay workflow `Release Evidence` de luu lai:
    - release tag
    - image da deploy
    - backup manifest
@@ -208,6 +225,7 @@ Can ghi ro tag image da deploy:
 
 Moi dot deploy nen luu lai:
 
+- moc cap nhat moi nhat trong `DEPLOYMENT_STATUS.md`
 - release tag
 - commit SHA
 - backend image tag

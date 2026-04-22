@@ -10,6 +10,8 @@ Nguoi deploy:
 Moi truong: staging / production
 Backend image tag:
 Frontend image tag:
+Deployment status file: docs/DEPLOYMENT_STATUS.md
+Ngay cap nhat deployment status:
 
 Pham vi thay doi:
 - 
@@ -25,6 +27,13 @@ Env can kiem tra:
 - JWT_REFRESH_SECRET
 - CORS_ORIGIN
 - NEXT_PUBLIC_API_BASE_URL
+
+Trang thai rollout hien tai:
+- Admin bootstrap: chua tao / da tao / da tao va da doi mat khau
+- Smoke account san sang: co / khong
+- Backup manifest san sang: co / khong
+- Viec con lai can chot
+- 
 
 Smoke test:
 - Frontend: pass / fail

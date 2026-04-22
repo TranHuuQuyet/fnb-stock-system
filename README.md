@@ -21,6 +21,7 @@ docs/        Architecture, API overview, operation manual, production deployment
 - `docs/ARCHITECTURE.md`: kiến trúc module và luồng dữ liệu
 - `docs/API_OVERVIEW.md`: tổng hợp API chính
 - `docs/OPERATION_MANUAL.md`: hướng dẫn vận hành hằng ngày
+- `docs/DEPLOYMENT_STATUS.md`: trạng thái triển khai hiện tại và các mốc rollout đã hoàn thành
 - `docs/DEPLOYMENT_PROD.md`: hướng dẫn triển khai production
 - `docs/BACKUP_RESTORE.md`: runbook backup và restore
 - `docs/BUY_AND_SETUP_CHECKLIST.md`: checklist mua dịch vụ, cấu hình VPS và dựng staging
@@ -30,6 +31,11 @@ docs/        Architecture, API overview, operation manual, production deployment
 - `docs/STAGING_CHECKLIST.md`: checklist dựng staging
 - `docs/UAT_CHECKLIST.md`: checklist kiểm thử chấp nhận người dùng
 - `docs/GO_LIVE_CHECKLIST.md`: checklist ngày go-live
+
+## Current Rollout Status
+
+- Cập nhật gần nhất `2026-04-22`: admin production đầu tiên đã được tạo và đã đổi mật khẩu sau lần đăng nhập đầu tiên.
+- Các bước còn lại nên tiếp tục chốt ở `docs/DEPLOYMENT_STATUS.md`: smoke test production, backup/restore, release gate, monitoring và alerting.
 
 ## Main Features
 
@@ -131,7 +137,9 @@ Repo cũng đã có script smoke test nhanh sau deploy:
 - Reset database: `cd backend && npm run db:reset`
 - Seed data: `cd backend && npm run db:seed`
 
-## Default Accounts
+## Default Accounts (Local/Demo Only)
+
+Các tài khoản dưới đây chỉ áp dụng cho local/demo khi dùng seed. Production không nên dùng các credential này; tài khoản admin production phải được tạo bằng `bootstrap:admin` và đổi mật khẩu ngay sau lần đăng nhập đầu tiên.
 
 - `admin / 123456`
 - `manager1 / 123456`

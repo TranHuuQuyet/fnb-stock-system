@@ -1,6 +1,6 @@
 # Staging Checklist
 
-Tai lieu nay dung de dung moi truong staging gan giong production nhat co the truoc khi chay UAT va pilot. Neu can chot tag release, rollback hoac ban giao deploy, xem them [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md).
+Tai lieu nay dung de dung moi truong staging gan giong production nhat co the truoc khi chay UAT va pilot. Neu can chot tag release, rollback hoac ban giao deploy, xem them [RELEASE_RUNBOOK.md](./RELEASE_RUNBOOK.md). Trang thai rollout cua moi truong dang test nen duoc ghi song song tai [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md).
 
 ## 1. Muc tieu staging
 
@@ -60,6 +60,7 @@ Tai lieu nay dung de dung moi truong staging gan giong production nhat co the tr
    - `cd backend && npm run prisma:deploy`
 5. Khong chay `npm run db:seed`
 6. Chay `bootstrap:admin` de tao admin dau tien
+   - sau khi dang nhap lan dau va doi mat khau, cap nhat `DEPLOYMENT_STATUS.md`
 7. Build:
    - `cd backend && npm run build`
    - `cd frontend && npm run build`
@@ -120,6 +121,7 @@ Staging duoc coi la san sang cho UAT khi:
 
 1. Deploy thanh cong khong dung `db:seed`
 2. Admin bootstrap dang nhap duoc
-3. Cac smoke test chinh deu pass
-4. Da test backup va restore it nhat 1 lan
-5. Tai lieu [DEPLOYMENT_PROD.md](./DEPLOYMENT_PROD.md) va [BACKUP_RESTORE.md](./BACKUP_RESTORE.md) du de nguoi trien khai khac lam lai duoc
+3. Admin bootstrap da doi mat khau lan dau neu day la moi truong moi
+4. Cac smoke test chinh deu pass
+5. Da test backup va restore it nhat 1 lan
+6. Tai lieu [DEPLOYMENT_PROD.md](./DEPLOYMENT_PROD.md), [BACKUP_RESTORE.md](./BACKUP_RESTORE.md) va [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md) du de nguoi trien khai khac lam lai duoc
