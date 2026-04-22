@@ -144,6 +144,21 @@ chmod +x ops.sh deploy/scripts/prod-ops.sh
 ./ops.sh logs backend 200
 ```
 
+If `./ops.sh` returns `No such file or directory` on the VPS, that server checkout has not pulled the wrapper script yet. Use:
+
+```bash
+git status --short
+git pull
+chmod +x ops.sh deploy/scripts/prod-ops.sh
+./ops.sh status
+```
+
+If you need to operate immediately before updating the checkout, run the real script directly:
+
+```bash
+./deploy/scripts/prod-ops.sh status
+```
+
 Nếu cần một tài liệu thao tác theo đúng máy production hiện tại ở `/opt/fnb-stock-system`, xem [docs/VPS_OPERATIONS.md](docs/VPS_OPERATIONS.md).
 
 ## Database Commands

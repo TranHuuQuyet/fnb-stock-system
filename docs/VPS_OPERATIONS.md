@@ -21,6 +21,23 @@ cd /opt/fnb-stock-system
 chmod +x ops.sh deploy/scripts/prod-ops.sh
 ```
 
+Nếu `./ops.sh` báo `No such file or directory`, checkout trên VPS đang cũ hơn commit thêm file wrapper này. Khi đó chạy:
+
+```bash
+cd /opt/fnb-stock-system
+git status --short
+git pull
+chmod +x ops.sh deploy/scripts/prod-ops.sh
+./ops.sh status
+```
+
+Nếu cần thao tác ngay trước khi `git pull`, gọi script thật trực tiếp:
+
+```bash
+cd /opt/fnb-stock-system
+./deploy/scripts/prod-ops.sh status
+```
+
 Từ lần sau chỉ cần:
 
 ```bash

@@ -244,6 +244,21 @@ chmod +x ops.sh deploy/scripts/prod-ops.sh
 ./ops.sh health
 ```
 
+Nếu `./ops.sh` báo `No such file or directory`, checkout trên VPS chưa có file wrapper ở repo root. Hãy cập nhật repo rồi chạy lại:
+
+```bash
+git status --short
+git pull
+chmod +x ops.sh deploy/scripts/prod-ops.sh
+./ops.sh status
+```
+
+Trong lúc chờ cập nhật checkout, có thể dùng trực tiếp:
+
+```bash
+./deploy/scripts/prod-ops.sh status
+```
+
 Ghi chú:
 
 - `caddy` trong compose sẽ nhận TLS tự động nếu domain và port public đúng.
