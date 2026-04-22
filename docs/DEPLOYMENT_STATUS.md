@@ -9,6 +9,9 @@ Tai lieu nay dung de ghi lai trang thai rollout thuc te tren VPS va production. 
 - SSH vao VPS: `da xac nhan`
 - Admin production dau tien: `da tao`
 - Doi mat khau sau first login: `da hoan thanh`
+- Frontend public qua `https://fnbstore.store`: `da xac nhan`
+- Backend health `https://fnbstore.store/api/v1/health`: `da xac nhan`
+- Prisma migrate production: `da chay thanh cong`
 
 ## Da hoan thanh
 
@@ -18,10 +21,13 @@ Tai lieu nay dung de ghi lai trang thai rollout thuc te tren VPS va production. 
 - [x] Dang nhap admin bootstrap va doi mat khau ngay sau lan dang nhap dau tien
 - [x] Khong con phu thuoc vao tai khoan demo seeded de vao production
 - [x] Dong bo `README.md` va cac runbook/checklist de phan anh dung trang thai rollout hien tai
+- [x] Sua `DATABASE_URL` production de ket noi dung PostgreSQL Neon va chay `migrate` thanh cong
+- [x] Xac nhan domain public, DNS va TLS dang tra ve app production
+- [x] Xac nhan frontend public va backend `health` dang tra `ok`
+- [x] Them `ops.sh`, `deploy/scripts/prod-ops.sh` va `docs/VPS_OPERATIONS.md` de van hanh production hang ngay
 
 ## Viec con lai can chot
 
-- [ ] Xac nhan domain public, DNS va TLS dang dung cho production
 - [ ] Xac nhan `.env.production.compose`, `backend/.env.production`, `frontend/.env.production` va `deploy/.env.ops`
 - [ ] Xac nhan PostgreSQL production va backup off-host dang hoat dong
 - [ ] Chay `preflight-check.ps1` hoac checklist tuong duong tren may deploy thuc te
@@ -35,3 +41,4 @@ Tai lieu nay dung de ghi lai trang thai rollout thuc te tren VPS va production. 
 - Khong dung `docker-compose.yml` local/demo de mo production public.
 - Giu credential bootstrap, lich su ban giao va nguoi so huu tai khoan trong runbook noi bo, khong commit vao repo.
 - Neu admin dau tien da doi mat khau xong, danh dau hoan tat buoc nay trong checklist go-live va smoke evidence.
+- `migrate` co the hien `Exited (0)` sau khi chay xong; day la binh thuong voi stack production hien tai.

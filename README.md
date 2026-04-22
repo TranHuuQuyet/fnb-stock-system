@@ -36,7 +36,9 @@ docs/        Architecture, API overview, operation manual, production deployment
 ## Current Rollout Status
 
 - Cập nhật gần nhất `2026-04-22`: admin production đầu tiên đã được tạo và đã đổi mật khẩu sau lần đăng nhập đầu tiên.
-- Các bước còn lại nên tiếp tục chốt ở `docs/DEPLOYMENT_STATUS.md`: smoke test production, backup/restore, release gate, monitoring và alerting.
+- `https://fnbstore.store` đã trả `HTTP 200` và `https://fnbstore.store/api/v1/health` đã trả `status=ok`.
+- Repo đã có thêm `./ops.sh` và [docs/VPS_OPERATIONS.md](docs/VPS_OPERATIONS.md) để vận hành production hằng ngày trên VPS.
+- Các bước còn lại nên tiếp tục chốt ở `docs/DEPLOYMENT_STATUS.md`: smoke test production đầy đủ, backup/restore, release gate, monitoring và alerting.
 
 ## Main Features
 
