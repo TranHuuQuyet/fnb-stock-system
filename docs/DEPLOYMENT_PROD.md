@@ -5,6 +5,7 @@ Tài liệu này mô tả cách triển khai hệ thống ở môi trường pro
 Tài liệu nên được dùng cùng các file sau:
 
 - [DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)
+- [VPS_OPERATIONS.md](./VPS_OPERATIONS.md)
 - [STAGING_CHECKLIST.md](./STAGING_CHECKLIST.md)
 - [UAT_CHECKLIST.md](./UAT_CHECKLIST.md)
 - [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md)
@@ -19,6 +20,8 @@ Trước khi tiếp tục deploy hoặc go-live, hãy cập nhật [DEPLOYMENT_S
 - `2026-04-22`: đã đăng nhập và đổi mật khẩu của admin bootstrap
 
 Những bước còn lại như smoke test, backup, release gate và alerting nên tiếp tục được đánh dấu ở file trạng thái này.
+
+Nếu bạn cần tài liệu thao tác hằng ngày sau khi production đã chạy trên VPS, dùng thêm [VPS_OPERATIONS.md](./VPS_OPERATIONS.md). File đó ưu tiên tình huống thực tế, lệnh copy-paste và quy trình `local fix -> push GitHub -> VPS pull -> rebuild`.
 
 ## 1. Phạm vi và giả định
 

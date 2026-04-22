@@ -23,6 +23,7 @@ docs/        Architecture, API overview, operation manual, production deployment
 - `docs/OPERATION_MANUAL.md`: hướng dẫn vận hành hằng ngày
 - `docs/DEPLOYMENT_STATUS.md`: trạng thái triển khai hiện tại và các mốc rollout đã hoàn thành
 - `docs/DEPLOYMENT_PROD.md`: hướng dẫn triển khai production
+- `docs/VPS_OPERATIONS.md`: runbook thao tác thực tế trên VPS production, ưu tiên lệnh copy-paste
 - `docs/BACKUP_RESTORE.md`: runbook backup và restore
 - `docs/BUY_AND_SETUP_CHECKLIST.md`: checklist mua dịch vụ, cấu hình VPS và dựng staging
 - `docs/RELEASE_RUNBOOK.md`: runbook staging, release tag, deploy và rollback
@@ -140,6 +141,8 @@ chmod +x ops.sh deploy/scripts/prod-ops.sh
 ./ops.sh rebuild
 ./ops.sh logs backend 200
 ```
+
+Nếu cần một tài liệu thao tác theo đúng máy production hiện tại ở `/opt/fnb-stock-system`, xem [docs/VPS_OPERATIONS.md](docs/VPS_OPERATIONS.md).
 
 ## Database Commands
 

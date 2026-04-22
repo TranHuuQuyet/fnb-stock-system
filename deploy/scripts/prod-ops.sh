@@ -44,6 +44,8 @@ Commands:
   ps                  Show docker compose status only
   up                  Start production stack
   rebuild             Rebuild and start production stack
+  stop [service]      Stop all services or one service
+  down                Stop and remove production stack
   restart [service]   Restart all services or one service
   logs [service] [n]  Show recent logs, default service=all, n=100
   follow [service]    Follow logs, default service=backend
@@ -55,6 +57,7 @@ Examples:
   ./deploy/scripts/prod-ops.sh status
   ./deploy/scripts/prod-ops.sh up
   ./deploy/scripts/prod-ops.sh rebuild
+  ./deploy/scripts/prod-ops.sh stop
   ./deploy/scripts/prod-ops.sh logs backend 200
   ./deploy/scripts/prod-ops.sh follow caddy
 EOF
@@ -95,6 +98,16 @@ case "$cmd" in
     ;;
   rebuild)
     compose up -d --build
+    ;;
+  stop)
+    if [[ $# -ge 2 ]]; then
+      compose stop "$2"
+    else
+      compose stop
+    fi
+    ;;
+  down)
+    compose down
     ;;
   restart)
     if [[ $# -ge 2 ]]; then
