@@ -228,6 +228,19 @@ docker compose --env-file .env.production.compose -f docker-compose.prod.yml up 
    - `https://fnbstore.store`
    - `https://fnbstore.store/api/v1/health`
 
+### Script thao tác nhanh trên VPS Linux
+
+Nếu bạn thường SSH trực tiếp vào VPS để kiểm tra và bật lại app, repo có thêm script:
+
+```bash
+chmod +x ops.sh deploy/scripts/prod-ops.sh
+./ops.sh status
+./ops.sh up
+./ops.sh rebuild
+./ops.sh logs backend 200
+./ops.sh health
+```
+
 Ghi chú:
 
 - `caddy` trong compose sẽ nhận TLS tự động nếu domain và port public đúng.

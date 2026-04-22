@@ -129,6 +129,17 @@ Repo cũng đã có script smoke test nhanh sau deploy:
 - `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store`
 - `powershell -ExecutionPolicy Bypass -File deploy/scripts/init-staging.ps1`
 - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment staging`
+- `./ops.sh status` để kiểm tra nhanh production ngay trên VPS Linux
+
+Quick ops trên VPS Linux:
+
+```bash
+chmod +x ops.sh deploy/scripts/prod-ops.sh
+./ops.sh status
+./ops.sh up
+./ops.sh rebuild
+./ops.sh logs backend 200
+```
 
 ## Database Commands
 
