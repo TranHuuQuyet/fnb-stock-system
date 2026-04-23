@@ -16,7 +16,8 @@ Không dùng tài liệu này cho local/demo. Không dùng `docker-compose.yml` 
 SSH vào VPS:
 
 ```bash
-ssh root@103.165.144.144
+
+
 cd /opt/fnb-stock-system
 chmod +x ops.sh deploy/scripts/prod-ops.sh
 ```
@@ -68,6 +69,127 @@ Nếu app chưa lên hoặc đang tắt:
 ./ops.sh up
 ./ops.sh status
 ```
+
+## 2.1. Deploy An Toàn Khi VPS Worktree Bẩn
+
+Tình huống thực tế đã gặp trên production:
+
+- `git status --short` có file sửa tay trên VPS
+- có thể gồm `backend/Dockerfile.prod`, `frontend/Dockerfile.prod`, `deploy/caddy/Caddyfile`
+- có thêm file env hoặc file tạm như `.env.prod`, `backend/.env.production.bak.*`, `get-docker.sh`
+
+Trong tình huống này, không deploy bằng cách sửa tiếp trên checkout cũ và không `git pull` để chồng thay đổi. Cách an toàn hơn là dùng `side-by-side checkout`.
+
+### 2.1.1. Snapshot checkout cũ
+
+```bash
+cd /opt/fnb-stock-system
+TS=$(date +%Y%m%d-%H%M%S)
+SNAP=/root/fnb-release-snapshots/$TS
+mkdir -p "$SNAP/repo" "$SNAP/env"
+
+git rev-parse HEAD > "$SNAP/repo/head.txt"
+git status --short > "$SNAP/repo/git-status.txt"
+git diff > "$SNAP/repo/working.patch"
+
+cp -av backend/Dockerfile.prod frontend/Dockerfile.prod deploy/caddy/Caddyfile "$SNAP/repo/" 2>/dev/null || true
+cp -av .env.prod .env.production.compose backend/.env.production frontend/.env.production deploy/.env.ops "$SNAP/env/" 2>/dev/null || true
+cp -av backend/.env.production.bak.* get-docker.sh "$SNAP/env/" 2>/dev/null || true
+```
+
+### 2.1.2. Clone checkout mới bên cạnh checkout cũ
+
+```bash
+cd /opt
+REPO_URL=$(git -C /opt/fnb-stock-system config --get remote.origin.url)
+git clone --branch main "$REPO_URL" /opt/fnb-stock-system-next
+```
+
+### 2.1.3. Copy env cần thiết sang checkout mới
+
+```bash
+cd /opt/fnb-stock-system-next
+
+if [ -f /opt/fnb-stock-system/.env.production.compose ]; then
+  cp -av /opt/fnb-stock-system/.env.production.compose ./.env.production.compose
+elif [ -f /opt/fnb-stock-system/.env.prod ]; then
+  cp -av /opt/fnb-stock-system/.env.prod ./.env.production.compose
+fi
+
+cp -av /opt/fnb-stock-system/backend/.env.production ./backend/.env.production 2>/dev/null || true
+cp -av /opt/fnb-stock-system/frontend/.env.production ./frontend/.env.production 2>/dev/null || true
+cp -av /opt/fnb-stock-system/deploy/.env.ops ./deploy/.env.ops 2>/dev/null || true
+```
+
+Nếu backend đang dùng Neon/PgBouncer/pooler, mở `backend/.env.production` trong checkout mới và đảm bảo:
+
+- `DATABASE_URL` là URL runtime hiện tại
+- `DIRECT_URL` là direct connection string, không trỏ vào host có `-pooler`
+
+### 2.1.4. Preflight trước khi cut-over
+
+```bash
+cd /opt/fnb-stock-system-next
+docker compose --env-file .env.production.compose -f docker-compose.prod.yml config >/tmp/fnb-prod-compose.txt
+```
+
+Nếu máy có `pwsh`, chạy thêm:
+
+```bash
+pwsh -File deploy/scripts/preflight-check.ps1 -Environment production
+```
+
+### 2.1.5. Cut-over sang checkout mới
+
+```bash
+cd /opt/fnb-stock-system
+
+if [ -f .env.production.compose ]; then
+  OLD_ENV_FILE=.env.production.compose
+elif [ -f .env.prod ]; then
+  OLD_ENV_FILE=.env.prod
+else
+  echo "Khong tim thay env file cho checkout cu"
+  exit 1
+fi
+
+docker compose --env-file "$OLD_ENV_FILE" -f docker-compose.prod.yml down
+
+cd /opt
+mv /opt/fnb-stock-system "/opt/fnb-stock-system.dirty-$TS"
+mv /opt/fnb-stock-system-next /opt/fnb-stock-system
+
+cd /opt/fnb-stock-system
+docker compose --env-file .env.production.compose -f docker-compose.prod.yml run --rm migrate
+docker compose --env-file .env.production.compose -f docker-compose.prod.yml up -d
+./ops.sh status
+```
+
+### 2.1.6. Rollback nếu bản mới lỗi
+
+```bash
+cd /opt/fnb-stock-system
+docker compose --env-file .env.production.compose -f docker-compose.prod.yml down
+
+cd /opt
+mv /opt/fnb-stock-system "/opt/fnb-stock-system.failed-$TS"
+mv "/opt/fnb-stock-system.dirty-$TS" /opt/fnb-stock-system
+
+cd /opt/fnb-stock-system
+if [ -f .env.production.compose ]; then
+  OLD_ENV_FILE=.env.production.compose
+else
+  OLD_ENV_FILE=.env.prod
+fi
+
+docker compose --env-file "$OLD_ENV_FILE" -f docker-compose.prod.yml up -d --build
+```
+
+Ghi nhớ:
+
+- Cách này giữ nguyên checkout cũ để đối chiếu và rollback nhanh
+- Không cần `git stash` trên production nếu bạn chưa hiểu rõ các thay đổi cũ
+- Sau khi bản mới ổn định, mới đánh giá tiếp có cần merge lại thay đổi tay từ checkout cũ hay không
 
 ## 3. Bộ Lệnh Dùng Hằng Ngày
 
