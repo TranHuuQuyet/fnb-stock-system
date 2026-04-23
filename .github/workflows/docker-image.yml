@@ -70,10 +70,36 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: /api/v1
         run: npm run build
 
-      - name: Prepare production env templates
+      - name: Prepare production env files
+        shell: bash
         run: |
-          cp backend/.env.production.example backend/.env.production
-          cp frontend/.env.production.example frontend/.env.production
+          cat <<'EOF' > backend/.env.production
+          PORT=4000
+          DATABASE_URL=postgresql://fnb_user:StrongPassword1234567890@ci-db-pooler.internal:5432/fnb_stock?schema=public&pgbouncer=true
+          DIRECT_URL=postgresql://fnb_user:StrongPassword1234567890@ci-db.internal:5432/fnb_stock?schema=public
+          JWT_SECRET=ci-production-jwt-secret-1234567890
+          JWT_EXPIRES_IN=1d
+          JWT_REFRESH_SECRET=ci-production-refresh-secret-1234567890
+          JWT_REFRESH_EXPIRES_IN=7d
+          CORS_ORIGIN=https://fnbstore.store
+          APP_TIMEZONE=Asia/Ho_Chi_Minh
+          TRUST_PROXY=1
+          ENABLE_SWAGGER=false
+          ENABLE_LOGIN_RATE_LIMIT=true
+          LOGIN_RATE_LIMIT_MAX_ATTEMPTS=5
+          LOGIN_RATE_LIMIT_WINDOW_MS=600000
+          REQUIRE_STRONG_SECRETS=true
+          AUTH_COOKIE_NAME=fnb_stock_session
+          AUTH_COOKIE_SECURE=true
+          AUTH_COOKIE_SAME_SITE=lax
+          EOF
+          cat <<'EOF' > frontend/.env.production
+          NEXT_PUBLIC_API_BASE_URL=/api/v1
+          EOF
+
+      - name: Run production preflight
+        shell: pwsh
+        run: ./deploy/scripts/preflight-check.ps1 -Environment production
 
       - name: Validate production compose
         run: docker compose --env-file .env.production.compose.example -f docker-compose.prod.yml config

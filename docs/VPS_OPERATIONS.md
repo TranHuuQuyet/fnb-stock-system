@@ -26,12 +26,13 @@ Nếu `./ops.sh` báo `No such file or directory`, checkout trên VPS đang cũ 
 ```bash
 cd /opt/fnb-stock-system
 git status --short
-git pull
+# nếu git status có output, dừng lại và kiểm tra thay đổi trên VPS trước
+git pull --ff-only origin main
 chmod +x ops.sh deploy/scripts/prod-ops.sh
 ./ops.sh status
 ```
 
-Nếu cần thao tác ngay trước khi `git pull`, gọi script thật trực tiếp:
+Nếu cần thao tác ngay trước khi `git pull`, hoặc worktree đang bẩn nên chưa thể pull, gọi script thật trực tiếp:
 
 ```bash
 cd /opt/fnb-stock-system
@@ -265,6 +266,8 @@ Ghi nhớ:
 
 - `migrate` hiện `Exited (0)` sau khi chạy xong là bình thường
 - không chạy `db:seed` trên production
+- nếu log báo `P1002` hoặc `Timed out trying to acquire a postgres advisory lock`, kiểm tra `DIRECT_URL` trong `backend/.env.production`
+- với Neon/PgBouncer, `DATABASE_URL` có thể là pooled URL cho runtime, nhưng `DIRECT_URL` phải là direct non-pooler URL cho Prisma migrate
 
 ## 8. Nếu Chỉ Đổi Env Hoặc Config
 

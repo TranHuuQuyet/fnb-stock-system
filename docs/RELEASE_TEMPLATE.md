@@ -23,6 +23,7 @@ Migration moi:
 
 Env can kiem tra:
 - DATABASE_URL
+- DIRECT_URL
 - JWT_SECRET
 - JWT_REFRESH_SECRET
 - CORS_ORIGIN

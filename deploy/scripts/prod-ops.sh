@@ -4,7 +4,17 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
-ENV_FILE="${ENV_FILE:-${REPO_ROOT}/.env.production.compose}"
+DEFAULT_ENV_FILE="${REPO_ROOT}/.env.production.compose"
+LEGACY_ENV_FILE="${REPO_ROOT}/.env.prod"
+if [[ -n "${ENV_FILE:-}" ]]; then
+  ENV_FILE="${ENV_FILE}"
+elif [[ -f "$DEFAULT_ENV_FILE" ]]; then
+  ENV_FILE="$DEFAULT_ENV_FILE"
+elif [[ -f "$LEGACY_ENV_FILE" ]]; then
+  ENV_FILE="$LEGACY_ENV_FILE"
+else
+  ENV_FILE="$DEFAULT_ENV_FILE"
+fi
 COMPOSE_FILE="${COMPOSE_FILE:-${REPO_ROOT}/docker-compose.prod.yml}"
 
 cd "$REPO_ROOT"
@@ -17,6 +27,10 @@ fi
 if [[ ! -f "$COMPOSE_FILE" ]]; then
   echo "Missing compose file: $COMPOSE_FILE" >&2
   exit 1
+fi
+
+if [[ "$ENV_FILE" == "$LEGACY_ENV_FILE" ]]; then
+  echo "Using legacy env file: $ENV_FILE (consider renaming to .env.production.compose)." >&2
 fi
 
 compose() {

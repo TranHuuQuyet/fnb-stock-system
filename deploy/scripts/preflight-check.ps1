@@ -68,6 +68,16 @@ function Test-FrontendApiBaseUrl {
   return $Value -eq "/api/v1" -or $Value -like "https://$ExpectedDomain/api/v1*"
 }
 
+function Test-UsesConnectionPooler {
+  param([string]$Value)
+
+  if ([string]::IsNullOrWhiteSpace($Value)) {
+    return $false
+  }
+
+  return $Value -match "pooler|pgbouncer=true"
+}
+
 if ($Environment -eq "staging") {
   $composePath = ".env.staging.compose"
   $backendPath = "backend/.env.staging"
@@ -92,7 +102,7 @@ foreach ($requiredKey in @("APP_DOMAIN", "LETSENCRYPT_EMAIL", "NEXT_PUBLIC_API_B
   }
 }
 
-foreach ($requiredKey in @("DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET", "CORS_ORIGIN", "TRUST_PROXY", "ENABLE_SWAGGER", "REQUIRE_STRONG_SECRETS", "AUTH_COOKIE_SECURE", "AUTH_COOKIE_SAME_SITE")) {
+foreach ($requiredKey in @("DATABASE_URL", "DIRECT_URL", "JWT_SECRET", "JWT_REFRESH_SECRET", "CORS_ORIGIN", "TRUST_PROXY", "ENABLE_SWAGGER", "REQUIRE_STRONG_SECRETS", "AUTH_COOKIE_SECURE", "AUTH_COOKIE_SAME_SITE")) {
   if (-not $backend.ContainsKey($requiredKey)) {
     $failures.Add("Missing $requiredKey in $backendPath")
   }
@@ -104,7 +114,7 @@ if (-not $frontend.ContainsKey("NEXT_PUBLIC_API_BASE_URL")) {
 
 $allValues = @($compose.Values + $backend.Values + $frontend.Values)
 foreach ($value in $allValues) {
-  if ($value -match "replace-with|localhost|example.com|db-host|staging-db-host|CHANGE_ME|YOUR_") {
+  if ($value -match "replace-with|localhost|example.com|db-host|db-pooler-host|staging-db-host|staging-db-pooler-host|CHANGE_ME|YOUR_") {
     $failures.Add("Placeholder value still present: $value")
   }
 }
@@ -139,6 +149,14 @@ if ($backend["CORS_ORIGIN"] -notlike "https://$expectedDomain*") {
 
 if (-not (Test-StrongSecret -Value $backend["JWT_SECRET"])) {
   $failures.Add("JWT_SECRET must be at least 32 characters and must not use a placeholder")
+}
+
+if (Test-UsesConnectionPooler -Value $backend["DIRECT_URL"]) {
+  $failures.Add("DIRECT_URL must be a direct database connection and must not point to a pooler/PgBouncer endpoint")
+}
+
+if ($backend["DIRECT_URL"] -eq $backend["DATABASE_URL"] -and (Test-UsesConnectionPooler -Value $backend["DATABASE_URL"])) {
+  $failures.Add("DIRECT_URL must differ from pooled DATABASE_URL so Prisma migrate can connect directly")
 }
 
 if (-not (Test-StrongSecret -Value $backend["JWT_REFRESH_SECRET"])) {

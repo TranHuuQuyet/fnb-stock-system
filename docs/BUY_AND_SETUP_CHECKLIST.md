@@ -153,6 +153,7 @@ Ban can xac nhan:
 ```dotenv
 PORT=4000
 DATABASE_URL=postgresql://<user>:<password>@<host>:5432/fnb_stock_staging?schema=public
+DIRECT_URL=postgresql://<user>:<password>@<direct-host>:5432/fnb_stock_staging?schema=public
 JWT_SECRET=<secret-that>
 JWT_EXPIRES_IN=1d
 JWT_REFRESH_SECRET=<refresh-secret-that>

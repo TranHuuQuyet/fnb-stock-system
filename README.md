@@ -101,7 +101,7 @@ Luồng khuyến nghị:
 1. Copy `.env.production.compose.example` thành `.env.production.compose`
 2. Copy `backend/.env.production.example` thành `backend/.env.production`
 3. Copy `frontend/.env.production.example` thành `frontend/.env.production`
-4. Điền domain thật `fnbstore.store`, secret thật và `DATABASE_URL` production
+4. Điền domain thật `fnbstore.store`, secret thật, `DATABASE_URL` runtime và `DIRECT_URL` direct cho Prisma migrate
 5. Chạy `docker compose --env-file .env.production.compose -f docker-compose.prod.yml up -d --build`
 
 Container boot flow:
@@ -148,7 +148,8 @@ If `./ops.sh` returns `No such file or directory` on the VPS, that server checko
 
 ```bash
 git status --short
-git pull
+# if git status is not empty, stop here and inspect the VPS changes first
+git pull --ff-only origin main
 chmod +x ops.sh deploy/scripts/prod-ops.sh
 ./ops.sh status
 ```

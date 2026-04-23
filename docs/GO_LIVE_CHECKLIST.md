@@ -51,6 +51,7 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
 4. Kiem tra domain `fnbstore.store` va chung chi TLS
 5. Kiem tra env production:
    - `DATABASE_URL`
+   - `DIRECT_URL`
    - `JWT_SECRET`
    - `JWT_REFRESH_SECRET`
    - `CORS_ORIGIN=https://fnbstore.store`
@@ -61,6 +62,7 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
    - `AUTH_COOKIE_SECURE=true`
    - `AUTH_COOKIE_SAME_SITE=lax`
    - `deploy/.env.ops` da duoc dien cho backup, alerting va smoke admin
+   - neu dung Neon/PgBouncer/pooler, `DIRECT_URL` phai la direct connection string va khong duoc tro vao host pooler
 6. Chay preflight check:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment production`
 7. Khuyen nghi chay gate day du:

@@ -37,13 +37,15 @@ Tai lieu nay dung de dung moi truong staging gan giong production nhat co the tr
 3. Tao `frontend/.env.staging` cho staging
 4. Kiem tra cac bien bat buoc:
    - `DATABASE_URL`
+   - `DIRECT_URL`
    - `JWT_SECRET`
    - `JWT_REFRESH_SECRET`
    - `CORS_ORIGIN`
    - `NEXT_PUBLIC_API_BASE_URL`
-5. Khuyen nghi dat `NEXT_PUBLIC_API_BASE_URL=/api/v1`; neu tach backend rieng domain thi dung URL public cua staging
-6. Xac nhan khong con gia tri `localhost` trong env staging
-7. Khuyen nghi copy tu cac file mau:
+5. Neu dung Neon/PgBouncer/pooler, giu `DATABASE_URL` cho runtime va dat `DIRECT_URL` la direct connection string cho Prisma migrate
+6. Khuyen nghi dat `NEXT_PUBLIC_API_BASE_URL=/api/v1`; neu tach backend rieng domain thi dung URL public cua staging
+7. Xac nhan khong con gia tri `localhost` trong env staging
+8. Khuyen nghi copy tu cac file mau:
    - `.env.staging.compose.example`
    - `backend/.env.staging.example`
    - `frontend/.env.staging.example`

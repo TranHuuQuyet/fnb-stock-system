@@ -89,7 +89,8 @@ Tạo file `backend/.env.production`:
 
 ```dotenv
 PORT=4000
-DATABASE_URL=postgresql://fnb_user:strong-password@db-host:5432/fnb_stock?schema=public
+DATABASE_URL=postgresql://fnb_user:strong-password@db-pooler-host:5432/fnb_stock?schema=public
+DIRECT_URL=postgresql://fnb_user:strong-password@db-host:5432/fnb_stock?schema=public
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN=1d
 JWT_REFRESH_SECRET=replace-with-another-long-random-secret
@@ -110,6 +111,8 @@ AUTH_COOKIE_SAME_SITE=lax
 Ghi chú:
 
 - `CORS_ORIGIN` hỗ trợ nhiều origin bằng dấu phẩy, nhưng production nên giữ ít nhất có thể.
+- `DATABASE_URL` là connection string runtime của app. Nếu bạn dùng Neon/PgBouncer/pooler, đây có thể là URL qua pooler.
+- `DIRECT_URL` là connection string direct chỉ dành cho Prisma CLI và `prisma migrate deploy`; không được trỏ vào host có `-pooler` hoặc `pgbouncer=true`.
 - `JWT_EXPIRES_IN` và `JWT_REFRESH_EXPIRES_IN` cần theo policy của bạn. Repo hiện có refresh config nhưng chưa có luồng refresh token hoàn chỉnh ở frontend.
 - `TRUST_PROXY=1` là cần thiết nếu backend đứng sau reverse proxy.
 - `ENABLE_SWAGGER=false` để không public `api/docs` ra Internet ở production.
@@ -149,6 +152,7 @@ Ghi chú:
 - `APP_DOMAIN` là domain public của hệ thống.
 - `NEXT_PUBLIC_API_BASE_URL=/api/v1` là lựa chọn khuyến nghị khi frontend và backend cùng đi qua một domain public.
 - `BACKEND_ENV_FILE` và `FRONTEND_ENV_FILE` cho phép bạn đổi sang file env khác nếu muốn dùng staging hoặc file secret riêng.
+- Nếu backend runtime dùng pooled PostgreSQL URL, hãy giữ `DATABASE_URL` cho runtime và cấu hình `DIRECT_URL` trong `backend/.env.production` cho migrate.
 
 ### Ops env cho backup, alerting và release gate
 
