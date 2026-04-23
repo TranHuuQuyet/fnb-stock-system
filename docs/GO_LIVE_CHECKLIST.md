@@ -63,7 +63,9 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
    - `AUTH_COOKIE_SAME_SITE=lax`
    - `deploy/.env.ops` da duoc dien cho backup, alerting va smoke admin
    - neu dung Neon/PgBouncer/pooler, `DIRECT_URL` phai la direct connection string va khong duoc tro vao host pooler
+   - backup/restore admin tooling nen dung `DIRECT_URL`, khong dung pooled URL
 6. Chay preflight check:
+   - lenh PowerShell duoi day danh cho may operator; tren VPS Linux uu tien `./ops.sh`
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment production`
 7. Khuyen nghi chay gate day du:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment production -RequireAuth`
@@ -88,6 +90,7 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
    - `GET /api/v1/health`
    - `GET /api/v1/health/ready`
 9. Chay script smoke test nhanh:
+   - neu chay tu may operator co PowerShell:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store`
 10. Chay workflow GitHub Actions `Post-Deploy Smoke Test` cho `production` voi `require_auth=true`
 

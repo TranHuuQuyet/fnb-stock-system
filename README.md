@@ -127,7 +127,7 @@ Production hardening update:
 - có thêm script `deploy/scripts/backup-postgres.ps1` và `deploy/scripts/restore-postgres.ps1`
 - xem thêm `docs/PRODUCTION_HARDENING.md`
 
-Repo cũng đã có script smoke test nhanh sau deploy:
+Repo cũng đã có script smoke test nhanh sau deploy. Các lệnh `powershell ...` dưới đây dành cho máy operator có PowerShell; trên VPS Linux ưu tiên `./ops.sh`:
 
 - `powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://fnbstore.store`
 - `powershell -ExecutionPolicy Bypass -File deploy/scripts/init-staging.ps1`

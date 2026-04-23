@@ -172,8 +172,21 @@ if ([string]::IsNullOrWhiteSpace($BackendEnvFile)) {
 }
 
 $backendConfig = Get-KeyValueMap -Path $BackendEnvFile
-$databaseUrl = $backendConfig["DATABASE_URL"]
-Test-RequiredValue -Name "DATABASE_URL in $BackendEnvFile" -Value $databaseUrl
+$runtimeDatabaseUrl = $backendConfig["DATABASE_URL"]
+$directDatabaseUrl = $backendConfig["DIRECT_URL"]
+$databaseUrl = if (-not [string]::IsNullOrWhiteSpace($directDatabaseUrl)) {
+  $directDatabaseUrl
+} else {
+  $runtimeDatabaseUrl
+}
+
+Test-RequiredValue -Name "DATABASE_URL or DIRECT_URL in $BackendEnvFile" -Value $databaseUrl
+
+$databaseUrlSource = if (-not [string]::IsNullOrWhiteSpace($directDatabaseUrl)) {
+  "DIRECT_URL"
+} else {
+  "DATABASE_URL"
+}
 
 $backupRootDir = Get-ConfigValue -Config $opsConfig -Key "BACKUP_ROOT_DIR" -EnvironmentName $Environment -DefaultValue "backups"
 $mirrorRootDir = Get-ConfigValue -Config $opsConfig -Key "BACKUP_MIRROR_DIR" -EnvironmentName $Environment
@@ -198,6 +211,7 @@ $alertScript = Join-Path $PSScriptRoot "send-ops-alert.ps1"
 try {
   Write-Host "Running backup job for $Environment"
   Write-Host "Using backend env: $BackendEnvFile"
+  Write-Host "Using database connection from: $databaseUrlSource"
   Write-Host "Backup root: $($backupPaths.root)"
 
   $backupResult = & $backupScript `

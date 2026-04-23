@@ -100,6 +100,16 @@ function Get-ConfigBool {
   return @("1", "true", "yes", "on") -contains $value.Trim().ToLowerInvariant()
 }
 
+function Get-DefaultBackupManifestPath {
+  param(
+    [hashtable]$Config,
+    [string]$EnvironmentName
+  )
+
+  $backupRootDir = Get-ConfigValue -Config $Config -Key "BACKUP_ROOT_DIR" -EnvironmentName $EnvironmentName -DefaultValue "backups"
+  return Join-Path (Join-Path $backupRootDir $EnvironmentName) "latest-backup.json"
+}
+
 function Test-BackupManifest {
   param(
     [string]$ManifestFile,
@@ -156,6 +166,10 @@ if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
 
 if ([string]::IsNullOrWhiteSpace($BackupManifestPath)) {
   $BackupManifestPath = Get-ConfigValue -Config $opsConfig -Key "BACKUP_MANIFEST_PATH" -EnvironmentName $Environment
+}
+
+if ([string]::IsNullOrWhiteSpace($BackupManifestPath)) {
+  $BackupManifestPath = Get-DefaultBackupManifestPath -Config $opsConfig -EnvironmentName $Environment
 }
 
 if ($BackupMaxAgeHours -le 0) {

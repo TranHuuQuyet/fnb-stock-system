@@ -13,4 +13,6 @@ backend/.env.staging
 frontend/.env.production
 frontend/.env.staging
 *.log
+*.tsbuildinfo
+gitbash-*.txt
 postgres_data

@@ -41,7 +41,7 @@ Muc tieu hien tai:
 - tao `1 database staging` rieng
 - khong dung chung voi production
 - co san backup
-- lay duoc `DATABASE_URL`
+- lay duoc `DATABASE_URL` va `DIRECT_URL`
 
 Chi can dung staging truoc. Production tao sau khi staging on.
 
@@ -63,6 +63,7 @@ Ban can chot cac gia tri sau:
 - `DB user`
 - `DB password`
 - `DATABASE_URL`
+- `DIRECT_URL`
 
 ### Email
 
@@ -116,7 +117,7 @@ cd /srv/fnb-stock-system
 
 ## 5. Tao file staging tren may deploy
 
-Ban da co san script trong repo:
+Ban da co san script trong repo. Lenh nay danh cho may operator co PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/init-staging.ps1
@@ -188,12 +189,14 @@ NEXT_PUBLIC_API_BASE_URL=/api/v1
 
 ```dotenv
 ALERT_WEBHOOK_URL=
-BACKUP_ROOT_DIR=E:\fnb-backups
+BACKUP_ROOT_DIR=backups
 STAGING_BASE_URL=https://staging.fnbstore.store
-STAGING_BACKUP_MANIFEST_PATH=E:\fnb-backups\staging\latest-backup.json
+STAGING_BACKUP_MANIFEST_PATH=
 STAGING_SMOKE_ADMIN_USERNAME=
 STAGING_SMOKE_ADMIN_PASSWORD=
 ```
+
+Neu de trong `STAGING_BACKUP_MANIFEST_PATH`, release gate se tu suy ra mac dinh `backups/staging/latest-backup.json` tren may operator.
 
 ## 7. Preflight check truoc khi deploy
 

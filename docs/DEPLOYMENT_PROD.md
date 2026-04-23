@@ -162,7 +162,7 @@ Tạo file `deploy/.env.ops`:
 ALERT_WEBHOOK_URL=
 ALERT_WEBHOOK_HEADERS_JSON=
 ALERT_NOTIFY_ON_SUCCESS=false
-BACKUP_ROOT_DIR=E:\fnb-backups
+BACKUP_ROOT_DIR=backups
 BACKUP_MIRROR_DIR=
 BACKUP_DAILY_RETENTION=14
 BACKUP_WEEKLY_RETENTION=8
@@ -170,12 +170,12 @@ BACKUP_MONTHLY_RETENTION=3
 BACKUP_WEEKLY_DAY=Sunday
 BACKUP_MINIMUM_SIZE_BYTES=10240
 STAGING_BASE_URL=https://staging.fnbstore.store
-STAGING_BACKUP_MANIFEST_PATH=E:\fnb-backups\staging\latest-backup.json
+STAGING_BACKUP_MANIFEST_PATH=
 STAGING_BACKUP_MAX_AGE_HOURS=168
 STAGING_SMOKE_ADMIN_USERNAME=
 STAGING_SMOKE_ADMIN_PASSWORD=
 PRODUCTION_BASE_URL=https://fnbstore.store
-PRODUCTION_BACKUP_MANIFEST_PATH=E:\fnb-backups\production\latest-backup.json
+PRODUCTION_BACKUP_MANIFEST_PATH=
 PRODUCTION_BACKUP_MAX_AGE_HOURS=36
 PRODUCTION_SMOKE_ADMIN_USERNAME=
 PRODUCTION_SMOKE_ADMIN_PASSWORD=
@@ -184,6 +184,8 @@ PRODUCTION_SMOKE_ADMIN_PASSWORD=
 Ghi chú:
 
 - File này không commit vào git; dùng để cấu hình backup job, alert webhook và release gate.
+- Nếu để trống `*_BACKUP_MANIFEST_PATH`, script sẽ tự dùng mặc định `<BACKUP_ROOT_DIR>/<environment>/latest-backup.json`.
+- Các đường dẫn trong file này nên là đường dẫn thật của máy operator chạy PowerShell job, không phải path bên trong VPS Linux.
 - `BACKUP_MIRROR_DIR` nên trỏ tới NAS, ổ mount, hoặc storage khác máy app nếu có.
 - `PRODUCTION_SMOKE_ADMIN_*` nên là tài khoản admin riêng cho smoke test, không dùng tài khoản cá nhân.
 
@@ -216,7 +218,7 @@ cp frontend/.env.production.example frontend/.env.production
 cp deploy/.env.ops.example deploy/.env.ops
 ```
 
-Hoặc chạy nhanh:
+Hoặc chạy nhanh từ máy operator có PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/init-production.ps1
@@ -550,7 +552,7 @@ powershell -ExecutionPolicy Bypass -File deploy/scripts/run-backup-job.ps1 -Envi
 
 ```bash
 createdb fnb_stock_restore
-pg_restore -d fnb_stock_restore /backups/fnb_stock_2026-04-14.dump
+pg_restore -d "postgresql://fnb_user:strong-password@db-direct-host:5432/fnb_stock_restore" /backups/fnb_stock_2026-04-14.dump
 ```
 
 Khuyến nghị:

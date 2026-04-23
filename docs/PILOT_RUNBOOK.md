@@ -52,6 +52,7 @@ Khuyen nghi:
 
 1. Deploy dung tag release
 2. Neu chua co env staging that, khoi tao nhanh:
+   - lenh PowerShell duoi day danh cho may operator
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/init-staging.ps1`
 3. Chay preflight check:
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/preflight-check.ps1 -Environment staging`

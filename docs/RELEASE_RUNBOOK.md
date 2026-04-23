@@ -67,7 +67,7 @@ Sau do dien gia tri staging that:
 - `DATABASE_URL` cua DB staging
 - secret staging rieng
 
-Neu chua tao file staging that, co the dung script:
+Neu chua tao file staging that, co the dung script tren may operator co PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/init-staging.ps1
@@ -88,13 +88,13 @@ docker compose --env-file .env.staging.compose -f docker-compose.prod.yml up -d 
 5. smoke test theo [STAGING_CHECKLIST.md](./STAGING_CHECKLIST.md) pass
 6. backup va restore staging da test it nhat 1 lan
 
-Co the chay nhanh bang script:
+Co the chay nhanh bang script tren may operator:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment staging
 ```
 
-Neu muon chay rieng smoke test sau deploy:
+Neu muon chay rieng smoke test sau deploy tu may operator:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/smoke-test.ps1 -BaseUrl https://staging.fnbstore.store
@@ -160,7 +160,7 @@ Workflow CI/CD se build image tu tag nay. Can ghi lai:
    - backup da co chua
    - smoke account da san sang chua
    - buoc nao van con pending
-7. Chay preflight check:
+7. Chay preflight check tren may operator:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment production -RequireAuth
@@ -189,7 +189,7 @@ docker compose --env-file .env.production.compose -f docker-compose.prod.yml up 
    - `https://fnbstore.store/api/v1/health`
    - `https://fnbstore.store/api/v1/health/ready`
 6. Chay smoke test bat buoc theo [GO_LIVE_CHECKLIST.md](./GO_LIVE_CHECKLIST.md)
-7. Chay them release gate:
+7. Chay them release gate tren may operator:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment production -RequireAuth

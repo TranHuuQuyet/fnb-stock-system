@@ -94,6 +94,7 @@ Tai lieu nay dung de dung moi truong staging gan giong production nhat co the tr
 12. Thu cau hinh `IP whitelist` va `Emergency bypass`
 13. Chay workflow GitHub Actions `Post-Deploy Smoke Test` voi `target_environment=staging`
 14. Khuyen nghi chay gate day du:
+   - lenh PowerShell duoi day danh cho may operator; tren VPS Linux co the chay health/log bang `./ops.sh`
    - `powershell -ExecutionPolicy Bypass -File deploy/scripts/run-release-gate.ps1 -Environment staging`
 
 ## 7. Checklist du lieu test

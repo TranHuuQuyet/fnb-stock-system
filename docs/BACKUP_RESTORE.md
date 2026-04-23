@@ -42,7 +42,7 @@ Tai lieu nay mo ta cach sao luu va khoi phuc du lieu production cho he thong `fn
 
 ## 6. Goi y automation backup
 
-Neu may van hanh dung PowerShell, co the dat lich job hang ngay bang script:
+Neu may operator dung PowerShell, co the dat lich job hang ngay bang script:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy/scripts/run-backup-job.ps1 `
@@ -51,7 +51,7 @@ powershell -ExecutionPolicy Bypass -File deploy/scripts/run-backup-job.ps1 `
 
 Script wrapper nay se:
 
-1. Doc `DATABASE_URL` tu `backend/.env.production` hoac `backend/.env.staging`
+1. Doc `DIRECT_URL` tu `backend/.env.production` hoac `backend/.env.staging` neu co; neu khong co thi moi fallback sang `DATABASE_URL`
 2. Tao backup daily
 3. Tu dong promote sang weekly/monthly theo lich
 4. Cap nhat `latest-backup.json`
@@ -64,16 +64,18 @@ File `deploy/.env.ops` la noi chot cac gia tri van hanh:
 ALERT_WEBHOOK_URL=
 ALERT_WEBHOOK_HEADERS_JSON=
 ALERT_NOTIFY_ON_SUCCESS=false
-BACKUP_ROOT_DIR=E:\fnb-backups
+BACKUP_ROOT_DIR=backups
 BACKUP_MIRROR_DIR=
 BACKUP_DAILY_RETENTION=14
 BACKUP_WEEKLY_RETENTION=8
 BACKUP_MONTHLY_RETENTION=3
 BACKUP_WEEKLY_DAY=Sunday
 BACKUP_MINIMUM_SIZE_BYTES=10240
-PRODUCTION_BACKUP_MANIFEST_PATH=E:\fnb-backups\production\latest-backup.json
-STAGING_BACKUP_MANIFEST_PATH=E:\fnb-backups\staging\latest-backup.json
+PRODUCTION_BACKUP_MANIFEST_PATH=
+STAGING_BACKUP_MANIFEST_PATH=
 ```
+
+De trong `*_BACKUP_MANIFEST_PATH` neu muon script tu suy ra mac dinh `<BACKUP_ROOT_DIR>/<environment>/latest-backup.json`.
 
 File manifest nay nen duoc luu vao bien ban release hoac nhat ky van hanh.
 
@@ -113,7 +115,7 @@ Neu chay tren Windows Server:
 2. Lenh de xuat:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File E:\fnb-stock-system\deploy\scripts\run-backup-job.ps1 -Environment production
+powershell -ExecutionPolicy Bypass -File C:\path\to\fnb-stock-system\deploy\scripts\run-backup-job.ps1 -Environment production
 ```
 
 Neu chay tren Linux:
@@ -125,14 +127,14 @@ Neu chay tren Linux:
 ## 8. Vi du backup PostgreSQL
 
 ```bash
-pg_dump -Fc -d "postgresql://fnb_user:strong-password@db-host:5432/fnb_stock" > /backups/fnb_stock_$(date +%F).dump
+pg_dump -Fc -d "postgresql://fnb_user:strong-password@db-direct-host:5432/fnb_stock" > /backups/fnb_stock_$(date +%F).dump
 ```
 
 ## 9. Vi du restore thu nghiem
 
 ```bash
 createdb fnb_stock_restore
-pg_restore -d fnb_stock_restore /backups/fnb_stock_2026-04-14.dump
+pg_restore -d "postgresql://fnb_user:strong-password@db-direct-host:5432/fnb_stock_restore" /backups/fnb_stock_2026-04-14.dump
 ```
 
 ## 10. Quy trinh restore de xuat
