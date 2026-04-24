@@ -2,8 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
-import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
+import {
+  buildPagination,
+  buildPaginationMeta,
+  resolveSortField
+} from '../../common/utils/pagination';
 import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';
+
+const AUDIT_LOG_SORT_FIELDS = ['createdAt', 'action', 'entityType'] as const;
 
 @Injectable()
 export class AuditService {
@@ -34,6 +40,7 @@ export class AuditService {
 
   async list(query: QueryAuditLogsDto) {
     const { page, pageSize, skip, take } = buildPagination(query);
+    const sortField = resolveSortField(query.sortBy, AUDIT_LOG_SORT_FIELDS, 'createdAt');
     const where: Prisma.AuditLogWhereInput = {
       ...(query.entityType ? { entityType: query.entityType } : {}),
       ...(query.action ? { action: query.action } : {})
@@ -55,7 +62,7 @@ export class AuditService {
         skip,
         take,
         orderBy: {
-          [query.sortBy ?? 'createdAt']: query.sortOrder
+          [sortField]: query.sortOrder
         }
       }),
       this.prisma.auditLog.count({ where })

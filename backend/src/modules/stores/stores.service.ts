@@ -4,12 +4,18 @@ import { Prisma, UserRole } from '@prisma/client';
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { appException } from '../../common/utils/app-exception';
-import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
+import {
+  buildPagination,
+  buildPaginationMeta,
+  resolveSortField
+} from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { QueryStoresDto } from './dto/query-stores.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+
+const STORE_SORT_FIELDS = ['createdAt', 'updatedAt', 'code', 'name', 'isActive'] as const;
 
 @Injectable()
 export class StoresService {
@@ -52,6 +58,7 @@ export class StoresService {
 
   async list(query: QueryStoresDto) {
     const { page, pageSize, skip, take } = buildPagination(query);
+    const sortField = resolveSortField(query.sortBy, STORE_SORT_FIELDS, 'createdAt');
     const where: Prisma.StoreWhereInput = {
       ...(query.isActive !== undefined ? { isActive: query.isActive } : {}),
       ...(query.keyword
@@ -70,7 +77,7 @@ export class StoresService {
         skip,
         take,
         orderBy: {
-          [query.sortBy ?? 'createdAt']: query.sortOrder
+          [sortField]: query.sortOrder
         }
       }),
       this.prisma.store.count({ where })

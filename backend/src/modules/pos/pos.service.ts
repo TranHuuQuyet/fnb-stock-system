@@ -4,7 +4,11 @@ import { Prisma, ScanOperationType, ScanResultStatus, UserRole } from '@prisma/c
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { appException } from '../../common/utils/app-exception';
-import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
+import {
+  buildPagination,
+  buildPaginationMeta,
+  resolveSortField
+} from '../../common/utils/pagination';
 import { businessDateInTimezone } from '../../common/utils/timezone';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -15,6 +19,8 @@ import { ImportPosSalesDto } from './dto/import-pos-sales.dto';
 import { QueryPosProductsDto } from './dto/query-pos-products.dto';
 import { ReplaceRecipeDto } from './dto/replace-recipe.dto';
 import { UpdatePosProductDto } from './dto/update-pos-product.dto';
+
+const POS_PRODUCT_SORT_FIELDS = ['createdAt', 'updatedAt', 'code', 'name', 'isActive'] as const;
 
 @Injectable()
 export class PosService {
@@ -46,6 +52,7 @@ export class PosService {
 
   async listProducts(query: QueryPosProductsDto) {
     const { page, pageSize, skip, take } = buildPagination(query);
+    const sortField = resolveSortField(query.sortBy, POS_PRODUCT_SORT_FIELDS, 'createdAt');
     const where: Prisma.PosProductWhereInput = {
       ...(query.isActive !== undefined ? { isActive: query.isActive } : {}),
       ...(query.keyword
@@ -64,7 +71,7 @@ export class PosService {
         skip,
         take,
         orderBy: {
-          [query.sortBy ?? 'createdAt']: query.sortOrder
+          [sortField]: query.sortOrder
         }
       }),
       this.prisma.posProduct.count({ where })

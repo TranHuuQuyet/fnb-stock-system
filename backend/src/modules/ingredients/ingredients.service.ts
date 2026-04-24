@@ -3,7 +3,11 @@ import { Prisma } from '@prisma/client';
 
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import { appException } from '../../common/utils/app-exception';
-import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
+import {
+  buildPagination,
+  buildPaginationMeta,
+  resolveSortField
+} from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateIngredientDto } from './dto/create-ingredient.dto';
@@ -23,6 +27,8 @@ type IngredientGroupView = {
   name: string;
   usageCount: number;
 };
+
+const INGREDIENT_SORT_FIELDS = ['createdAt', 'updatedAt', 'code', 'name', 'isActive'] as const;
 
 @Injectable()
 export class IngredientsService {
@@ -114,6 +120,7 @@ export class IngredientsService {
 
   async list(query: QueryIngredientsDto) {
     const { page, pageSize, skip, take } = buildPagination(query);
+    const sortField = resolveSortField(query.sortBy, INGREDIENT_SORT_FIELDS, 'createdAt');
     const where: Prisma.IngredientWhereInput = {
       ...(query.isActive !== undefined ? { isActive: query.isActive } : {}),
       ...(query.keyword
@@ -135,7 +142,7 @@ export class IngredientsService {
           group: true
         },
         orderBy: {
-          [query.sortBy ?? 'createdAt']: query.sortOrder
+          [sortField]: query.sortOrder
         }
       }),
       this.prisma.ingredient.count({ where })

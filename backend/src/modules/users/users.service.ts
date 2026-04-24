@@ -4,7 +4,11 @@ import { randomInt } from 'node:crypto';
 
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import { appException } from '../../common/utils/app-exception';
-import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
+import {
+  buildPagination,
+  buildPaginationMeta,
+  resolveSortField
+} from '../../common/utils/pagination';
 import { assertPasswordPolicy, hashPassword } from '../../common/utils/password';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -17,6 +21,16 @@ const sanitizeUser = <T extends { passwordHash: string }>(user: T) => {
   const { passwordHash, ...safeUser } = user;
   return safeUser;
 };
+
+const USER_SORT_FIELDS = [
+  'createdAt',
+  'updatedAt',
+  'lastLoginAt',
+  'username',
+  'fullName',
+  'role',
+  'status'
+] as const;
 
 const normalizePermissions = (permissions?: string[]) =>
   Array.from(new Set(permissions ?? []));
@@ -110,6 +124,7 @@ export class UsersService {
 
   async list(query: QueryUsersDto) {
     const { page, pageSize, skip, take } = buildPagination(query);
+    const sortField = resolveSortField(query.sortBy, USER_SORT_FIELDS, 'createdAt');
     const where: Prisma.UserWhereInput = {
       ...(query.role ? { role: query.role } : {}),
       ...(query.status ? { status: query.status } : {}),
@@ -143,7 +158,7 @@ export class UsersService {
         skip,
         take,
         orderBy: {
-          [query.sortBy ?? 'createdAt']: query.sortOrder
+          [sortField]: query.sortOrder
         }
       }),
       this.prisma.user.count({ where })

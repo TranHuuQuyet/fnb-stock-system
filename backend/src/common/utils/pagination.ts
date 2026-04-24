@@ -12,6 +12,21 @@ export const buildPagination = (query: PaginationQueryDto) => {
   };
 };
 
+export const resolveSortField = <T extends string>(
+  sortBy: string | undefined,
+  allowedFields: readonly T[],
+  fallback: T
+): T => {
+  const normalizedSortBy = sortBy?.trim();
+  if (!normalizedSortBy) {
+    return fallback;
+  }
+
+  return (allowedFields as readonly string[]).includes(normalizedSortBy)
+    ? (normalizedSortBy as T)
+    : fallback;
+};
+
 export const buildPaginationMeta = (
   page: number,
   pageSize: number,

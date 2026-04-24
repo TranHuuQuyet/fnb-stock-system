@@ -4,7 +4,11 @@ import { BatchStatus, Prisma, UserRole } from '@prisma/client';
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { appException } from '../../common/utils/app-exception';
-import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
+import {
+  buildPagination,
+  buildPaginationMeta,
+  resolveSortField
+} from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateBatchDto } from './dto/create-batch.dto';
@@ -15,6 +19,16 @@ const batchInclude = {
   ingredient: true,
   store: true
 } satisfies Prisma.IngredientBatchInclude;
+
+const BATCH_SORT_FIELDS = [
+  'receivedAt',
+  'expiredAt',
+  'createdAt',
+  'updatedAt',
+  'batchCode',
+  'remainingQty',
+  'status'
+] as const;
 
 type IngredientBatchReader = Pick<Prisma.TransactionClient, 'ingredientBatch'>;
 
@@ -226,6 +240,7 @@ export class BatchesService {
 
   private async list(query: QueryBatchesDto, storeId?: string) {
     const { page, pageSize, skip, take } = buildPagination(query);
+    const sortField = resolveSortField(query.sortBy, BATCH_SORT_FIELDS, 'receivedAt');
     const where: Prisma.IngredientBatchWhereInput = {
       ...(storeId ? { storeId } : {}),
       ...(query.ingredientId ? { ingredientId: query.ingredientId } : {}),
@@ -259,7 +274,7 @@ export class BatchesService {
         skip,
         take,
         orderBy: {
-          [query.sortBy ?? 'receivedAt']: query.sortOrder
+          [sortField]: query.sortOrder
         }
       }),
       this.prisma.ingredientBatch.count({ where })

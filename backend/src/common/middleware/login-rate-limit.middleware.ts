@@ -10,13 +10,33 @@ type LoginAttemptState = {
   resetAt: number;
 };
 
+const readPositiveIntegerEnv = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+};
+
 @Injectable()
 export class LoginRateLimitMiddleware implements NestMiddleware {
   private readonly logger = new Logger(LoginRateLimitMiddleware.name);
   private readonly attempts = new Map<string, LoginAttemptState>();
   private readonly enabled = readBooleanEnv(process.env.ENABLE_LOGIN_RATE_LIMIT, true);
-  private readonly maxAttempts = Number(process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS ?? 5);
-  private readonly windowMs = Number(process.env.LOGIN_RATE_LIMIT_WINDOW_MS ?? 10 * 60 * 1000);
+  private readonly maxAttempts = readPositiveIntegerEnv(
+    process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+    5
+  );
+  private readonly windowMs = readPositiveIntegerEnv(
+    process.env.LOGIN_RATE_LIMIT_WINDOW_MS,
+    10 * 60 * 1000
+  );
+  private readonly cleanupIntervalMs = readPositiveIntegerEnv(
+    process.env.LOGIN_RATE_LIMIT_CLEANUP_INTERVAL_MS,
+    60 * 1000
+  );
+  private readonly maxTrackedKeys = readPositiveIntegerEnv(
+    process.env.LOGIN_RATE_LIMIT_MAX_KEYS,
+    10000
+  );
+  private lastCleanupAt = 0;
 
   use(request: RequestWithContext, response: Response, next: NextFunction): void {
     if (!this.enabled) {
@@ -25,6 +45,7 @@ export class LoginRateLimitMiddleware implements NestMiddleware {
     }
 
     const now = Date.now();
+    this.cleanupExpiredEntries(now);
     const username =
       typeof request.body?.username === 'string'
         ? request.body.username.trim().toLowerCase()
@@ -38,6 +59,7 @@ export class LoginRateLimitMiddleware implements NestMiddleware {
         count: 1,
         resetAt: now + this.windowMs
       });
+      this.attachSuccessfulLoginReset(key, response);
       next();
       return;
     }
@@ -78,6 +100,52 @@ export class LoginRateLimitMiddleware implements NestMiddleware {
 
     current.count += 1;
     this.attempts.set(key, current);
+    this.attachSuccessfulLoginReset(key, response);
     next();
+  }
+
+  private attachSuccessfulLoginReset(key: string, response: Response) {
+    response.on('finish', () => {
+      if (response.statusCode < HttpStatus.BAD_REQUEST) {
+        this.attempts.delete(key);
+      }
+    });
+  }
+
+  private cleanupExpiredEntries(now: number) {
+    if (
+      this.attempts.size < this.maxTrackedKeys &&
+      now - this.lastCleanupAt < this.cleanupIntervalMs
+    ) {
+      return;
+    }
+
+    for (const [key, state] of this.attempts.entries()) {
+      if (state.resetAt <= now) {
+        this.attempts.delete(key);
+      }
+    }
+
+    if (this.attempts.size > this.maxTrackedKeys) {
+      const overflow = this.attempts.size - this.maxTrackedKeys;
+      const oldestEntries = [...this.attempts.entries()]
+        .sort((left, right) => left[1].resetAt - right[1].resetAt)
+        .slice(0, overflow);
+
+      for (const [key] of oldestEntries) {
+        this.attempts.delete(key);
+      }
+
+      this.logger.warn({
+        level: 'warn',
+        message: 'Trimmed login rate limit state to stay within memory cap',
+        trackedKeys: this.attempts.size,
+        maxTrackedKeys: this.maxTrackedKeys,
+        trimmedKeys: overflow,
+        timestamp: new Date(now).toISOString()
+      });
+    }
+
+    this.lastCleanupAt = now;
   }
 }

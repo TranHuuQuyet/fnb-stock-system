@@ -16,13 +16,18 @@ import { ERROR_CODES } from '../../common/constants/error-codes';
 import { PERMISSIONS } from '../../common/constants/permissions';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { appException } from '../../common/utils/app-exception';
-import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
+import {
+  buildPagination,
+  buildPaginationMeta,
+  resolveSortField
+} from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BatchesService } from '../batches/batches.service';
 import { ConfigService, type BusinessNetworkStatus } from '../config/config.service';
 import { DevicesService } from '../devices/devices.service';
 import { QueryScanLogsDto } from './dto/query-scan-logs.dto';
 import { ScanDto } from './dto/scan.dto';
+import { MAX_SYNC_SCAN_EVENTS } from './dto/sync-scan.dto';
 
 type ProcessScanParams = {
   currentUser: JwtUser;
@@ -49,6 +54,15 @@ type ProcessScanResult = {
   transferId?: string;
   transferStatus?: StockTransferStatus;
 };
+
+const SCAN_LOG_SORT_FIELDS = [
+  'scannedAt',
+  'receivedAt',
+  'createdAt',
+  'resultStatus',
+  'operationType',
+  'quantityUsed'
+] as const;
 
 @Injectable()
 export class ScanService {
@@ -99,6 +113,14 @@ export class ScanService {
   }
 
   async sync(currentUser: JwtUser, events: ScanDto[], deviceId: string, ipAddress: string) {
+    if (events.length > MAX_SYNC_SCAN_EVENTS) {
+      throw appException(
+        HttpStatus.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
+        `Moi lan dong bo chi duoc gui toi da ${MAX_SYNC_SCAN_EVENTS} luot quet`
+      );
+    }
+
     const results: ProcessScanResult[] = [];
 
     for (const event of events) {
@@ -124,6 +146,7 @@ export class ScanService {
 
   async listLogs(currentUser: JwtUser, query: QueryScanLogsDto) {
     const { page, pageSize, skip, take } = buildPagination(query);
+    const sortField = resolveSortField(query.sortBy, SCAN_LOG_SORT_FIELDS, 'scannedAt');
     const where = await this.buildEnhancedLogWhere(currentUser, query);
 
     const [items, total] = await this.prisma.$transaction([
@@ -160,7 +183,7 @@ export class ScanService {
         skip,
         take,
         orderBy: {
-          [query.sortBy ?? 'scannedAt']: query.sortOrder
+          [sortField]: query.sortOrder
         }
       }),
       this.prisma.scanLog.count({ where })

@@ -56,6 +56,14 @@ const getCookieMaxAgeMs = () =>
     24 * 60 * 60 * 1000
   );
 
+const safeDecodeCookieValue = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+};
+
 const parseCookieHeader = (cookieHeader: string | undefined) => {
   const cookieMap = new Map<string, string>();
   if (!cookieHeader) {
@@ -68,7 +76,12 @@ const parseCookieHeader = (cookieHeader: string | undefined) => {
       continue;
     }
 
-    cookieMap.set(rawName, decodeURIComponent(rawValueParts.join('=')));
+    const decodedValue = safeDecodeCookieValue(rawValueParts.join('='));
+    if (decodedValue === null) {
+      continue;
+    }
+
+    cookieMap.set(rawName, decodedValue);
   }
 
   return cookieMap;

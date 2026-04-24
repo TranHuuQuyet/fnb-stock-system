@@ -9,7 +9,11 @@ import {
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { appException } from '../../common/utils/app-exception';
-import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
+import {
+  buildPagination,
+  buildPaginationMeta,
+  resolveSortField
+} from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ConfirmTransferDto } from './dto/confirm-transfer.dto';
@@ -17,6 +21,16 @@ import {
   QueryTransfersDto,
   type TransferDirection
 } from './dto/query-transfers.dto';
+
+const TRANSFER_SORT_FIELDS = [
+  'requestedAt',
+  'confirmedAt',
+  'createdAt',
+  'status',
+  'batchCode',
+  'quantityRequested',
+  'quantityReceived'
+] as const;
 
 @Injectable()
 export class TransfersService {
@@ -44,6 +58,7 @@ export class TransfersService {
 
   async list(currentUser: JwtUser, query: QueryTransfersDto) {
     const { page, pageSize, skip, take } = buildPagination(query);
+    const sortField = resolveSortField(query.sortBy, TRANSFER_SORT_FIELDS, 'requestedAt');
     const where = this.buildWhere(currentUser, query);
 
     const [items, total] = await this.prisma.$transaction([
@@ -92,7 +107,7 @@ export class TransfersService {
         skip,
         take,
         orderBy: {
-          [query.sortBy ?? 'requestedAt']: query.sortOrder
+          [sortField]: query.sortOrder
         }
       }),
       this.prisma.stockTransfer.count({ where })

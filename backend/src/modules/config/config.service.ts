@@ -3,7 +3,11 @@ import { NetworkWhitelistType, Prisma } from '@prisma/client';
 
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import { appException } from '../../common/utils/app-exception';
-import { buildPagination, buildPaginationMeta } from '../../common/utils/pagination';
+import {
+  buildPagination,
+  buildPaginationMeta,
+  resolveSortField
+} from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateWhitelistDto } from './dto/create-whitelist.dto';
@@ -11,6 +15,14 @@ import { QueryWhitelistsDto } from './dto/query-whitelists.dto';
 import { UpdateConfigDto } from './dto/update-config.dto';
 import { UpdateNetworkBypassDto } from './dto/update-network-bypass.dto';
 import { UpdateWhitelistDto } from './dto/update-whitelist.dto';
+
+const NETWORK_WHITELIST_SORT_FIELDS = [
+  'createdAt',
+  'updatedAt',
+  'type',
+  'value',
+  'isActive'
+] as const;
 
 export type BusinessNetworkStatus = {
   storeId: string;
@@ -109,6 +121,11 @@ export class ConfigService {
 
   async listWhitelists(query: QueryWhitelistsDto) {
     const { page, pageSize, skip, take } = buildPagination(query);
+    const sortField = resolveSortField(
+      query.sortBy,
+      NETWORK_WHITELIST_SORT_FIELDS,
+      'createdAt'
+    );
     const where: Prisma.StoreNetworkWhitelistWhereInput = {
       ...(query.storeId ? { storeId: query.storeId } : {}),
       ...(query.type ? { type: query.type } : {}),
@@ -131,7 +148,7 @@ export class ConfigService {
         skip,
         take,
         orderBy: {
-          [query.sortBy ?? 'createdAt']: query.sortOrder
+          [sortField]: query.sortOrder
         }
       }),
       this.prisma.storeNetworkWhitelist.count({ where })
