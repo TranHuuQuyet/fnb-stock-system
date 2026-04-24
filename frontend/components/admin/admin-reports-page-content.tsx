@@ -14,11 +14,28 @@ import {
   getAdminReports
 } from '@/services/admin/reports';
 
+const DATE_INPUT_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Ho_Chi_Minh',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+});
+
+const MONTH_INPUT_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Ho_Chi_Minh',
+  year: 'numeric',
+  month: '2-digit'
+});
+
 const today = new Date();
-const currentYear = today.getFullYear();
-const currentMonth = today.getMonth() + 1;
-const startOfMonth = new Date(currentYear, today.getMonth(), 1).toISOString().slice(0, 10);
-const todayValue = today.toISOString().slice(0, 10);
+const [
+  currentYearString = String(today.getFullYear()),
+  currentMonthString = String(today.getMonth() + 1).padStart(2, '0')
+] = MONTH_INPUT_FORMATTER.format(today).split('-');
+const currentYear = Number(currentYearString);
+const currentMonth = Number(currentMonthString);
+const startOfMonth = `${currentYearString}-${currentMonthString}-01`;
+const todayValue = DATE_INPUT_FORMATTER.format(today);
 
 const numberFormatter = new Intl.NumberFormat('vi-VN', {
   minimumFractionDigits: 0,

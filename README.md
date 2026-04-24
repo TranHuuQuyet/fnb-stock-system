@@ -85,7 +85,7 @@ docs/        Architecture, API overview, operation manual, production deployment
 docker compose up --build
 ```
 
-`docker-compose.yml` hiện dùng cho local/demo. Không nên dùng nguyên xi cho production vì backend đang tự chạy `db:seed`, frontend/backend còn mặc định `localhost`, và secret trong compose chỉ là placeholder. Xem thêm [docs/DEPLOYMENT_PROD.md](docs/DEPLOYMENT_PROD.md).
+`docker-compose.yml` hiện dùng cho local/demo và đã truyền cả `DATABASE_URL` lẫn `DIRECT_URL` để Prisma boot đúng với schema hiện tại. Không nên dùng nguyên xi cho production vì backend đang tự chạy `db:seed`, frontend/backend còn mặc định `localhost`, và secret trong compose chỉ là placeholder. Xem thêm [docs/DEPLOYMENT_PROD.md](docs/DEPLOYMENT_PROD.md).
 
 Nếu muốn chạy production bằng container, repo đã có sẵn:
 
@@ -192,7 +192,7 @@ Các tài khoản dưới đây chỉ áp dụng cho local/demo khi dùng seed. 
 ## Test Commands
 
 - Backend unit tests: `cd backend && npm test -- --runInBand`
-- Backend e2e contract tests: `cd backend && npm run test:e2e`
+- Backend route contract tests (controller-level, dùng mocked services): `cd backend && npm run test:e2e`
 - Frontend tests: `cd frontend && npm test`
 - Backend build: `cd backend && npm run build`
 - Frontend build: `cd frontend && npm run build`

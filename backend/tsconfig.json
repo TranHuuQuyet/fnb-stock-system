@@ -30,7 +30,6 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "test/app.e2e-spec.ts"
+    "dist"
   ]
 }

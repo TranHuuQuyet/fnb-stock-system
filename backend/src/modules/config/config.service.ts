@@ -96,17 +96,23 @@ export class ConfigService {
       );
     }
 
-    const whitelist = await this.prisma.storeNetworkWhitelist.create({
-      data: {
-        storeId: dto.storeId,
-        type: dto.type,
-        value: this.normalizeWhitelistValue(dto.type, dto.value),
-        isActive: dto.isActive ?? true
-      },
-      include: {
-        store: true
-      }
-    });
+    let whitelist;
+    try {
+      whitelist = await this.prisma.storeNetworkWhitelist.create({
+        data: {
+          storeId: dto.storeId,
+          type: dto.type,
+          value: this.normalizeWhitelistValue(dto.type, dto.value),
+          isActive: dto.isActive ?? true
+        },
+        include: {
+          store: true
+        }
+      });
+    } catch (error) {
+      this.throwIfDuplicateWhitelist(error);
+      throw error;
+    }
 
     await this.auditService.createLog({
       actorUserId,
@@ -179,17 +185,23 @@ export class ConfigService {
         ? this.normalizeWhitelistValue(nextType, dto.value ?? existing.value)
         : undefined;
 
-    const updated = await this.prisma.storeNetworkWhitelist.update({
-      where: { id },
-      data: {
-        ...(dto.type ? { type: dto.type } : {}),
-        ...(normalizedValue ? { value: normalizedValue } : {}),
-        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {})
-      },
-      include: {
-        store: true
-      }
-    });
+    let updated;
+    try {
+      updated = await this.prisma.storeNetworkWhitelist.update({
+        where: { id },
+        data: {
+          ...(dto.type ? { type: dto.type } : {}),
+          ...(normalizedValue ? { value: normalizedValue } : {}),
+          ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {})
+        },
+        include: {
+          store: true
+        }
+      });
+    } catch (error) {
+      this.throwIfDuplicateWhitelist(error);
+      throw error;
+    }
 
     await this.auditService.createLog({
       actorUserId,
@@ -414,6 +426,18 @@ export class ConfigService {
 
   private normalizeWhitelistValue(type: NetworkWhitelistType, value: string) {
     return type === NetworkWhitelistType.IP ? this.normalizeIpAddress(value) : value.trim();
+  }
+
+  private throwIfDuplicateWhitelist(error: unknown) {
+    if (!this.prisma.isUniqueConstraintError(error, ['storeId', 'type', 'value'])) {
+      return;
+    }
+
+    throw appException(
+      HttpStatus.CONFLICT,
+      ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
+      'Máº¡ng Ä‘Æ°á»£c phÃ©p nÃ y Ä‘Ã£ tá»“n táº¡i'
+    );
   }
 
   private normalizeIpAddress(value: string | undefined) {
