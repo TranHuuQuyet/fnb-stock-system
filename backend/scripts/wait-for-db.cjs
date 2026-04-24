@@ -1,9 +1,17 @@
 const net = require('node:net');
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl =
+  process.env.DB_WAIT_URL || process.env.DIRECT_URL || process.env.DATABASE_URL;
+const databaseUrlSource = process.env.DB_WAIT_URL
+  ? 'DB_WAIT_URL'
+  : process.env.DIRECT_URL
+    ? 'DIRECT_URL'
+    : process.env.DATABASE_URL
+      ? 'DATABASE_URL'
+      : null;
 
 if (!databaseUrl) {
-  console.error('DATABASE_URL is not set');
+  console.error('DB_WAIT_URL, DIRECT_URL, or DATABASE_URL is not set');
   process.exit(1);
 }
 
@@ -41,7 +49,9 @@ const waitForDatabase = async () => {
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       await tryConnect();
-      console.log(`Database is reachable at ${host}:${port}`);
+      console.log(
+        `Database is reachable at ${host}:${port} using ${databaseUrlSource}`
+      );
       return;
     } catch (error) {
       console.log(

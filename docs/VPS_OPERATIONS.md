@@ -570,7 +570,7 @@ cd /opt/fnb-stock-system
 ./ops.sh migrate
 ```
 
-Nếu vẫn lỗi, kiểm tra `DATABASE_URL` trong `backend/.env.production`.
+Nếu vẫn lỗi, kiểm tra `DIRECT_URL` trong `backend/.env.production` trước; chỉ kiểm tra `DATABASE_URL` khi bạn đang debug runtime backend thay vì job migrate.
 
 ### 12.4. Bạn đã push fix nhưng production chưa ăn code mới
 
