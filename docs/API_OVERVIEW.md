@@ -43,9 +43,9 @@
 | POST | `/api/v1/admin/batches/:id/labels/issue` | ADMIN | Issue a sequential label range with unique QR per label |
 | POST | `/api/v1/admin/batches/:id/adjustments` | ADMIN | Create stock adjustment |
 | GET | `/api/v1/admin/batches/:id/adjustments` | ADMIN | List stock adjustments |
-| POST | `/api/v1/scan` | ADMIN, MANAGER, STAFF | Online scan |
-| POST | `/api/v1/scan/manual` | ADMIN, MANAGER, STAFF | Manual fallback scan |
-| POST | `/api/v1/scan/sync` | ADMIN, MANAGER, STAFF | Sync offline events |
+| POST | `/api/v1/scan` | ADMIN, MANAGER, STAFF | Online scan; current staff/manager UI uses quick consume with issued labels |
+| POST | `/api/v1/scan/manual` | ADMIN, MANAGER, STAFF | Legacy manual fallback scan |
+| POST | `/api/v1/scan/sync` | ADMIN, MANAGER, STAFF | Legacy offline sync endpoint |
 | GET | `/api/v1/scan/network-status` | ADMIN, MANAGER, STAFF | Detect current business network status and normalized IP |
 | GET | `/api/v1/scan/logs` | ADMIN, MANAGER, STAFF | List scan logs by role scope |
 | GET | `/api/v1/transfers/stores` | ADMIN, MANAGER, STAFF | List active stores for transfer source/destination selectors |
@@ -134,6 +134,12 @@ Frontend scanner hỗ trợ cả hai định dạng sau:
 - Current issued label: `FNBBATCH:<batch_code>|BATCH:<batch_id>|SEQ:<sequenceNumber>`
 
 Trong cả hai trường hợp, frontend đều tách ra `batchCode` trước khi gửi request scan.
+
+Lưu ý cho UI hiện tại:
+
+- `STAFF` và `MANAGER` ở mode `Sử dụng tại quán` chỉ auto-consume khi QR là tem mới có `SEQ`
+- mỗi tem mới chỉ được dùng một lần nhờ `consumedLabelKey`
+- route `scan/manual` và `scan/sync` vẫn còn cho compatibility cũ nhưng không còn là flow chính của màn scan
 
 ## Ingredient Stock Board API Notes
 

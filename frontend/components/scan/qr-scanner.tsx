@@ -18,7 +18,7 @@ type ScannerInstance = {
   clear: () => void | Promise<unknown>;
 };
 
-const SCAN_DEBOUNCE_MS = 1200;
+const SCAN_DEBOUNCE_MS = 4000;
 
 export function QrScanner({ onDetected, onError }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -80,9 +80,7 @@ export function QrScanner({ onDetected, onError }: Props) {
           return;
         }
 
-        onErrorRef.current?.(
-          'Không thể khởi động camera quét. Bạn có thể chuyển sang nhập tay để tiếp tục.'
-        );
+        onErrorRef.current?.('Khong the khoi dong camera quet. Hay kiem tra quyen camera roi thu lai.');
       }
     };
 

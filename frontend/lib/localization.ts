@@ -118,6 +118,10 @@ const apiErrorLabels: Record<string, string> = {
 
 const fallback = (value: string) => value.replace(/_/g, ' ');
 
+resultCodeLabels.ERROR_LABEL_ALREADY_SCANNED = 'Tem da duoc quet';
+apiErrorLabels.ERROR_LABEL_ALREADY_SCANNED = 'Tem nay da duoc quet truoc do';
+apiErrorLabels.ERROR_INVALID_QR_FORMAT = 'Tem QR khong hop le hoac chua duoc phat hanh';
+
 export const localizeSyncState = (value: string) => syncStateLabels[value] ?? fallback(value);
 
 export const localizeResultStatus = (value: string) =>

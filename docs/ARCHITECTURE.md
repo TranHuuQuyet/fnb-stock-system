@@ -10,7 +10,7 @@
 - `batches`: batch CRUD, accessible batch listing, soft lock/unlock
 - `batch-labels`: generate base QR, return print metadata, issue sequential labels with unique QR per tem
 - `stock-adjustments`: manual inventory adjustment with audit
-- `scan`: online scan, manual fallback, offline sync, scan logs
+- `scan`: online scan, quick store-usage consume, transfer, scan logs
 - `devices`: device upsert and last-seen tracking
 - `pos`: POS product CRUD, recipe CRUD, sales import, reconciliation
 - `anomalies`: threshold-based anomaly generation from reconciliation
@@ -70,21 +70,22 @@
 
 ## Scan Flow
 
-1. Frontend quét QR tem hoặc dùng nhập tay với `batchCode`.
+1. Màn `Scan` cho `STAFF` và `MANAGER` ở chế độ `Sử dụng tại quán` dùng camera-only, không còn nhập tay và không còn nút gửi kết quả quét.
 2. Scanner chấp nhận cả 2 định dạng:
    - tem cũ: `FNBBATCH:<batch_code>`
    - tem mới: `FNBBATCH:<batch_code>|BATCH:<batch_id>|SEQ:<sequenceNumber>`
-3. Frontend luôn trích `batchCode` từ QR trước khi gửi request scan.
-4. Frontend gửi `batchCode`, `quantityUsed`, `scannedAt`, `deviceId`, `clientEventId`, `storeId?`, `entryMethod`.
+3. Ở quick mode, frontend chỉ tự gửi request khi QR là tem mới có `BATCH + SEQ`.
+4. Quick mode gửi `batchCode`, `quantityUsed = 1`, `scannedLabelValue`, `scannedLabelBatchId`, `scannedLabelSequenceNumber`, `scannedAt`, `deviceId`, `clientEventId`, `storeId?`, `entryMethod = CAMERA`.
 5. Backend upsert device, đánh giá trạng thái business network theo `IP whitelist` và `Emergency bypass`.
-6. Backend tìm batch theo `storeId + batchCode`.
+6. Backend tìm batch theo `storeId + batchCode`, validate tem thuộc đúng batch và `sequenceNumber <= printedLabelCount`.
 7. Backend validate expired, soft lock, remaining quantity và FIFO.
-8. Nếu hợp lệ: trừ tồn, update `DEPLETED` khi về 0, ghi `ScanLog`.
-9. Với `operationType = TRANSFER`, backend cho `ADMIN` và `MANAGER` tạo phiếu chuyển theo role; `STAFF` phải có permission `scan_transfer`.
-10. Khi tạo phiếu chuyển, backend trừ tồn ở chi nhánh nguồn, ghi `ScanLog` xuất kho và tạo `StockTransfer` trạng thái `IN_TRANSIT`.
-11. Chi nhánh đích chỉ được cộng tồn sau khi `ADMIN` hoặc `MANAGER` của chi nhánh nhận xác nhận phiếu.
-12. Nếu bị chặn bởi network policy: ghi `FraudAttemptLog` và `ScanLog` lỗi.
-13. Nếu duplicate `clientEventId`: trả `duplicated=true`, không trừ kho lần nữa.
+8. Nếu tem đã từng được dùng ở `STORE_USAGE`, backend reject theo `consumedLabelKey` để không trừ kho lặp.
+9. Nếu hợp lệ: trừ tồn, update `DEPLETED` khi về 0, ghi `ScanLog`.
+10. Với `operationType = TRANSFER`, backend cho `ADMIN` và `MANAGER` tạo phiếu chuyển theo role; `STAFF` phải có permission `scan_transfer`.
+11. Khi tạo phiếu chuyển, backend trừ tồn ở chi nhánh nguồn, ghi `ScanLog` xuất kho và tạo `StockTransfer` trạng thái `IN_TRANSIT`.
+12. Chi nhánh đích chỉ được cộng tồn sau khi `ADMIN` hoặc `MANAGER` của chi nhánh nhận xác nhận phiếu.
+13. Nếu bị chặn bởi network policy: ghi `FraudAttemptLog` và `ScanLog` lỗi.
+14. Nếu duplicate `clientEventId`: trả `duplicated=true`, không trừ kho lần nữa.
 
 ## Transfer Confirmation Flow
 
@@ -97,11 +98,9 @@
 
 ## Offline Sync Flow
 
-1. Khi browser offline, scan event được lưu vào IndexedDB.
-2. Event giữ nguyên `clientEventId` để đồng bộ idempotent.
-3. Hook `useOfflineSync` tự gửi `/scan/sync` khi có mạng.
-4. Backend xử lý từng event độc lập, không fail cả batch.
-5. Event sync xong được xóa khỏi queue, event lỗi giữ lại với trạng thái `failed`.
+1. Hạ tầng `/scan/sync` vẫn còn cho compatibility cũ.
+2. UI scan hiện tại cho `STAFF` và `MANAGER` không còn dùng offline queue ở quick mode.
+3. Nếu cần đồng bộ offline cho luồng cũ, event vẫn giữ nguyên `clientEventId` để idempotent.
 
 ## QR And Label Printing Flow
 

@@ -6,30 +6,25 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { useOfflineSync } from '@/hooks/use-offline-sync';
-import { useResolvedSession } from '@/hooks/use-resolved-session';
-import { getDeviceId } from '@/lib/auth';
-import { parseBatchQrValue } from '@/lib/batch-qr';
-import { queueOfflineScan } from '@/lib/indexeddb';
-import { localizeResultCode, localizeSyncState } from '@/lib/localization';
-import { listBatches } from '@/services/batches';
-import {
-  getScanNetworkStatus,
-  submitManualScan,
-  submitScan
-} from '@/services/scan';
-import { listTransferStores } from '@/services/transfers';
 import { ProtectedPage } from '@/components/layout/protected-page';
 import { QrScanner } from '@/components/scan/qr-scanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useNetworkStatus } from '@/hooks/use-network-status';
+import { useResolvedSession } from '@/hooks/use-resolved-session';
+import { getDeviceId } from '@/lib/auth';
+import { parseBatchQrValue } from '@/lib/batch-qr';
+import { localizeResultCode } from '@/lib/localization';
+import { listBatches } from '@/services/batches';
+import { getScanNetworkStatus, submitScan } from '@/services/scan';
+import { listTransferStores } from '@/services/transfers';
 
 const schema = z
   .object({
-    batchCode: z.string().min(1, 'Vui lòng nhập mã lô'),
-    quantityUsed: z.coerce.number().int('Số lượng phải là số nguyên').positive('Số lượng phải lớn hơn 0'),
+    batchCode: z.string().min(1, 'Vui long nhap ma lo'),
+    quantityUsed: z.coerce.number().positive('So luong phai lon hon 0'),
     operationType: z.enum(['STORE_USAGE', 'TRANSFER']),
     storeId: z.string().optional(),
     sourceStoreId: z.string().optional(),
@@ -39,17 +34,34 @@ const schema = z
     if (value.operationType === 'TRANSFER' && !value.destinationStoreId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Vui lòng chọn chi nhánh nhận',
+        message: 'Vui long chon chi nhanh nhan',
         path: ['destinationStoreId']
       });
     }
   });
 
 type FormValues = z.infer<typeof schema>;
+
 type ScanResponse = {
   resultStatus: 'SUCCESS' | 'WARNING' | 'ERROR';
   resultCode: string;
   message: string;
+  batchCode: string;
+  remainingQty?: number;
+  ingredientName?: string;
+  ingredientUnit?: string | null;
+};
+
+type ScanMutationValues = {
+  operationType: 'STORE_USAGE' | 'TRANSFER';
+  batchCode: string;
+  quantityUsed?: number;
+  storeId?: string;
+  sourceStoreId?: string;
+  destinationStoreId?: string;
+  scannedLabelValue?: string;
+  scannedLabelBatchId?: string;
+  scannedLabelSequenceNumber?: number;
 };
 
 type NetworkStatus = {
@@ -67,7 +79,7 @@ type NetworkStatus = {
   canAccessBusinessOperations: boolean;
 };
 
-type ScanTone = 'idle' | 'success' | 'warning' | 'error' | 'offline';
+type ScanTone = 'idle' | 'success' | 'warning' | 'error';
 
 type BrowserAudioContext = typeof AudioContext;
 type WindowWithWebkitAudio = Window &
@@ -76,6 +88,11 @@ type WindowWithWebkitAudio = Window &
   };
 
 let successAudioContext: AudioContext | null = null;
+
+const quantityFormatter = new Intl.NumberFormat('vi-VN', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2
+});
 
 const getSuccessAudioContext = () => {
   if (typeof window === 'undefined') {
@@ -106,20 +123,30 @@ const playSuccessBeep = async () => {
       await audioContext.resume();
     }
 
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    oscillator.type = 'sine';
-    oscillator.frequency.value = 880;
-    gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
-    oscillator.start(audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.15);
-    oscillator.stop(audioContext.currentTime + 0.15);
-    oscillator.onended = () => {
-      oscillator.disconnect();
-      gainNode.disconnect();
-    };
+    const beepPlan = [
+      { startOffset: 0, frequency: 880 },
+      { startOffset: 0.18, frequency: 1100 }
+    ];
+
+    for (const beep of beepPlan) {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      const startAt = audioContext.currentTime + beep.startOffset;
+      const endAt = startAt + 0.12;
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(beep.frequency, startAt);
+      gainNode.gain.setValueAtTime(0.08, startAt);
+      gainNode.gain.exponentialRampToValueAtTime(0.00001, endAt);
+      oscillator.start(startAt);
+      oscillator.stop(endAt);
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gainNode.disconnect();
+      };
+    }
   } catch {
     // Never let the success sound crash the scan screen.
   }
@@ -130,25 +157,27 @@ const toStoreQuery = (storeId: string) => `?storeId=${encodeURIComponent(storeId
 export default function ScanPageContent() {
   const sessionQuery = useResolvedSession();
   const session = sessionQuery.session;
+  const { isOnline } = useNetworkStatus();
   const isAdmin = session?.user.role === 'ADMIN';
   const isManager = session?.user.role === 'MANAGER';
   const canTransfer =
     isAdmin || isManager || (session?.user.permissions ?? []).includes('scan_transfer');
-  const { syncState, isOnline } = useOfflineSync();
+
   const [feedback, setFeedback] = useState<{
     tone: ScanTone;
     title: string;
     message: string;
   }>({
     tone: 'idle',
-    title: 'Sẵn sàng',
-    message: 'Quét mã QR của lô hoặc nhập mã lô thủ công.'
+    title: 'San sang',
+    message: 'Dua tem QR vao camera. Quet thanh cong se tu tru 1 nguyen lieu.'
   });
-  const [manualMode, setManualMode] = useState(false);
 
-  // Load persisted store selections
   const getPersistedStoreId = (key: string, defaultValue: string | undefined) => {
-    if (typeof window === 'undefined') return defaultValue;
+    if (typeof window === 'undefined') {
+      return defaultValue;
+    }
+
     try {
       const stored = localStorage.getItem(`scan-${key}`);
       return stored || defaultValue;
@@ -158,11 +187,14 @@ export default function ScanPageContent() {
   };
 
   const persistStoreId = (key: string, value: string) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       localStorage.setItem(`scan-${key}`, value);
     } catch {
-      // Ignore storage errors
+      // Ignore storage errors.
     }
   };
 
@@ -185,10 +217,11 @@ export default function ScanPageContent() {
   });
 
   const operationType = watch('operationType');
-  const destinationStoreId = watch('destinationStoreId');
   const storeId = watch('storeId');
   const sourceStoreId = watch('sourceStoreId');
+  const destinationStoreId = watch('destinationStoreId');
   const networkStatusStoreId = operationType === 'TRANSFER' ? sourceStoreId : storeId;
+  const isQuickStoreUsageMode = !isAdmin && operationType === 'STORE_USAGE';
 
   useEffect(() => {
     if (!canTransfer && operationType === 'TRANSFER') {
@@ -211,17 +244,22 @@ export default function ScanPageContent() {
     }
   }, [session?.user.store?.id, sessionQuery.isSuccess, setValue, sourceStoreId, storeId]);
 
-  // Persist store selections when they change
   useEffect(() => {
-    if (storeId) persistStoreId('usage-store', storeId);
+    if (storeId) {
+      persistStoreId('usage-store', storeId);
+    }
   }, [storeId]);
 
   useEffect(() => {
-    if (sourceStoreId) persistStoreId('transfer-source', sourceStoreId);
+    if (sourceStoreId) {
+      persistStoreId('transfer-source', sourceStoreId);
+    }
   }, [sourceStoreId]);
 
   useEffect(() => {
-    if (destinationStoreId) persistStoreId('transfer-destination', destinationStoreId);
+    if (destinationStoreId) {
+      persistStoreId('transfer-destination', destinationStoreId);
+    }
   }, [destinationStoreId]);
 
   const storesQuery = useQuery<Array<{ id: string; name: string }>>({
@@ -247,6 +285,7 @@ export default function ScanPageContent() {
       if (isAdmin && networkStatusStoreId) {
         params.set('storeId', networkStatusStoreId);
       }
+
       const query = params.toString();
       return getScanNetworkStatus(query ? `?${query}` : '');
     },
@@ -274,6 +313,7 @@ export default function ScanPageContent() {
         batchCount: 0,
         unit: batch.ingredient.unit ?? ''
       };
+
       current.totalQty += batch.remainingQty;
       current.batchCount += 1;
       grouped.set(batch.ingredient.id, current);
@@ -282,123 +322,15 @@ export default function ScanPageContent() {
     return [...grouped.values()].sort((a, b) => a.ingredientName.localeCompare(b.ingredientName));
   }, [destinationInventoryQuery.data]);
 
-  const selectedDestinationStoreName = useMemo(() => {
-    const stores = storesQuery.data ?? [];
-    return stores.find((store) => store.id === destinationStoreId)?.name ?? '';
-  }, [destinationStoreId, storesQuery.data]);
-
-  const selectedUsageStoreName = useMemo(() => {
-    const stores = storesQuery.data ?? [];
-    return stores.find((store) => store.id === storeId)?.name ?? '';
-  }, [storeId, storesQuery.data]);
-
-  const selectedSourceStoreName = useMemo(() => {
-    const stores = storesQuery.data ?? [];
-    return stores.find((store) => store.id === sourceStoreId)?.name ?? '';
-  }, [sourceStoreId, storesQuery.data]);
-
+  const stores = storesQuery.data ?? [];
+  const selectedDestinationStoreName =
+    stores.find((store) => store.id === destinationStoreId)?.name ?? '';
+  const selectedUsageStoreName = stores.find((store) => store.id === storeId)?.name ?? '';
+  const selectedSourceStoreName = stores.find((store) => store.id === sourceStoreId)?.name ?? '';
   const networkStatusStoreName =
     operationType === 'TRANSFER'
-      ? selectedSourceStoreName || session?.user.store?.name || 'chi nhánh hiện tại'
-      : selectedUsageStoreName || session?.user.store?.name || 'chi nhánh hiện tại';
-
-  const networkStatusBadge = useMemo(() => {
-    if (!isOnline) {
-      return {
-        label: 'Chờ kiểm tra whitelist',
-        tone: 'neutral' as const
-      };
-    }
-
-    if (isAdmin && !networkStatusStoreId) {
-      return {
-        label: 'Chọn chi nhánh để kiểm tra',
-        tone: 'neutral' as const
-      };
-    }
-
-    if (networkStatusQuery.isLoading) {
-      return {
-        label: 'Đang kiểm tra mạng',
-        tone: 'warning' as const
-      };
-    }
-
-    if (networkStatusQuery.isError) {
-      return {
-        label: 'Không kiểm tra được mạng',
-        tone: 'danger' as const
-      };
-    }
-
-    if (!networkStatusQuery.data?.hasActiveWhitelist) {
-      return {
-        label: 'Chưa cấu hình whitelist',
-        tone: 'neutral' as const
-      };
-    }
-
-    return networkStatusQuery.data.isAllowed
-      ? {
-          label: 'Mạng được phép',
-          tone: 'success' as const
-        }
-      : {
-          label: 'Mạng chưa được phép',
-          tone: 'danger' as const
-        };
-  }, [
-    isAdmin,
-    isOnline,
-    networkStatusQuery.data,
-    networkStatusQuery.isError,
-    networkStatusQuery.isLoading,
-    networkStatusStoreId
-  ]);
-
-  const networkStatusMessage = useMemo(() => {
-    if (!isOnline) {
-      return 'Thiết bị đang offline. Whitelist sẽ chỉ được backend kiểm tra khi lượt quét được đồng bộ lại.';
-    }
-
-    if (isAdmin && !networkStatusStoreId) {
-      return 'Hãy chọn chi nhánh nguồn hoặc chi nhánh sử dụng trước để kiểm tra whitelist đúng phạm vi.';
-    }
-
-    if (networkStatusQuery.isLoading) {
-      return 'Đang lấy IP mà backend thực sự nhìn thấy từ request hiện tại.';
-    }
-
-    if (networkStatusQuery.isError) {
-      return 'Chưa lấy được trạng thái whitelist. Bạn vẫn có thể thử quét, nhưng sẽ khó biết trước backend có từ chối vì mạng hay không.';
-    }
-
-    const networkStatus = networkStatusQuery.data;
-    if (!networkStatus) {
-      return 'Chưa có dữ liệu trạng thái mạng.';
-    }
-
-    const matchedBy =
-      networkStatus.matchedWhitelistTypes.length > 0
-        ? ` Khớp theo ${networkStatus.matchedWhitelistTypes.join(' + ')}.`
-        : '';
-
-    if (!networkStatus.hasActiveWhitelist) {
-      return `Chi nhánh ${networkStatusStoreName} chưa có whitelist active. IP backend đang nhận là ${networkStatus.ipAddress}.`;
-    }
-
-    return networkStatus.isAllowed
-      ? `Chi nhánh ${networkStatusStoreName} đang cho phép mạng hiện tại. IP backend đang nhận là ${networkStatus.ipAddress}.${matchedBy}`
-      : `Chi nhánh ${networkStatusStoreName} đang chặn mạng hiện tại. IP backend đang nhận là ${networkStatus.ipAddress}. Nếu quét online bây giờ, backend sẽ từ chối.`;
-  }, [
-    isAdmin,
-    isOnline,
-    networkStatusQuery.data,
-    networkStatusQuery.isError,
-    networkStatusQuery.isLoading,
-    networkStatusStoreId,
-    networkStatusStoreName
-  ]);
+      ? selectedSourceStoreName || session?.user.store?.name || 'chi nhanh hien tai'
+      : selectedUsageStoreName || session?.user.store?.name || 'chi nhanh hien tai';
 
   const businessNetworkBadge = useMemo(() => {
     if (!isOnline) {
@@ -464,11 +396,11 @@ export default function ScanPageContent() {
 
   const businessNetworkMessage = useMemo(() => {
     if (!isOnline) {
-      return 'Thiet bi dang offline. Theo chinh sach moi, nghiep vu trong ca lam chi duoc su dung khi mang hop le.';
+      return 'Thiet bi dang offline. Nghiep vu scan chi duoc phep khi online dung mang hop le.';
     }
 
     if (isAdmin && !networkStatusStoreId) {
-      return 'Hay chon chi nhanh nguon hoac chi nhanh su dung truoc de kiem tra whitelist dung pham vi.';
+      return 'Hay chon chi nhanh nguon hoac chi nhanh su dung truoc khi thuc hien scan.';
     }
 
     if (networkStatusQuery.isLoading) {
@@ -494,11 +426,9 @@ export default function ScanPageContent() {
     }
 
     if (networkStatus.bypassActive) {
-      return `Chi nhanh ${networkStatusStoreName} dang duoc mo tam den ${
-        networkStatus.bypassExpiresAt
-          ? new Date(networkStatus.bypassExpiresAt).toLocaleString('vi-VN')
-          : 'mot thoi diem khong xac dinh'
-      }. ${networkStatus.bypassReason ? `Ly do: ${networkStatus.bypassReason}. ` : ''}IP backend dang nhan la ${networkStatus.ipAddress}.`;
+      return `Chi nhanh ${networkStatusStoreName} dang duoc mo tam. ${
+        networkStatus.bypassReason ? `Ly do: ${networkStatus.bypassReason}. ` : ''
+      }IP backend dang nhan la ${networkStatus.ipAddress}.`;
     }
 
     return networkStatus.canAccessBusinessOperations
@@ -522,18 +452,41 @@ export default function ScanPageContent() {
         return 'from-amber-100 to-amber-50';
       case 'error':
         return 'from-rose-100 to-rose-50';
-      case 'offline':
-        return 'from-slate-200 to-slate-50';
       default:
         return 'from-brand-50 to-white';
     }
   }, [feedback.tone]);
 
-  const scanMutation = useMutation<ScanResponse, Error, FormValues & { manual: boolean }>({
+  const buildStoreUsageMessage = (data: ScanResponse) => {
+    const details = [
+      data.ingredientName ? `Nguyen lieu: ${data.ingredientName}.` : null,
+      `Ma lo: ${data.batchCode}.`,
+      data.remainingQty !== undefined
+        ? `Con lai: ${quantityFormatter.format(data.remainingQty)}${
+            data.ingredientUnit ? ` ${data.ingredientUnit}` : ''
+          }.`
+        : null,
+      selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name
+        ? `Chi nhanh su dung: ${selectedUsageStoreName}.`
+        : null
+    ].filter(Boolean);
+
+    return [data.message, ...details].join(' ');
+  };
+
+  const scanMutation = useMutation<ScanResponse, Error, ScanMutationValues>({
     mutationFn: async (values) => {
+      if (!isOnline) {
+        throw new Error(
+          values.operationType === 'TRANSFER'
+            ? 'Thiet bi dang offline. Chuyen kho can online de theo doi va xac nhan phieu.'
+            : 'Thiet bi dang offline. Theo chinh sach moi, ban phai online dung mang chi nhanh moi duoc quet.'
+        );
+      }
+
       const payload = {
         batchCode: values.batchCode,
-        quantityUsed: values.quantityUsed,
+        quantityUsed: values.quantityUsed ?? 1,
         scannedAt: new Date().toISOString(),
         deviceId: getDeviceId(),
         clientEventId: crypto.randomUUID(),
@@ -541,121 +494,48 @@ export default function ScanPageContent() {
         destinationStoreId:
           values.operationType === 'TRANSFER' ? values.destinationStoreId : undefined,
         operationType: values.operationType,
-        entryMethod: (values.manual ? 'MANUAL' : 'CAMERA') as 'MANUAL' | 'CAMERA'
+        entryMethod: 'CAMERA' as const,
+        scannedLabelValue: values.scannedLabelValue,
+        scannedLabelBatchId: values.scannedLabelBatchId,
+        scannedLabelSequenceNumber: values.scannedLabelSequenceNumber
       };
 
-      if (!isOnline && values.operationType === 'STORE_USAGE') {
-        await queueOfflineScan({
-          ...payload,
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        });
-        return {
-          resultStatus: 'SUCCESS',
-          resultCode: 'OFFLINE_QUEUED',
-          message: 'Lượt quét đã được lưu ngoại tuyến và sẽ tự đồng bộ khi có mạng.'
-        };
-      }
-
-      if (!isOnline && values.operationType === 'TRANSFER') {
-        throw new Error(
-          'Thiết bị đang offline. Chuyển kho cần online để chi nhánh nhận theo dõi và xác nhận phiếu.'
-        );
-      }
-
-      if (!isOnline) {
-        throw new Error(
-          'Thiết bị đang offline. Theo chính sách hiện tại, bạn phải kết nối đúng mạng chi nhánh mới được quét.'
-        );
-      }
-
-      if (!isOnline) {
-        await queueOfflineScan({
-          ...payload,
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        });
-        return {
-          resultStatus: 'SUCCESS',
-          resultCode: 'OFFLINE_QUEUED',
-          message: 'Lượt quét đã được lưu ngoại tuyến và sẽ tự đồng bộ khi có mạng.'
-        };
-      }
-
       try {
-        return values.manual
-          ? ((await submitManualScan(payload)) as ScanResponse)
-          : ((await submitScan(payload)) as ScanResponse);
+        return (await submitScan(payload)) as ScanResponse;
       } catch (error) {
-        if (!navigator.onLine && values.operationType === 'STORE_USAGE') {
-          await queueOfflineScan({
-            ...payload,
-            status: 'pending',
-            createdAt: new Date().toISOString()
-          });
-          return {
-            resultStatus: 'SUCCESS',
-            resultCode: 'OFFLINE_QUEUED',
-            message: 'Mạng vừa mất, lượt quét đã được lưu ngoại tuyến.'
-          };
-        }
-
-        if (!navigator.onLine && values.operationType === 'TRANSFER') {
-          throw new Error('Mạng vừa mất. Hãy kết nối lại để hoàn tất tạo phiếu chuyển kho.');
-        }
-
         if (!navigator.onLine) {
           throw new Error(
-            'Mạng vừa mất. Hãy kết nối lại đúng mạng chi nhánh rồi quét lại.'
+            values.operationType === 'TRANSFER'
+              ? 'Mang vua mat. Hay ket noi lai de hoan tat tao phieu chuyen kho.'
+              : 'Mang vua mat. Hay ket noi lai dung mang chi nhanh roi quet lai.'
           );
-        }
-
-        if (!navigator.onLine) {
-          await queueOfflineScan({
-            ...payload,
-            status: 'pending',
-            createdAt: new Date().toISOString()
-          });
-          return {
-            resultStatus: 'SUCCESS',
-            resultCode: 'OFFLINE_QUEUED',
-            message: 'Mạng vừa mất, lượt quét đã được lưu ngoại tuyến.'
-          };
         }
 
         throw error;
       }
     },
     onSuccess: async (data, variables) => {
-      if (data.resultCode === 'OFFLINE_QUEUED') {
-        setFeedback({
-          tone: 'offline',
-          title: 'Đã lưu ngoại tuyến',
-          message: data.message
-        });
-        return;
-      }
-
-      if (data.resultStatus === 'WARNING') {
-        setFeedback({
-          tone: 'warning',
-          title: localizeResultCode(data.resultCode),
-          message: data.message
-        });
-        return;
-      }
-
       setFeedback({
-        tone: 'success',
+        tone: data.resultStatus === 'WARNING' ? 'warning' : 'success',
         title: localizeResultCode(data.resultCode),
         message:
           variables.operationType === 'TRANSFER' && selectedDestinationStoreName
-            ? `${data.message} Chi nhánh nhận: ${selectedDestinationStoreName}. ${selectedSourceStoreName && selectedSourceStoreName !== session?.user.store?.name ? `Chi nhánh gửi: ${selectedSourceStoreName}.` : ''}`
-            : variables.operationType === 'STORE_USAGE' && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name
-              ? `${data.message} Chi nhánh sử dụng: ${selectedUsageStoreName}.`
+            ? `${data.message} Chi nhanh nhan: ${selectedDestinationStoreName}. ${
+                selectedSourceStoreName && selectedSourceStoreName !== session?.user.store?.name
+                  ? `Chi nhanh gui: ${selectedSourceStoreName}.`
+                  : ''
+              }`
+            : variables.operationType === 'STORE_USAGE'
+              ? buildStoreUsageMessage(data)
               : data.message
       });
+
       void playSuccessBeep();
+
+      if (variables.operationType !== 'STORE_USAGE') {
+        setValue('batchCode', '');
+      }
+
       if (variables.operationType === 'TRANSFER' && variables.destinationStoreId) {
         void destinationInventoryQuery.refetch();
       }
@@ -663,34 +543,85 @@ export default function ScanPageContent() {
     onError: (error: Error) => {
       setFeedback({
         tone: 'error',
-        title: 'Từ chối quét',
+        title: 'Tu choi quet',
         message: error.message
       });
     }
   });
 
-  const stores = storesQuery.data ?? [];
+  const handleQrDetected = (value: string) => {
+    if (scanMutation.isPending) {
+      return;
+    }
+
+    const parsed = parseBatchQrValue(value);
+    if (!parsed) {
+      setFeedback({
+        tone: 'error',
+        title: 'QR khong hop le',
+        message: 'Ma QR khong dung dinh dang tem nguyen lieu.'
+      });
+      return;
+    }
+
+    if (isQuickStoreUsageMode) {
+      if (!parsed.batchId || parsed.sequenceNumber === null) {
+        setFeedback({
+          tone: 'error',
+          title: 'Tem chua hop le',
+          message:
+            'Che do quet nhanh chi nhan tem da phat hanh co so thu tu. Hay in tem moi roi quet lai.'
+        });
+        return;
+      }
+
+      scanMutation.mutate({
+        operationType: 'STORE_USAGE',
+        batchCode: parsed.batchCode,
+        quantityUsed: 1,
+        storeId,
+        scannedLabelValue: parsed.rawValue,
+        scannedLabelBatchId: parsed.batchId,
+        scannedLabelSequenceNumber: parsed.sequenceNumber
+      });
+      return;
+    }
+
+    setValue('batchCode', parsed.batchCode, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+    setFeedback({
+      tone: 'idle',
+      title: 'Da nhan dien lo',
+      message:
+        operationType === 'TRANSFER'
+          ? `Da doc lo ${parsed.batchCode}. Chon chi nhanh nhan va so luong roi bam chuyen kho.`
+          : `Da doc lo ${parsed.batchCode}. Dieu chinh thong tin neu can roi bam ghi nhan.`
+    });
+  };
+
+  const handleCameraError = (message: string) => {
+    setFeedback({
+      tone: 'error',
+      title: 'Camera quet gap loi',
+      message
+    });
+  };
 
   return (
-    <ProtectedPage title="Quét nguyên liệu" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
+    <ProtectedPage title="Quet nguyen lieu" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
       <div className={`rounded-3xl bg-gradient-to-br ${backgroundClass} p-4 md:p-6`}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <Badge label={isOnline ? 'Trực tuyến' : 'Chế độ ngoại tuyến'} tone={isOnline ? 'success' : 'neutral'} />
           <Badge
-            label={localizeSyncState(syncState)}
-            tone={
-              syncState === 'SYNCED'
-                ? 'success'
-                : syncState === 'SYNCING'
-                  ? 'warning'
-                  : syncState === 'SYNC_ERROR'
-                    ? 'danger'
-                    : 'neutral'
-            }
+            label={isOnline ? 'Truc tuyen' : 'Offline'}
+            tone={isOnline ? 'success' : 'neutral'}
           />
-          <Button variant="secondary" onClick={() => setManualMode((value) => !value)}>
-            {manualMode ? 'Dùng camera quét' : 'Nhập tay khi camera lỗi'}
-          </Button>
+          {isQuickStoreUsageMode ? (
+            <Badge label="Auto tru 1" tone="success" />
+          ) : operationType === 'TRANSFER' ? (
+            <Badge label="Chuyen kho" tone="warning" />
+          ) : null}
         </div>
 
         <Card className="mb-4">
@@ -705,7 +636,7 @@ export default function ScanPageContent() {
 
         <Card className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-700">
-            Trạng thái lần quét gần nhất
+            Trang thai lan quet gan nhat
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-brand-900">{feedback.title}</h2>
           <p className="mt-2 text-sm text-slate-600">{feedback.message}</p>
@@ -718,7 +649,7 @@ export default function ScanPageContent() {
               variant={operationType === 'STORE_USAGE' ? 'primary' : 'secondary'}
               onClick={() => setValue('operationType', 'STORE_USAGE', { shouldValidate: true })}
             >
-              Sử dụng tại quán
+              Su dung tai quan
             </Button>
             {canTransfer ? (
               <Button
@@ -726,207 +657,207 @@ export default function ScanPageContent() {
                 variant={operationType === 'TRANSFER' ? 'primary' : 'secondary'}
                 onClick={() => setValue('operationType', 'TRANSFER', { shouldValidate: true })}
               >
-                Chuyển kho
+                Chuyen kho
               </Button>
             ) : null}
           </div>
           <p className="mt-3 text-sm text-slate-600">
             {operationType === 'TRANSFER'
-              ? `Chi nhánh thực hiện: ${session?.user.store?.name ?? 'Chưa xác định'}. ${isAdmin && selectedSourceStoreName && selectedSourceStoreName !== session?.user.store?.name ? `Chi nhánh gửi: ${selectedSourceStoreName}. ` : ''}Sau khi quét, hệ thống sẽ trừ tồn ở chi nhánh gửi và cộng sang chi nhánh nhận.`
-              : `Quét để ghi nhận nguyên liệu vừa được sử dụng tại quầy. ${isAdmin && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name ? `Chi nhánh sử dụng: ${selectedUsageStoreName}.` : ''}`}
+              ? `Chi nhanh thuc hien: ${session?.user.store?.name ?? 'Chua xac dinh'}. Sau khi quet, he thong se tru ton o chi nhanh gui va tao phieu chuyen kho.`
+              : isQuickStoreUsageMode
+                ? `Quet thanh cong la he thong tu tru ngay 1 don vi tai ${session?.user.store?.name ?? 'chi nhanh hien tai'}. Khong can nhap tay, khong can bam gui.`
+                : `Quet de ghi nhan nguyen lieu vua duoc su dung tai quay. ${isAdmin && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name ? `Chi nhanh su dung: ${selectedUsageStoreName}.` : ''}`}
           </p>
         </Card>
 
-        {operationType === 'TRANSFER' ? (
-          <Card className="mb-4 border border-amber-200 bg-amber-50">
-            <p className="text-sm font-medium text-amber-900">
-              Lưu ý: lượt quét chuyển kho chỉ tạo phiếu và trừ tồn ở chi nhánh gửi.
-              Chi nhánh nhận phải vào màn lịch sử chuyển kho để xác nhận số lượng thực nhận,
-              lúc đó kho đích mới được cộng.
+        {isQuickStoreUsageMode ? (
+          <Card className="mb-4 border border-emerald-200 bg-emerald-50">
+            <p className="text-sm font-medium text-emerald-900">
+              Moi tem da phat hanh chi duoc quet 1 lan. He thong chi chap nhan tem co so thu tu
+              va se phat tieng bip bip sau khi tru kho thanh cong.
             </p>
           </Card>
         ) : null}
 
-        {!manualMode ? (
-          <Card className="mb-4">
-            <h3 className="mb-3 text-lg font-semibold text-brand-900">Quét bằng camera</h3>
-            <QrScanner
-              onError={(message) => {
-                setManualMode(true);
-                setFeedback({
-                  tone: 'error',
-                  title: 'Camera quét đang gặp lỗi',
-                  message
-                });
-              }}
-              onDetected={(value) => {
-                const parsed = parseBatchQrValue(value);
-                if (!parsed) {
-                  setFeedback({
-                    tone: 'error',
-                    title: 'QR không hợp lệ',
-                    message: 'Mã QR không đúng định dạng tem nguyên liệu'
-                  });
-                  return;
-                }
-
-                setValue('batchCode', parsed.batchCode, {
-                  shouldDirty: true,
-                  shouldValidate: true
-                });
-                setFeedback({
-                  tone: 'idle',
-                  title: 'Đã nhận diện lô',
-                  message:
-                    operationType === 'TRANSFER'
-                      ? `Đã đọc lô ${parsed.batchCode}. ${isAdmin && selectedSourceStoreName && selectedSourceStoreName !== session?.user.store?.name ? `Chi nhánh gửi: ${selectedSourceStoreName}. ` : ''}Chọn chi nhánh nhận và số lượng rồi bấm chuyển kho.`
-                      : `Đã đọc lô ${parsed.batchCode}. ${isAdmin && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name ? `Chi nhánh sử dụng: ${selectedUsageStoreName}. ` : ''}Nhập số lượng rồi bấm ghi nhận.`
-                });
-              }}
-            />
+        {operationType === 'TRANSFER' ? (
+          <Card className="mb-4 border border-amber-200 bg-amber-50">
+            <p className="text-sm font-medium text-amber-900">
+              Luot quet chuyen kho chi tao phieu va tru ton o chi nhanh gui. Chi nhanh nhan can vao
+              lich su chuyen kho de xac nhan so luong thuc nhan.
+            </p>
           </Card>
         ) : null}
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),360px]">
+        <Card className="mb-4">
+          <h3 className="mb-3 text-lg font-semibold text-brand-900">Quet bang camera</h3>
+          <p className="mb-4 text-sm text-slate-600">
+            {isQuickStoreUsageMode
+              ? 'Dua tem vao khung quet. Khi QR hop le, he thong se xu ly ngay khong can bam nut.'
+              : 'Quet de dien ma lo vao form ben duoi, sau do xac nhan thao tac.'}
+          </p>
+          <QrScanner onDetected={handleQrDetected} onError={handleCameraError} />
+        </Card>
+
+        {isQuickStoreUsageMode ? (
           <Card>
-            <form
-              className="space-y-4"
-              onSubmit={handleSubmit((values) =>
-                scanMutation.mutate({ ...values, manual: manualMode })
-              )}
-            >
-              <Input
-                label="Mã lô"
-                placeholder="BATCH-TRA-001"
-                error={errors.batchCode?.message}
-                {...register('batchCode')}
-              />
-
-              {isAdmin && operationType === 'STORE_USAGE' ? (
-                <label className="block space-y-2">
-                  <span className="text-sm font-medium text-brand-900">Chi nhánh sử dụng</span>
-                  <select
-                    className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
-                    {...register('storeId')}
-                  >
-                    <option value="">Chọn chi nhánh sử dụng</option>
-                    {stores.map((store) => (
-                      <option key={store.id} value={store.id}>
-                        {store.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.storeId ? (
-                    <span className="text-xs text-danger">{errors.storeId.message}</span>
-                  ) : null}
-                </label>
-              ) : null}
-
-              {canTransfer && operationType === 'TRANSFER' ? (
-                <>
-                  <label className="block space-y-2">
-                    <span className="text-sm font-medium text-brand-900">Chi nhánh gửi</span>
-                    <select
-                      className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
-                      disabled={!isAdmin}
-                      {...register('sourceStoreId')}
-                    >
-                      <option value="">Chọn chi nhánh gửi</option>
-                      {stores
-                        .filter((store) =>
-                          isAdmin
-                            ? store.id !== destinationStoreId
-                            : store.id === session?.user.store?.id
-                        )
-                        .map((store) => (
-                          <option key={store.id} value={store.id}>
-                            {store.name}
-                          </option>
-                        ))}
-                    </select>
-                    {errors.sourceStoreId ? (
-                      <span className="text-xs text-danger">{errors.sourceStoreId.message}</span>
-                    ) : null}
-                  </label>
-
-                  <label className="block space-y-2">
-                    <span className="text-sm font-medium text-brand-900">Chi nhánh nhận</span>
-                    <select
-                      className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
-                      {...register('destinationStoreId')}
-                    >
-                      <option value="">Chọn chi nhánh nhận</option>
-                      {stores
-                        .filter((store) => store.id !== sourceStoreId)
-                        .map((store) => (
-                          <option key={store.id} value={store.id}>
-                            {store.name}
-                          </option>
-                        ))}
-                    </select>
-                    {errors.destinationStoreId ? (
-                      <span className="text-xs text-danger">{errors.destinationStoreId.message}</span>
-                    ) : null}
-                  </label>
-                </>
-              ) : null}
-
-              <Input
-                label={operationType === 'TRANSFER' ? 'Số lượng chuyển' : 'Số lượng sử dụng'}
-                type="number"
-                min={1}
-                step={1}
-                error={errors.quantityUsed?.message}
-                {...register('quantityUsed')}
-              />
-
-              <Button type="submit" fullWidth disabled={scanMutation.isPending}>
-                {scanMutation.isPending
-                  ? 'Đang gửi lượt quét...'
-                  : operationType === 'TRANSFER'
-                    ? manualMode
-                      ? 'Gửi phiếu chuyển kho thủ công'
-                      : 'Chuyển kho bằng lượt quét'
-                    : manualMode
-                      ? 'Gửi phiếu quét thủ công'
-                      : 'Gửi kết quả quét'}
-              </Button>
-            </form>
+            <h3 className="text-lg font-semibold text-brand-900">Che do quet nhanh</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Scan thanh cong se tru ngay 1 don vi. Neu quet lai cung mot tem, backend se tu choi de
+              tranh trung lap.
+            </p>
           </Card>
-
-          {isAdmin && operationType === 'TRANSFER' ? (
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),360px]">
             <Card>
-              <h3 className="text-lg font-semibold text-brand-900">Tồn kho chi nhánh nhận</h3>
-              <p className="mt-2 text-sm text-slate-600">
-                {selectedDestinationStoreName
-                  ? `Đang xem tồn của ${selectedDestinationStoreName}.`
-                  : 'Chọn chi nhánh để xem nguyên liệu và số lượng hiện có.'}
-              </p>
-              <div className="mt-4 space-y-3">
-                {destinationInventoryQuery.isLoading ? (
-                  <p className="text-sm text-slate-500">Đang tải tồn kho...</p>
-                ) : destinationInventory.length === 0 ? (
-                  <p className="text-sm text-slate-500">Chưa có dữ liệu tồn kho cho chi nhánh này.</p>
-                ) : (
-                  destinationInventory.map((item) => (
-                    <div key={item.ingredientName} className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-medium text-brand-900">{item.ingredientName}</p>
-                          <p className="text-xs text-slate-500">{item.batchCount} lô đang có tồn</p>
-                        </div>
-                        <p className="text-sm font-semibold text-brand-900">
-                          {item.totalQty}
-                          {item.unit ? ` ${item.unit}` : ''}
-                        </p>
-                      </div>
-                    </div>
-                  ))
+              <form
+                className="space-y-4"
+                onSubmit={handleSubmit((values) =>
+                  scanMutation.mutate({
+                    operationType: values.operationType,
+                    batchCode: values.batchCode,
+                    quantityUsed: values.quantityUsed,
+                    storeId: values.storeId,
+                    sourceStoreId: values.sourceStoreId,
+                    destinationStoreId: values.destinationStoreId
+                  })
                 )}
-              </div>
+              >
+                <Input
+                  label="Ma lo"
+                  placeholder="BATCH-TRA-001"
+                  error={errors.batchCode?.message}
+                  {...register('batchCode')}
+                />
+
+                {isAdmin && operationType === 'STORE_USAGE' ? (
+                  <label className="block space-y-2">
+                    <span className="text-sm font-medium text-brand-900">Chi nhanh su dung</span>
+                    <select
+                      className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
+                      {...register('storeId')}
+                    >
+                      <option value="">Chon chi nhanh su dung</option>
+                      {stores.map((store) => (
+                        <option key={store.id} value={store.id}>
+                          {store.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.storeId ? (
+                      <span className="text-xs text-danger">{errors.storeId.message}</span>
+                    ) : null}
+                  </label>
+                ) : null}
+
+                {canTransfer && operationType === 'TRANSFER' ? (
+                  <>
+                    <label className="block space-y-2">
+                      <span className="text-sm font-medium text-brand-900">Chi nhanh gui</span>
+                      <select
+                        className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
+                        disabled={!isAdmin}
+                        {...register('sourceStoreId')}
+                      >
+                        <option value="">Chon chi nhanh gui</option>
+                        {stores
+                          .filter((store) =>
+                            isAdmin
+                              ? store.id !== destinationStoreId
+                              : store.id === session?.user.store?.id
+                          )
+                          .map((store) => (
+                            <option key={store.id} value={store.id}>
+                              {store.name}
+                            </option>
+                          ))}
+                      </select>
+                      {errors.sourceStoreId ? (
+                        <span className="text-xs text-danger">{errors.sourceStoreId.message}</span>
+                      ) : null}
+                    </label>
+
+                    <label className="block space-y-2">
+                      <span className="text-sm font-medium text-brand-900">Chi nhanh nhan</span>
+                      <select
+                        className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
+                        {...register('destinationStoreId')}
+                      >
+                        <option value="">Chon chi nhanh nhan</option>
+                        {stores
+                          .filter((store) => store.id !== sourceStoreId)
+                          .map((store) => (
+                            <option key={store.id} value={store.id}>
+                              {store.name}
+                            </option>
+                          ))}
+                      </select>
+                      {errors.destinationStoreId ? (
+                        <span className="text-xs text-danger">
+                          {errors.destinationStoreId.message}
+                        </span>
+                      ) : null}
+                    </label>
+                  </>
+                ) : null}
+
+                <Input
+                  label={operationType === 'TRANSFER' ? 'So luong chuyen' : 'So luong su dung'}
+                  type="number"
+                  min={1}
+                  step={1}
+                  error={errors.quantityUsed?.message}
+                  {...register('quantityUsed')}
+                />
+
+                <Button type="submit" fullWidth disabled={scanMutation.isPending}>
+                  {scanMutation.isPending
+                    ? 'Dang xu ly luot quet...'
+                    : operationType === 'TRANSFER'
+                      ? 'Chuyen kho bang luot quet'
+                      : 'Ghi nhan luot quet'}
+                </Button>
+              </form>
             </Card>
-          ) : null}
-        </div>
+
+            {isAdmin && operationType === 'TRANSFER' ? (
+              <Card>
+                <h3 className="text-lg font-semibold text-brand-900">Ton kho chi nhanh nhan</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  {selectedDestinationStoreName
+                    ? `Dang xem ton cua ${selectedDestinationStoreName}.`
+                    : 'Chon chi nhanh de xem nguyen lieu va so luong hien co.'}
+                </p>
+                <div className="mt-4 space-y-3">
+                  {destinationInventoryQuery.isLoading ? (
+                    <p className="text-sm text-slate-500">Dang tai ton kho...</p>
+                  ) : destinationInventory.length === 0 ? (
+                    <p className="text-sm text-slate-500">
+                      Chua co du lieu ton kho cho chi nhanh nay.
+                    </p>
+                  ) : (
+                    destinationInventory.map((item) => (
+                      <div
+                        key={item.ingredientName}
+                        className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="font-medium text-brand-900">{item.ingredientName}</p>
+                            <p className="text-xs text-slate-500">{item.batchCount} lo dang co ton</p>
+                          </div>
+                          <p className="text-sm font-semibold text-brand-900">
+                            {quantityFormatter.format(item.totalQty)}
+                            {item.unit ? ` ${item.unit}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
+            ) : null}
+          </div>
+        )}
       </div>
     </ProtectedPage>
   );

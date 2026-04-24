@@ -50,9 +50,18 @@ type ProcessScanResult = {
   batchId?: string | null;
   destinationStoreId?: string | null;
   remainingQty?: number;
+  ingredientName?: string;
+  ingredientUnit?: string | null;
   scanLogId?: string;
   transferId?: string;
   transferStatus?: StockTransferStatus;
+};
+
+type ScannedLabelInfo = {
+  value: string;
+  batchId: string;
+  sequenceNumber: number;
+  consumedLabelKey: string;
 };
 
 const SCAN_LOG_SORT_FIELDS = [
@@ -647,6 +656,7 @@ export class ScanService {
   private async processScanRequest(params: ProcessScanParams): Promise<ProcessScanResult> {
     const storeId = this.getStoreIdForScanRequest(params.currentUser, params.dto);
     const operationType = params.dto.operationType ?? ScanOperationType.STORE_USAGE;
+    let batch: Awaited<ReturnType<BatchesService['findByBatchCode']>> | null = null;
 
     if (!storeId) {
       return {
@@ -688,7 +698,7 @@ export class ScanService {
       });
 
       const config = await this.configService.getConfig();
-      const batch = await this.batchesService.findByBatchCode(storeId, params.dto.batchCode);
+      batch = await this.batchesService.findByBatchCode(storeId, params.dto.batchCode);
       const validationError = await this.validateScanRequest(
         params,
         storeId,
@@ -738,12 +748,52 @@ export class ScanService {
         return duplicated;
       }
 
+      const consumedLabelConflict = await this.resolveConsumedLabelConflict(
+        params,
+        storeId,
+        batch?.id ?? null,
+        operationType,
+        error
+      );
+      if (consumedLabelConflict) {
+        return consumedLabelConflict;
+      }
+
       throw error;
     }
   }
 
   private getStoreIdForScanRequest(currentUser: JwtUser, dto: ScanDto) {
     return currentUser.role === UserRole.ADMIN ? dto.storeId : currentUser.storeId;
+  }
+
+  private hasScannedLabelData(dto: ScanDto) {
+    return Boolean(
+      dto.scannedLabelValue ||
+        dto.scannedLabelBatchId ||
+        dto.scannedLabelSequenceNumber !== undefined
+    );
+  }
+
+  private getScannedLabelInfo(dto: ScanDto): ScannedLabelInfo | null {
+    if (!this.hasScannedLabelData(dto)) {
+      return null;
+    }
+
+    if (
+      !dto.scannedLabelValue ||
+      !dto.scannedLabelBatchId ||
+      !dto.scannedLabelSequenceNumber
+    ) {
+      return null;
+    }
+
+    return {
+      value: dto.scannedLabelValue,
+      batchId: dto.scannedLabelBatchId,
+      sequenceNumber: dto.scannedLabelSequenceNumber,
+      consumedLabelKey: `${dto.scannedLabelBatchId}:${dto.scannedLabelSequenceNumber}`
+    };
   }
 
   private async validateScanRequest(
@@ -813,6 +863,23 @@ export class ScanService {
       });
     }
 
+    if (operationType === ScanOperationType.STORE_USAGE && this.hasScannedLabelData(params.dto)) {
+      const scannedLabel = this.getScannedLabelInfo(params.dto);
+      if (
+        !scannedLabel ||
+        scannedLabel.batchId !== batch.id ||
+        batch.printedLabelCount < scannedLabel.sequenceNumber
+      ) {
+        return this.createErrorResultV2(params, {
+          storeId,
+          batchId: batch.id,
+          resultCode: ERROR_CODES.ERROR_INVALID_QR_FORMAT,
+          message: 'Tem QR khong hop le hoac chua duoc phat hanh',
+          operationType
+        });
+      }
+    }
+
     const scannedAt = new Date(params.dto.scannedAt);
     const isExpired = batch.expiredAt ? batch.expiredAt <= scannedAt : false;
     if (isExpired || batch.status === BatchStatus.EXPIRED) {
@@ -877,6 +944,25 @@ export class ScanService {
     batch: NonNullable<Awaited<ReturnType<BatchesService['findByBatchCode']>>>,
     allowFifoBypass: boolean
   ): Promise<ProcessScanResult> {
+    const scannedLabel = this.getScannedLabelInfo(params.dto);
+    if (scannedLabel) {
+      const existingScan = await this.prisma.scanLog.findUnique({
+        where: {
+          consumedLabelKey: scannedLabel.consumedLabelKey
+        }
+      });
+
+      if (existingScan) {
+        return this.createErrorResultV2(params, {
+          storeId,
+          batchId: batch.id,
+          resultCode: ERROR_CODES.ERROR_LABEL_ALREADY_SCANNED,
+          message: 'Tem nay da duoc quet truoc do',
+          operationType: ScanOperationType.STORE_USAGE
+        });
+      }
+    }
+
     return this.prisma.runInTransaction(async (tx) => {
       const freshBatch = await tx.ingredientBatch.findUniqueOrThrow({
         where: {
@@ -949,6 +1035,8 @@ export class ScanService {
           source: params.source,
           entryMethod: params.entryMethod,
           operationType: ScanOperationType.STORE_USAGE,
+          scannedLabelValue: scannedLabel?.value,
+          consumedLabelKey: scannedLabel?.consumedLabelKey,
           ipAddress: params.ipAddress,
           ssid: params.dto.ssid,
           resultStatus,
@@ -968,6 +1056,8 @@ export class ScanService {
         operationType: ScanOperationType.STORE_USAGE,
         batchId: scanLog.batchId,
         remainingQty: updatedBatch.remainingQty,
+        ingredientName: batch.ingredient.name,
+        ingredientUnit: batch.ingredient.unit,
         scanLogId: scanLog.id
       };
     });
@@ -1295,6 +1385,7 @@ export class ScanService {
         source: params.source,
         entryMethod: params.entryMethod,
         operationType: payload.operationType,
+        scannedLabelValue: params.dto.scannedLabelValue,
         ipAddress: params.ipAddress,
         ssid: params.dto.ssid,
         resultStatus: ScanResultStatus.ERROR,
@@ -1404,6 +1495,34 @@ export class ScanService {
       destinationStoreId: existing.destinationStoreId,
       scanLogId: existing.id
     };
+  }
+
+  private async resolveConsumedLabelConflict(
+    params: ProcessScanParams,
+    storeId: string,
+    batchId: string | null,
+    operationType: ScanOperationType,
+    error: unknown
+  ): Promise<ProcessScanResult | null> {
+    if (operationType !== ScanOperationType.STORE_USAGE) {
+      return null;
+    }
+
+    if (!this.getScannedLabelInfo(params.dto)) {
+      return null;
+    }
+
+    if (!this.prisma.isUniqueConstraintError(error, ['consumedLabelKey'])) {
+      return null;
+    }
+
+    return this.createErrorResultV2(params, {
+      storeId,
+      batchId,
+      resultCode: ERROR_CODES.ERROR_LABEL_ALREADY_SCANNED,
+      message: 'Tem nay da duoc quet truoc do',
+      operationType
+    });
   }
 
   private async buildEnhancedLogWhere(currentUser: JwtUser, query: QueryScanLogsDto) {

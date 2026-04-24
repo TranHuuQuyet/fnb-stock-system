@@ -288,6 +288,8 @@ model ScanLog {
   source        ScanSource
   entryMethod   ScanEntryMethod  @default(CAMERA)
   operationType ScanOperationType @default(STORE_USAGE)
+  scannedLabelValue String?
+  consumedLabelKey String?       @unique
   ipAddress     String
   ssid          String?
   resultStatus  ScanResultStatus

@@ -59,4 +59,20 @@ export class ScanDto {
   @IsOptional()
   @IsEnum(ScanEntryMethod)
   entryMethod?: ScanEntryMethod;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  scannedLabelValue?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  scannedLabelBatchId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  scannedLabelSequenceNumber?: number;
 }

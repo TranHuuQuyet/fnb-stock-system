@@ -60,7 +60,7 @@ describe('QrScanner', () => {
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith(
-        'Không thể khởi động camera quét. Bạn có thể chuyển sang nhập tay để tiếp tục.'
+        'Khong the khoi dong camera quet. Hay kiem tra quyen camera roi thu lai.'
       );
     });
   });

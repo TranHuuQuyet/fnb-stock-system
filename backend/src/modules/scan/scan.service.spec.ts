@@ -2,7 +2,6 @@ import {
   BatchStatus,
   ScanEntryMethod,
   ScanResultStatus,
-  ScanSource,
   UserRole,
   UserStatus
 } from '@prisma/client';
@@ -22,7 +21,6 @@ describe('ScanService', () => {
   };
   const configService = {
     getConfig: jest.fn(),
-    getActiveWhitelistsByStore: jest.fn(),
     getBusinessNetworkStatus: jest.fn()
   };
   const batchesService = {
@@ -46,6 +44,23 @@ describe('ScanService', () => {
     sessionVersion: 0
   };
 
+  const baseBatch = {
+    id: 'batch-2',
+    ingredientId: 'ingredient-1',
+    storeId: 'store-1',
+    batchCode: 'BATCH-002',
+    receivedAt: new Date('2026-04-04T00:00:00.000Z'),
+    expiredAt: null,
+    remainingQty: 10,
+    status: BatchStatus.ACTIVE,
+    printedLabelCount: 10,
+    ingredient: {
+      id: 'ingredient-1',
+      name: 'Sua tuoi',
+      unit: 'hop'
+    }
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -65,7 +80,7 @@ describe('ScanService', () => {
       [
         {
           batchCode: 'BATCH-001',
-          quantityUsed: 0.1,
+          quantityUsed: 1,
           scannedAt: new Date().toISOString(),
           clientEventId: 'event-1'
         }
@@ -84,16 +99,7 @@ describe('ScanService', () => {
     configService.getBusinessNetworkStatus.mockResolvedValue({
       canAccessBusinessOperations: true
     });
-    batchesService.findByBatchCode.mockResolvedValue({
-      id: 'batch-2',
-      ingredientId: 'ingredient-1',
-      storeId: 'store-1',
-      batchCode: 'BATCH-002',
-      receivedAt: new Date('2026-04-04T00:00:00.000Z'),
-      expiredAt: null,
-      remainingQty: 10,
-      status: BatchStatus.ACTIVE
-    });
+    batchesService.findByBatchCode.mockResolvedValue(baseBatch);
     batchesService.findOlderActiveBatch.mockResolvedValue({
       id: 'older-batch'
     });
@@ -106,7 +112,7 @@ describe('ScanService', () => {
             status: BatchStatus.ACTIVE
           }),
           update: jest.fn().mockResolvedValue({
-            remainingQty: 9.5
+            remainingQty: 9
           })
         },
         scanLog: {
@@ -123,7 +129,7 @@ describe('ScanService', () => {
       currentUser,
       {
         batchCode: 'BATCH-002',
-        quantityUsed: 0.5,
+        quantityUsed: 1,
         scannedAt: new Date().toISOString(),
         clientEventId: 'event-2',
         entryMethod: ScanEntryMethod.CAMERA
@@ -134,6 +140,59 @@ describe('ScanService', () => {
 
     expect(result.resultStatus).toBe(ScanResultStatus.WARNING);
     expect(result.resultCode).toBe('WARNING_FIFO');
+    expect(result.ingredientName).toBe('Sua tuoi');
+  });
+
+  it('rejects a label that was already consumed', async () => {
+    prisma.scanLog.findUnique.mockImplementation(({ where }: { where: Record<string, string> }) => {
+      if (where.clientEventId) {
+        return Promise.resolve(null);
+      }
+
+      if (where.consumedLabelKey === 'batch-2:1') {
+        return Promise.resolve({
+          id: 'scan-consumed',
+          clientEventId: 'old-event'
+        });
+      }
+
+      return Promise.resolve(null);
+    });
+    configService.getConfig.mockResolvedValue({ allowFifoBypass: true });
+    configService.getBusinessNetworkStatus.mockResolvedValue({
+      canAccessBusinessOperations: true
+    });
+    batchesService.findByBatchCode.mockResolvedValue(baseBatch);
+    batchesService.findOlderActiveBatch.mockResolvedValue(null);
+    prisma.runInTransaction.mockImplementation(async (callback: Function) =>
+      callback({
+        scanLog: {
+          create: jest.fn().mockResolvedValue({
+            id: 'scan-error'
+          })
+        }
+      })
+    );
+
+    const result = await service.sync(
+      currentUser,
+      [
+        {
+          batchCode: 'BATCH-002',
+          quantityUsed: 1,
+          scannedAt: new Date().toISOString(),
+          clientEventId: 'event-3',
+          scannedLabelValue: 'FNBBATCH:BATCH-002|BATCH:batch-2|SEQ:1',
+          scannedLabelBatchId: 'batch-2',
+          scannedLabelSequenceNumber: 1
+        }
+      ],
+      'device-1',
+      '127.0.0.1'
+    );
+
+    expect(result.data[0]?.resultStatus).toBe(ScanResultStatus.ERROR);
+    expect(result.data[0]?.resultCode).toBe('ERROR_LABEL_ALREADY_SCANNED');
   });
 
   it('normalizes ipv4-mapped addresses when checking current network status', async () => {
