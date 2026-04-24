@@ -11,7 +11,11 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
-import { readBooleanEnv, validateRuntimeSecurityConfig } from './common/utils/runtime-config';
+import {
+  readBooleanEnv,
+  readTrustProxyEnv,
+  validateRuntimeSecurityConfig
+} from './common/utils/runtime-config';
 
 async function bootstrap() {
   validateRuntimeSecurityConfig();
@@ -27,7 +31,7 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN?.split(',') ?? ['http://localhost:3000'],
     credentials: true
   });
-  app.getHttpAdapter().getInstance().set('trust proxy', process.env.TRUST_PROXY ?? '1');
+  app.getHttpAdapter().getInstance().set('trust proxy', readTrustProxyEnv(process.env.TRUST_PROXY));
 
   app.useGlobalPipes(
     new ValidationPipe({

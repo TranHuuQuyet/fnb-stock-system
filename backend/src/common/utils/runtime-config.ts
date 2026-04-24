@@ -9,6 +9,30 @@ export const readBooleanEnv = (value: string | undefined, fallback = false) => {
   return !['0', 'false', 'no', 'off'].includes(value.trim().toLowerCase());
 };
 
+export const readTrustProxyEnv = (
+  value: string | undefined,
+  fallback: boolean | number | string = 1
+) => {
+  if (value === undefined || value === null || value.trim() === '') {
+    return fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (['true', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+
+  if (['false', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+
+  if (/^\d+$/.test(normalized)) {
+    return Number.parseInt(normalized, 10);
+  }
+
+  return value.trim();
+};
+
 const assertStrongSecret = (name: string, value: string | undefined) => {
   if (!value || value.trim().length < 32) {
     throw new Error(`${name} must be at least 32 characters in protected environments`);
