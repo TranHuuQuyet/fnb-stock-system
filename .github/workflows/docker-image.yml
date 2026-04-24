@@ -73,6 +73,14 @@ jobs:
       - name: Prepare production env files
         shell: bash
         run: |
+          cat <<'EOF' > .env.production.compose
+          COMPOSE_PROJECT_NAME=fnbstore
+          APP_DOMAIN=fnbstore.store
+          LETSENCRYPT_EMAIL=ops@fnbstore.store
+          NEXT_PUBLIC_API_BASE_URL=/api/v1
+          BACKEND_ENV_FILE=backend/.env.production
+          FRONTEND_ENV_FILE=frontend/.env.production
+          EOF
           cat <<'EOF' > backend/.env.production
           PORT=4000
           DATABASE_URL=postgresql://fnb_user:StrongPassword1234567890@ci-db-pooler.internal:5432/fnb_stock?schema=public&pgbouncer=true
@@ -102,7 +110,7 @@ jobs:
         run: ./deploy/scripts/preflight-check.ps1 -Environment production
 
       - name: Validate production compose
-        run: docker compose --env-file .env.production.compose.example -f docker-compose.prod.yml config
+        run: docker compose --env-file .env.production.compose -f docker-compose.prod.yml config
 
   build-and-push:
     runs-on: ubuntu-latest
