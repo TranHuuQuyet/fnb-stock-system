@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/card';
 import { getDefaultRouteForRole, shouldForcePasswordChange } from '@/lib/auth';
 import { useResolvedSession } from '@/hooks/use-resolved-session';
 
+const removedRoutes = new Set(['/dashboard', '/admin/recipes']);
+
 export function ProtectedPage({
   title,
   children,
@@ -40,6 +42,11 @@ export function ProtectedPage({
 
     if (shouldForcePasswordChange(session)) {
       router.replace('/change-password');
+      return;
+    }
+
+    if (removedRoutes.has(pathname ?? '')) {
+      router.replace(getDefaultRouteForRole(session.user.role));
       return;
     }
 

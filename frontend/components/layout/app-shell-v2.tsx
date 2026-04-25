@@ -30,12 +30,6 @@ const links: Array<{ href: string; label: string; roles: Role[]; permission?: Pe
     permission: 'view_scan_logs'
   },
   {
-    href: '/dashboard',
-    label: 'Bảng điều khiển',
-    roles: ['MANAGER', 'ADMIN'],
-    permission: 'view_dashboard'
-  },
-  {
     href: '/ingredient-stock',
     label: 'Kho nguyên liệu',
     roles: ['STAFF', 'MANAGER', 'ADMIN']
@@ -80,12 +74,6 @@ const links: Array<{ href: string; label: string; roles: Role[]; permission?: Pe
     label: 'Điều chỉnh tồn',
     roles: ['ADMIN'],
     permission: 'manage_adjustments'
-  },
-  {
-    href: '/admin/recipes',
-    label: 'Công thức & POS',
-    roles: ['ADMIN'],
-    permission: 'manage_recipes'
   },
   {
     href: '/admin/config',
@@ -142,7 +130,7 @@ export function AppShell({
   const shouldShowBusinessNetworkBanner =
     role !== 'ADMIN' &&
     pathname !== '/scan' &&
-    (routePermission === 'view_scan_logs' || routePermission === 'view_dashboard');
+    routePermission === 'view_scan_logs';
 
   const sidebarClasses = clsx(
     'rounded-3xl bg-brand-900 p-4 text-white lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:min-h-0 lg:w-80 lg:self-start xl:w-[22rem]',

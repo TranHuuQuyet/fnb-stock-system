@@ -29,10 +29,10 @@ import {
 import { listStores } from '@/services/admin/stores';
 
 const schema = z.object({
-  username: z.string().min(1, 'Vui long nhap ten dang nhap'),
-  fullName: z.string().min(1, 'Vui long nhap ho ten'),
+  username: z.string().min(1, 'Vui lòng nhập tên đăng nhập'),
+  fullName: z.string().min(1, 'Vui lòng nhập họ tên'),
   role: z.enum(['MANAGER', 'STAFF']),
-  storeId: z.string().min(1, 'Vui long chon chi nhanh'),
+  storeId: z.string().min(1, 'Vui lòng chọn chi nhánh'),
   temporaryPassword: z
     .string()
     .min(PASSWORD_MIN_LENGTH, PASSWORD_POLICY_MESSAGE)
@@ -42,25 +42,23 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const AVAILABLE_PERMISSIONS = [
-  { value: 'view_scan', label: 'Quet nguyen lieu' },
-  { value: 'scan_transfer', label: 'Chuyen kho' },
-  { value: 'view_profile', label: 'Tai khoan' },
-  { value: 'view_scan_logs', label: 'Lich su quet' },
-  { value: 'view_dashboard', label: 'Bang dieu khien' },
-  { value: 'manage_users', label: 'Nguoi dung' },
-  { value: 'manage_stores', label: 'Cua hang' },
-  { value: 'manage_ingredients', label: 'Nguyen lieu' },
-  { value: 'manage_batches', label: 'Lo hang' },
-  { value: 'manage_adjustments', label: 'Dieu chinh ton' },
-  { value: 'manage_recipes', label: 'Cong thuc va POS' },
-  { value: 'manage_config', label: 'Cau hinh' },
-  { value: 'manage_whitelists', label: 'Mang duoc phep' },
-  { value: 'view_audit_logs', label: 'Nhat ky he thong' }
+  { value: 'view_scan', label: 'Quét nguyên liệu' },
+  { value: 'scan_transfer', label: 'Chuyển kho' },
+  { value: 'view_profile', label: 'Tài khoản' },
+  { value: 'view_scan_logs', label: 'Lịch sử quét' },
+  { value: 'manage_users', label: 'Người dùng' },
+  { value: 'manage_stores', label: 'Cửa hàng' },
+  { value: 'manage_ingredients', label: 'Nguyên liệu' },
+  { value: 'manage_batches', label: 'Lô hàng' },
+  { value: 'manage_adjustments', label: 'Điều chỉnh tồn' },
+  { value: 'manage_config', label: 'Cấu hình' },
+  { value: 'manage_whitelists', label: 'Mạng được phép' },
+  { value: 'view_audit_logs', label: 'Nhật ký hệ thống' }
 ];
 
 const DEFAULT_PERMISSIONS_BY_ROLE: Record<'STAFF' | 'MANAGER', string[]> = {
   STAFF: ['view_scan', 'view_profile'],
-  MANAGER: ['view_scan', 'view_profile', 'view_scan_logs', 'view_dashboard']
+  MANAGER: ['view_scan', 'view_profile', 'view_scan_logs']
 };
 
 type UserRow = {
@@ -188,35 +186,35 @@ export default function AdminUsersPage() {
   const users = (usersQuery.data?.data ?? []) as UserRow[];
 
   return (
-    <ProtectedPage title="Quan ly nguoi dung" allowedRoles={['ADMIN']}>
+    <ProtectedPage title="Quản lý người dùng" allowedRoles={['ADMIN']}>
       <div className="grid gap-4 xl:grid-cols-[minmax(320px,420px),minmax(0,1fr)]">
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tao nguoi dung moi</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Tạo người dùng mới</h2>
           <form
             className="space-y-4"
             onSubmit={handleSubmit((values) => createMutation.mutate(values))}
           >
-            <Input label="Ten dang nhap" error={errors.username?.message} {...register('username')} />
-            <Input label="Ho ten" error={errors.fullName?.message} {...register('fullName')} />
+            <Input label="Tên đăng nhập" error={errors.username?.message} {...register('username')} />
+            <Input label="Họ tên" error={errors.fullName?.message} {...register('fullName')} />
 
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Vai tro</span>
+              <span className="text-sm font-medium text-brand-900">Vai trò</span>
               <select
                 className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3"
                 {...register('role')}
               >
-                <option value="STAFF">Nhan vien</option>
-                <option value="MANAGER">Quan ly</option>
+                <option value="STAFF">Nhân viên</option>
+                <option value="MANAGER">Quản lý</option>
               </select>
             </label>
 
             <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Cua hang</span>
+              <span className="text-sm font-medium text-brand-900">Cửa hàng</span>
               <select
                 className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3"
                 {...register('storeId')}
               >
-                <option value="">Chon cua hang</option>
+                <option value="">Chọn cửa hàng</option>
                 {stores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}
@@ -226,7 +224,7 @@ export default function AdminUsersPage() {
             </label>
 
             <div className="space-y-2">
-              <span className="text-sm font-medium text-brand-900">Them quyen truy cap</span>
+              <span className="text-sm font-medium text-brand-900">Thêm quyền truy cập</span>
               <div className="space-y-2 rounded-xl border border-brand-100 bg-white p-3">
                 {AVAILABLE_PERMISSIONS.map((permission) => (
                   <label key={permission.value} className="flex items-center gap-2">
@@ -252,13 +250,13 @@ export default function AdminUsersPage() {
             </div>
 
             <Input
-              label="Mat khau tam thoi"
+              label="Mật khẩu tạm thời"
               type="password"
               error={errors.temporaryPassword?.message}
               {...register('temporaryPassword')}
             />
             <p className="-mt-2 text-xs text-slate-500">
-              Dung it nhat {PASSWORD_MIN_LENGTH} ky tu, co chu hoa, chu thuong va so.
+              Dùng ít nhất {PASSWORD_MIN_LENGTH} ký tự, có chữ hoa, chữ thường và số.
             </p>
 
             {createMutation.error ? (
@@ -266,16 +264,16 @@ export default function AdminUsersPage() {
             ) : null}
 
             <Button type="submit" fullWidth disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Dang tao...' : 'Tao nguoi dung'}
+              {createMutation.isPending ? 'Đang tạo...' : 'Tạo người dùng'}
             </Button>
           </form>
         </Card>
 
         <Card>
-          <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sach tai khoan</h2>
+          <h2 className="mb-4 text-xl font-semibold text-brand-900">Danh sách tài khoản</h2>
           {lastResetResult ? (
             <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              Da tao mat khau tam moi cho <span className="font-semibold">{lastResetResult.username}</span>:
+              Đã tạo mật khẩu tạm mới cho <span className="font-semibold">{lastResetResult.username}</span>:
               <span className="ml-2 rounded bg-white px-2 py-1 font-mono text-brand-900">
                 {lastResetResult.temporaryPassword}
               </span>
@@ -283,13 +281,13 @@ export default function AdminUsersPage() {
           ) : null}
           <SimpleTable
             columns={[
-              'Ten dang nhap',
-              'Ho ten',
-              'Vai tro',
-              'Trang thai',
-              'Cua hang',
-              'Chuyen kho',
-              'Thao tac'
+              'Tên đăng nhập',
+              'Họ tên',
+              'Vai trò',
+              'Trạng thái',
+              'Cửa hàng',
+              'Chuyển kho',
+              'Thao tác'
             ]}
             rows={users.map((user) => {
               const hasTransferPermission = user.permissions.includes('scan_transfer');
@@ -309,7 +307,7 @@ export default function AdminUsersPage() {
                 user.store?.name ?? '-',
                 <div key={`${user.id}-transfer`} className="flex items-center gap-2">
                   <Badge
-                    label={hasTransferPermission ? 'Da cap' : 'Chua cap'}
+                    label={hasTransferPermission ? 'Đã cấp' : 'Chưa cấp'}
                     tone={hasTransferPermission ? 'success' : 'neutral'}
                   />
                   {user.role !== 'ADMIN' ? (
@@ -323,7 +321,7 @@ export default function AdminUsersPage() {
                       }
                       disabled={transferPermissionMutation.isPending}
                     >
-                      {hasTransferPermission ? 'Thu hoi' : 'Cap quyen'}
+                      {hasTransferPermission ? 'Thu hồi' : 'Cấp quyền'}
                     </Button>
                   ) : null}
                 </div>,
@@ -339,7 +337,7 @@ export default function AdminUsersPage() {
                     }
                     disabled={actionMutation.isPending}
                   >
-                    Dat lai mat khau
+                    Đặt lại mật khẩu
                   </Button>
                   {user.status === 'LOCKED' ? (
                     <Button
@@ -353,7 +351,7 @@ export default function AdminUsersPage() {
                       }
                       disabled={actionMutation.isPending}
                     >
-                      Mo khoa
+                      Mở khóa
                     </Button>
                   ) : (
                     <Button
@@ -367,7 +365,7 @@ export default function AdminUsersPage() {
                       }
                       disabled={actionMutation.isPending}
                     >
-                      Khoa
+                      Khóa
                     </Button>
                   )}
                 </div>

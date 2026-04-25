@@ -23,8 +23,8 @@ import { listTransferStores } from '@/services/transfers';
 
 const schema = z
   .object({
-    batchCode: z.string().min(1, 'Vui long nhap ma lo'),
-    quantityUsed: z.coerce.number().positive('So luong phai lon hon 0'),
+    batchCode: z.string().min(1, 'Vui lòng nhập mã lô'),
+    quantityUsed: z.coerce.number().positive('Số lượng phải lớn hơn 0'),
     operationType: z.enum(['STORE_USAGE', 'TRANSFER']),
     storeId: z.string().optional(),
     sourceStoreId: z.string().optional(),
@@ -34,7 +34,7 @@ const schema = z
     if (value.operationType === 'TRANSFER' && !value.destinationStoreId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Vui long chon chi nhanh nhan',
+        message: 'Vui lòng chọn chi nhánh nhận',
         path: ['destinationStoreId']
       });
     }
@@ -95,8 +95,8 @@ type WindowWithWebkitAudio = Window &
 let successAudioContext: AudioContext | null = null;
 const idleFeedback: ScanFeedback = {
   tone: 'idle',
-  title: 'San sang',
-  message: 'Dua tem QR vao camera. Quet thanh cong se tu tru 1 nguyen lieu.'
+  title: 'Sẵn sàng',
+  message: 'Đưa tem QR vào camera. Quét thành công sẽ tự trừ 1 nguyên liệu.'
 };
 
 const quantityFormatter = new Intl.NumberFormat('vi-VN', {
@@ -333,8 +333,8 @@ export default function ScanPageContent() {
   const selectedSourceStoreName = stores.find((store) => store.id === sourceStoreId)?.name ?? '';
   const networkStatusStoreName =
     operationType === 'TRANSFER'
-      ? selectedSourceStoreName || session?.user.store?.name || 'chi nhanh hien tai'
-      : selectedUsageStoreName || session?.user.store?.name || 'chi nhanh hien tai';
+      ? selectedSourceStoreName || session?.user.store?.name || 'chi nhánh hiện tại'
+      : selectedUsageStoreName || session?.user.store?.name || 'chi nhánh hiện tại';
 
   const businessNetworkBadge = useMemo(() => {
     if (!isOnline) {
@@ -346,21 +346,21 @@ export default function ScanPageContent() {
 
     if (isAdmin && !networkStatusStoreId) {
       return {
-        label: 'Chon chi nhanh de kiem tra',
+        label: 'Chọn chi nhánh để kiểm tra',
         tone: 'neutral' as const
       };
     }
 
     if (networkStatusQuery.isLoading) {
       return {
-        label: 'Dang kiem tra mang',
+        label: 'Đang kiểm tra mạng',
         tone: 'warning' as const
       };
     }
 
     if (networkStatusQuery.isError) {
       return {
-        label: 'Khong kiem tra duoc mang',
+        label: 'Không kiểm tra được mạng',
         tone: 'danger' as const
       };
     }
@@ -368,25 +368,25 @@ export default function ScanPageContent() {
     const networkStatus = networkStatusQuery.data;
     if (!networkStatus?.hasActiveWhitelist) {
       return {
-        label: 'Chua cau hinh whitelist',
+        label: 'Chưa cấu hình whitelist',
         tone: 'danger' as const
       };
     }
 
     if (networkStatus.bypassActive) {
       return {
-        label: 'Emergency bypass dang bat',
+        label: 'Đang bật bypass tạm',
         tone: 'warning' as const
       };
     }
 
     return networkStatus.canAccessBusinessOperations
       ? {
-          label: 'Mang duoc phep',
+          label: 'Mạng được phép',
           tone: 'success' as const
         }
       : {
-          label: 'Mang chua duoc phep',
+          label: 'Mạng chưa được phép',
           tone: 'danger' as const
         };
   }, [
@@ -400,44 +400,44 @@ export default function ScanPageContent() {
 
   const businessNetworkMessage = useMemo(() => {
     if (!isOnline) {
-      return 'Thiet bi dang offline. Nghiep vu scan chi duoc phep khi online dung mang hop le.';
+      return 'Thiết bị đang offline. Nghiệp vụ scan chỉ được phép khi online đúng mạng hợp lệ.';
     }
 
     if (isAdmin && !networkStatusStoreId) {
-      return 'Hay chon chi nhanh nguon hoac chi nhanh su dung truoc khi thuc hien scan.';
+      return 'Hãy chọn chi nhánh nguồn hoặc chi nhánh sử dụng trước khi thực hiện scan.';
     }
 
     if (networkStatusQuery.isLoading) {
-      return 'Dang lay IP ma backend thuc su nhin thay tu request hien tai.';
+      return 'Đang lấy IP mà backend thực sự nhìn thấy từ request hiện tại.';
     }
 
     if (networkStatusQuery.isError) {
-      return 'Chua lay duoc trang thai whitelist. Hay tai lai trang de kiem tra lai.';
+      return 'Chưa lấy được trạng thái whitelist. Hãy tải lại trang để kiểm tra lại.';
     }
 
     const networkStatus = networkStatusQuery.data;
     if (!networkStatus) {
-      return 'Chua co du lieu trang thai mang.';
+      return 'Chưa có dữ liệu trạng thái mạng.';
     }
 
     const matchedBy =
       networkStatus.matchedWhitelistTypes.length > 0
-        ? ` Khop theo ${networkStatus.matchedWhitelistTypes.join(' + ')}.`
+        ? ` Khớp theo ${networkStatus.matchedWhitelistTypes.join(' + ')}.`
         : '';
 
     if (!networkStatus.hasActiveWhitelist) {
-      return `Chi nhanh ${networkStatusStoreName} chua co whitelist active. API nghiep vu se bi chan cho den khi admin cau hinh IP duoc phep hoac bat bypass tam thoi.`;
+      return `Chi nhánh ${networkStatusStoreName} chưa có whitelist active. API nghiệp vụ sẽ bị chặn cho đến khi admin cấu hình IP được phép hoặc bật bypass tạm thời.`;
     }
 
     if (networkStatus.bypassActive) {
-      return `Chi nhanh ${networkStatusStoreName} dang duoc mo tam. ${
-        networkStatus.bypassReason ? `Ly do: ${networkStatus.bypassReason}. ` : ''
-      }IP backend dang nhan la ${networkStatus.ipAddress}.`;
+      return `Chi nhánh ${networkStatusStoreName} đang được mở tạm. ${
+        networkStatus.bypassReason ? `Lý do: ${networkStatus.bypassReason}. ` : ''
+      }IP backend đang nhận là ${networkStatus.ipAddress}.`;
     }
 
     return networkStatus.canAccessBusinessOperations
-      ? `Chi nhanh ${networkStatusStoreName} dang cho phep mang hien tai. IP backend dang nhan la ${networkStatus.ipAddress}.${matchedBy}`
-      : `Chi nhanh ${networkStatusStoreName} dang chan mang hien tai. IP backend dang nhan la ${networkStatus.ipAddress}. Backend se tu choi nghiep vu neu tiep tuc thao tac.`;
+      ? `Chi nhánh ${networkStatusStoreName} đang cho phép mạng hiện tại. IP backend đang nhận là ${networkStatus.ipAddress}.${matchedBy}`
+      : `Chi nhánh ${networkStatusStoreName} đang chặn mạng hiện tại. IP backend đang nhận là ${networkStatus.ipAddress}. Backend sẽ từ chối nghiệp vụ nếu tiếp tục thao tác.`;
   }, [
     isAdmin,
     isOnline,
@@ -480,15 +480,15 @@ export default function ScanPageContent() {
 
   const buildStoreUsageMessage = (data: ScanResponse) => {
     const details = [
-      data.ingredientName ? `Nguyen lieu: ${data.ingredientName}.` : null,
-      `Ma lo: ${data.batchCode}.`,
+      data.ingredientName ? `Nguyên liệu: ${data.ingredientName}.` : null,
+      `Mã lô: ${data.batchCode}.`,
       data.remainingQty !== undefined
-        ? `Con lai: ${quantityFormatter.format(data.remainingQty)}${
+        ? `Còn lại: ${quantityFormatter.format(data.remainingQty)}${
             data.ingredientUnit ? ` ${data.ingredientUnit}` : ''
           }.`
         : null,
       selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name
-        ? `Chi nhanh su dung: ${selectedUsageStoreName}.`
+        ? `Chi nhánh sử dụng: ${selectedUsageStoreName}.`
         : null
     ].filter(Boolean);
 
@@ -500,8 +500,8 @@ export default function ScanPageContent() {
       if (!isOnline) {
         throw new Error(
           values.operationType === 'TRANSFER'
-            ? 'Thiet bi dang offline. Chuyen kho can online de theo doi va xac nhan phieu.'
-            : 'Thiet bi dang offline. Theo chinh sach moi, ban phai online dung mang chi nhanh moi duoc quet.'
+            ? 'Thiết bị đang offline. Chuyển kho cần online để theo dõi và xác nhận phiếu.'
+            : 'Thiết bị đang offline. Theo chính sách mới, bạn phải online đúng mạng chi nhánh mới được quét.'
         );
       }
 
@@ -527,8 +527,8 @@ export default function ScanPageContent() {
         if (!navigator.onLine) {
           throw new Error(
             values.operationType === 'TRANSFER'
-              ? 'Mang vua mat. Hay ket noi lai de hoan tat tao phieu chuyen kho.'
-              : 'Mang vua mat. Hay ket noi lai dung mang chi nhanh roi quet lai.'
+              ? 'Mạng vừa mất. Hãy kết nối lại để hoàn tất tạo phiếu chuyển kho.'
+              : 'Mạng vừa mất. Hãy kết nối lại đúng mạng chi nhánh rồi quét lại.'
           );
         }
 
@@ -541,9 +541,9 @@ export default function ScanPageContent() {
         title: localizeResultCode(data.resultCode),
         message:
           variables.operationType === 'TRANSFER' && selectedDestinationStoreName
-            ? `${data.message} Chi nhanh nhan: ${selectedDestinationStoreName}. ${
+            ? `${data.message} Chi nhánh nhận: ${selectedDestinationStoreName}. ${
                 selectedSourceStoreName && selectedSourceStoreName !== session?.user.store?.name
-                  ? `Chi nhanh gui: ${selectedSourceStoreName}.`
+                  ? `Chi nhánh gửi: ${selectedSourceStoreName}.`
                   : ''
               }`
             : variables.operationType === 'STORE_USAGE'
@@ -580,7 +580,7 @@ export default function ScanPageContent() {
     onError: (error: Error) => {
       pushFeedback({
         tone: 'error',
-        title: 'Tu choi quet',
+        title: 'Từ chối quét',
         message: error.message
       });
     }
@@ -595,8 +595,8 @@ export default function ScanPageContent() {
     if (!parsed) {
       pushFeedback({
         tone: 'error',
-        title: 'QR khong hop le',
-        message: 'Ma QR khong dung dinh dang tem nguyen lieu.'
+        title: 'QR không hợp lệ',
+        message: 'Mã QR không đúng định dạng tem nguyên liệu.'
       });
       return;
     }
@@ -605,9 +605,9 @@ export default function ScanPageContent() {
       if (!parsed.batchId || parsed.sequenceNumber === null) {
         pushFeedback({
           tone: 'error',
-          title: 'Tem chua hop le',
+          title: 'Tem chưa hợp lệ',
           message:
-            'Che do quet nhanh chi nhan tem da phat hanh co so thu tu. Hay in tem moi roi quet lai.'
+            'Chế độ quét nhanh chỉ nhận tem đã phát hành có số thứ tự. Hãy in tem mới rồi quét lại.'
         });
         return;
       }
@@ -630,24 +630,24 @@ export default function ScanPageContent() {
     });
     pushFeedback({
       tone: 'idle',
-      title: 'Da nhan dien lo',
+      title: 'Đã nhận diện lô',
       message:
         operationType === 'TRANSFER'
-          ? `Da doc lo ${parsed.batchCode}. Chon chi nhanh nhan va so luong roi bam chuyen kho.`
-          : `Da doc lo ${parsed.batchCode}. Dieu chinh thong tin neu can roi bam ghi nhan.`
+          ? `Đã đọc lô ${parsed.batchCode}. Chọn chi nhánh nhận và số lượng rồi bấm chuyển kho.`
+          : `Đã đọc lô ${parsed.batchCode}. Điều chỉnh thông tin nếu cần rồi bấm ghi nhận.`
     }, false);
   };
 
   const handleCameraError = (message: string) => {
     pushFeedback({
       tone: 'error',
-      title: 'Camera quet gap loi',
+      title: 'Camera quét gặp lỗi',
       message
     });
   };
 
   return (
-    <ProtectedPage title="Quet nguyen lieu" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
+    <ProtectedPage title="Quét nguyên liệu" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
       {activeAlert ? (
         <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4">
           <div
@@ -672,7 +672,7 @@ export default function ScanPageContent() {
                 }`}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold uppercase tracking-[0.2em]">Thong bao quet</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em]">Thông báo quét</p>
                 <h2 className="mt-1 text-xl font-semibold">{activeAlert.title}</h2>
                 <p className="mt-2 text-sm leading-6">{activeAlert.message}</p>
               </div>
@@ -681,7 +681,7 @@ export default function ScanPageContent() {
                 className="rounded-full px-3 py-1 text-sm font-semibold text-current/80 transition hover:bg-black/5 hover:text-current"
                 onClick={() => setActiveAlert(null)}
               >
-                Dong
+                Đóng
               </button>
             </div>
           </div>
@@ -691,20 +691,20 @@ export default function ScanPageContent() {
       <div className={`rounded-3xl bg-gradient-to-br ${backgroundClass} p-4 md:p-6`}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <Badge
-            label={isOnline ? 'Truc tuyen' : 'Offline'}
+            label={isOnline ? 'Trực tuyến' : 'Offline'}
             tone={isOnline ? 'success' : 'neutral'}
           />
           {isQuickStoreUsageMode ? (
-            <Badge label="Auto tru 1" tone="success" />
+            <Badge label="Tự trừ 1" tone="success" />
           ) : operationType === 'TRANSFER' ? (
-            <Badge label="Chuyen kho" tone="warning" />
+            <Badge label="Chuyển kho" tone="warning" />
           ) : null}
         </div>
 
         <Card className="mb-4">
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-700">
-              Trang thai mang hien tai
+              Trạng thái mạng hiện tại
             </p>
             <Badge label={businessNetworkBadge.label} tone={businessNetworkBadge.tone} />
           </div>
@@ -713,7 +713,7 @@ export default function ScanPageContent() {
 
         <Card className="mb-4">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-700">
-            Trang thai lan quet gan nhat
+            Trạng thái lần quét gần nhất
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-brand-900">{feedback.title}</h2>
           <p className="mt-2 text-sm text-slate-600">{feedback.message}</p>
@@ -726,7 +726,7 @@ export default function ScanPageContent() {
               variant={operationType === 'STORE_USAGE' ? 'primary' : 'secondary'}
               onClick={() => setValue('operationType', 'STORE_USAGE', { shouldValidate: true })}
             >
-              Su dung tai quan
+              Sử dụng tại quán
             </Button>
             {canTransfer ? (
               <Button
@@ -734,24 +734,24 @@ export default function ScanPageContent() {
                 variant={operationType === 'TRANSFER' ? 'primary' : 'secondary'}
                 onClick={() => setValue('operationType', 'TRANSFER', { shouldValidate: true })}
               >
-                Chuyen kho
+                Chuyển kho
               </Button>
             ) : null}
           </div>
           <p className="mt-3 text-sm text-slate-600">
             {operationType === 'TRANSFER'
-              ? `Chi nhanh thuc hien: ${session?.user.store?.name ?? 'Chua xac dinh'}. Sau khi quet, he thong se tru ton o chi nhanh gui va tao phieu chuyen kho.`
+              ? `Chi nhánh thực hiện: ${session?.user.store?.name ?? 'Chưa xác định'}. Sau khi quét, hệ thống sẽ trừ tồn ở chi nhánh gửi và tạo phiếu chuyển kho.`
               : isQuickStoreUsageMode
-                ? `Quet thanh cong la he thong tu tru ngay 1 don vi tai ${session?.user.store?.name ?? 'chi nhanh hien tai'}. Khong can nhap tay, khong can bam gui.`
-                : `Quet de ghi nhan nguyen lieu vua duoc su dung tai quay. ${isAdmin && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name ? `Chi nhanh su dung: ${selectedUsageStoreName}.` : ''}`}
+                ? `Quét thành công là hệ thống tự trừ ngay 1 đơn vị tại ${session?.user.store?.name ?? 'chi nhánh hiện tại'}. Không cần nhập tay, không cần bấm gửi.`
+                : `Quét để ghi nhận nguyên liệu vừa được sử dụng tại quầy. ${isAdmin && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name ? `Chi nhánh sử dụng: ${selectedUsageStoreName}.` : ''}`}
           </p>
         </Card>
 
         {isQuickStoreUsageMode ? (
           <Card className="mb-4 border border-emerald-200 bg-emerald-50">
             <p className="text-sm font-medium text-emerald-900">
-              Moi tem da phat hanh chi duoc quet 1 lan. He thong chi chap nhan tem co so thu tu
-              va se phat tieng bip bip sau khi tru kho thanh cong.
+              Mỗi tem đã phát hành chỉ được quét 1 lần. Hệ thống chỉ chấp nhận tem có số thứ tự
+              và sẽ phát tiếng bíp bíp sau khi trừ kho thành công.
             </p>
           </Card>
         ) : null}
@@ -759,28 +759,28 @@ export default function ScanPageContent() {
         {operationType === 'TRANSFER' ? (
           <Card className="mb-4 border border-amber-200 bg-amber-50">
             <p className="text-sm font-medium text-amber-900">
-              Luot quet chuyen kho chi tao phieu va tru ton o chi nhanh gui. Chi nhanh nhan can vao
-              lich su chuyen kho de xac nhan so luong thuc nhan.
+              Lượt quét chuyển kho chỉ tạo phiếu và trừ tồn ở chi nhánh gửi. Chi nhánh nhận cần vào
+              lịch sử chuyển kho để xác nhận số lượng thực nhận.
             </p>
           </Card>
         ) : null}
 
         <Card className="mb-4">
-          <h3 className="mb-3 text-lg font-semibold text-brand-900">Quet bang camera</h3>
+          <h3 className="mb-3 text-lg font-semibold text-brand-900">Quét bằng camera</h3>
           <p className="mb-4 text-sm text-slate-600">
             {isQuickStoreUsageMode
-              ? 'Dua tem vao khung quet. Khi QR hop le, he thong se xu ly ngay khong can bam nut.'
-              : 'Quet de dien ma lo vao form ben duoi, sau do xac nhan thao tac.'}
+              ? 'Đưa tem vào khung quét. Khi QR hợp lệ, hệ thống sẽ xử lý ngay không cần bấm nút.'
+              : 'Quét để điền mã lô vào form bên dưới, sau đó xác nhận thao tác.'}
           </p>
           <QrScanner onDetected={handleQrDetected} onError={handleCameraError} />
         </Card>
 
         {isQuickStoreUsageMode ? (
           <Card>
-            <h3 className="text-lg font-semibold text-brand-900">Che do quet nhanh</h3>
+            <h3 className="text-lg font-semibold text-brand-900">Chế độ quét nhanh</h3>
             <p className="mt-2 text-sm text-slate-600">
-              Scan thanh cong se tru ngay 1 don vi. Neu quet lai cung mot tem, backend se tu choi de
-              tranh trung lap.
+              Scan thành công sẽ trừ ngay 1 đơn vị. Nếu quét lại cùng một tem, backend sẽ từ chối để
+              tránh trùng lặp.
             </p>
           </Card>
         ) : (
@@ -800,7 +800,7 @@ export default function ScanPageContent() {
                 )}
               >
                 <Input
-                  label="Ma lo"
+                  label="Mã lô"
                   placeholder="BATCH-TRA-001"
                   error={errors.batchCode?.message}
                   {...register('batchCode')}
@@ -808,12 +808,12 @@ export default function ScanPageContent() {
 
                 {isAdmin && operationType === 'STORE_USAGE' ? (
                   <label className="block space-y-2">
-                    <span className="text-sm font-medium text-brand-900">Chi nhanh su dung</span>
+                    <span className="text-sm font-medium text-brand-900">Chi nhánh sử dụng</span>
                     <select
                       className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
                       {...register('storeId')}
                     >
-                      <option value="">Chon chi nhanh su dung</option>
+                      <option value="">Chọn chi nhánh sử dụng</option>
                       {stores.map((store) => (
                         <option key={store.id} value={store.id}>
                           {store.name}
@@ -829,13 +829,13 @@ export default function ScanPageContent() {
                 {canTransfer && operationType === 'TRANSFER' ? (
                   <>
                     <label className="block space-y-2">
-                      <span className="text-sm font-medium text-brand-900">Chi nhanh gui</span>
+                      <span className="text-sm font-medium text-brand-900">Chi nhánh gửi</span>
                       <select
                         className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
                         disabled={!isAdmin}
                         {...register('sourceStoreId')}
                       >
-                        <option value="">Chon chi nhanh gui</option>
+                        <option value="">Chọn chi nhánh gửi</option>
                         {stores
                           .filter((store) =>
                             isAdmin
@@ -854,12 +854,12 @@ export default function ScanPageContent() {
                     </label>
 
                     <label className="block space-y-2">
-                      <span className="text-sm font-medium text-brand-900">Chi nhanh nhan</span>
+                      <span className="text-sm font-medium text-brand-900">Chi nhánh nhận</span>
                       <select
                         className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
                         {...register('destinationStoreId')}
                       >
-                        <option value="">Chon chi nhanh nhan</option>
+                        <option value="">Chọn chi nhánh nhận</option>
                         {stores
                           .filter((store) => store.id !== sourceStoreId)
                           .map((store) => (
@@ -878,7 +878,7 @@ export default function ScanPageContent() {
                 ) : null}
 
                 <Input
-                  label={operationType === 'TRANSFER' ? 'So luong chuyen' : 'So luong su dung'}
+                  label={operationType === 'TRANSFER' ? 'Số lượng chuyển' : 'Số lượng sử dụng'}
                   type="number"
                   min={1}
                   step={1}
@@ -888,28 +888,28 @@ export default function ScanPageContent() {
 
                 <Button type="submit" fullWidth disabled={scanMutation.isPending}>
                   {scanMutation.isPending
-                    ? 'Dang xu ly luot quet...'
+                    ? 'Đang xử lý lượt quét...'
                     : operationType === 'TRANSFER'
-                      ? 'Chuyen kho bang luot quet'
-                      : 'Ghi nhan luot quet'}
+                      ? 'Chuyển kho bằng lượt quét'
+                      : 'Ghi nhận lượt quét'}
                 </Button>
               </form>
             </Card>
 
             {isAdmin && operationType === 'TRANSFER' ? (
               <Card>
-                <h3 className="text-lg font-semibold text-brand-900">Ton kho chi nhanh nhan</h3>
+                <h3 className="text-lg font-semibold text-brand-900">Tồn kho chi nhánh nhận</h3>
                 <p className="mt-2 text-sm text-slate-600">
                   {selectedDestinationStoreName
-                    ? `Dang xem ton cua ${selectedDestinationStoreName}.`
-                    : 'Chon chi nhanh de xem nguyen lieu va so luong hien co.'}
+                    ? `Đang xem tồn của ${selectedDestinationStoreName}.`
+                    : 'Chọn chi nhánh để xem nguyên liệu và số lượng hiện có.'}
                 </p>
                 <div className="mt-4 space-y-3">
                   {destinationInventoryQuery.isLoading ? (
-                    <p className="text-sm text-slate-500">Dang tai ton kho...</p>
+                    <p className="text-sm text-slate-500">Đang tải tồn kho...</p>
                   ) : destinationInventory.length === 0 ? (
                     <p className="text-sm text-slate-500">
-                      Chua co du lieu ton kho cho chi nhanh nay.
+                      Chưa có dữ liệu tồn kho cho chi nhánh này.
                     </p>
                   ) : (
                     destinationInventory.map((item) => (
@@ -920,7 +920,7 @@ export default function ScanPageContent() {
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <p className="font-medium text-brand-900">{item.ingredientName}</p>
-                            <p className="text-xs text-slate-500">{item.batchCount} lo dang co ton</p>
+                            <p className="text-xs text-slate-500">{item.batchCount} lô đang có tồn</p>
                           </div>
                           <p className="text-sm font-semibold text-brand-900">
                             {quantityFormatter.format(item.totalQty)}

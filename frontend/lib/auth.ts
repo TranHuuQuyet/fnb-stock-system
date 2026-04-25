@@ -7,13 +7,11 @@ export type Permission =
   | 'scan_transfer'
   | 'view_profile'
   | 'view_scan_logs'
-  | 'view_dashboard'
   | 'manage_users'
   | 'manage_stores'
   | 'manage_ingredients'
   | 'manage_batches'
   | 'manage_adjustments'
-  | 'manage_recipes'
   | 'manage_config'
   | 'manage_whitelists'
   | 'view_audit_logs';
@@ -111,4 +109,4 @@ export const shouldForcePasswordChange = (session: SessionState | null) =>
   Boolean(session?.mustChangePassword || session?.user.status === 'MUST_CHANGE_PASSWORD');
 
 export const getDefaultRouteForRole = (role: Role) =>
-  role === 'STAFF' ? '/scan' : '/dashboard';
+  role === 'ADMIN' ? '/admin/reports' : '/scan';
