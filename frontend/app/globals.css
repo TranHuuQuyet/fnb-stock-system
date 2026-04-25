@@ -178,22 +178,43 @@ textarea {
 }
 
 .print-label-card {
-  display: flex;
-  min-height: 220px;
-  flex-direction: column;
-  justify-content: space-between;
+  display: grid;
+  min-height: 190px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: stretch;
   gap: 0.75rem;
-  border-radius: 1.5rem;
+  overflow: hidden;
+  border-radius: 0.5rem;
   border: 1px solid #cbd5e1;
   background: white;
-  padding: 1rem;
+  padding: 0.75rem;
 }
 
-.label-header-row {
+.label-qr {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 1px solid #e2e8f0;
+  background: white;
+  padding: 0.35rem;
+}
+
+.label-qr-box {
+  aspect-ratio: 1 / 1;
+  height: min(100%, 220px);
+  max-width: 100%;
+}
+
+.label-info {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  overflow: hidden;
 }
 
 .label-eyebrow {
@@ -206,63 +227,54 @@ textarea {
 }
 
 .label-title {
-  margin: 0.35rem 0 0;
-  font-size: 1.1rem;
-  line-height: 1.2;
-  color: #16221a;
-}
-
-.label-number-box {
-  min-width: 4.75rem;
-  border-radius: 1rem;
-  background: #eef4ea;
-  padding: 0.65rem 0.8rem;
-  text-align: right;
-}
-
-.label-number-caption {
   margin: 0;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #42634a;
-}
-
-.label-number {
-  margin: 0.2rem 0 0;
-  font-size: 1.65rem;
-  font-weight: 700;
-  line-height: 1;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+  font-size: 0.95rem;
+  line-height: 1.15;
   color: #16221a;
 }
 
 .label-meta {
   display: grid;
+  min-width: 0;
   gap: 0.2rem;
-  font-size: 0.82rem;
-  line-height: 1.3;
+  font-size: 0.78rem;
+  line-height: 1.25;
   color: #475569;
 }
 
 .label-meta p {
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.label-qr {
-  display: flex;
-  justify-content: center;
-}
-
-.print-label-card .label-qr svg {
-  width: 96px;
-  height: 96px;
+.print-label-card .label-qr-box svg {
+  display: block;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
 }
 
 @media screen and (max-width: 900px) {
   .print-sheet-grid {
     grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .print-label-card {
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .label-qr-box {
+    height: 180px;
   }
 }
 
@@ -293,36 +305,40 @@ textarea {
   }
 
   .print-label-card {
+    height: 100%;
     min-height: 0 !important;
     gap: 2.5mm !important;
-    border-radius: 4mm !important;
-    padding: 3.5mm !important;
+    border-radius: 2mm !important;
+    padding: 2.5mm !important;
     page-break-inside: avoid !important;
   }
 
   .label-eyebrow {
-    font-size: 7pt;
+    font-size: 6pt;
+    letter-spacing: 0.14em;
   }
 
   .label-title {
-    font-size: 11pt;
-  }
-
-  .label-number-caption {
-    font-size: 7pt;
-  }
-
-  .label-number {
-    font-size: 16pt;
+    font-size: 8.5pt;
+    line-height: 1.12;
   }
 
   .label-meta {
-    gap: 1mm;
-    font-size: 7.8pt;
+    gap: 0.7mm;
+    font-size: 6.8pt;
+    line-height: 1.16;
   }
 
-  .print-label-card .label-qr svg {
-    width: 25mm !important;
-    height: 25mm !important;
+  .label-qr {
+    padding: 1mm;
+  }
+
+  .label-qr-box {
+    height: min(100%, 44mm);
+  }
+
+  .print-label-card .label-qr-box svg {
+    width: 100% !important;
+    height: 100% !important;
   }
 }

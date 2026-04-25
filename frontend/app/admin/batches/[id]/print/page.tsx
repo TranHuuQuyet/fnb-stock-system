@@ -67,6 +67,9 @@ const issueSchema = z.object({
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleString('vi-VN') : 'Không có';
 
+const formatShortDate = (value?: string | null) =>
+  value ? new Date(value).toLocaleDateString('vi-VN') : 'Không có';
+
 const clampInteger = (value: string, min: number, max: number, fallback: number) => {
   const parsed = Number.parseInt(value, 10);
 
@@ -406,27 +409,25 @@ export default function BatchPrintPage() {
                             key={`${issuedJob.batchId}-${item.sequenceNumber}`}
                             className="print-card print-label-card"
                           >
-                            <div className="label-header-row">
-                              <div>
-                                <p className="label-eyebrow">Tem nguyên liệu</p>
-                                <h2 className="label-title">{issuedJob.ingredientName}</h2>
-                              </div>
-                              <div className="label-number-box">
-                                <p className="label-number-caption">Number</p>
-                                <p className="label-number">{item.sequenceNumber}</p>
+                            <div
+                              className="label-qr"
+                              aria-label={`QR tem ${issuedJob.batchCode} số ${item.sequenceNumber}`}
+                            >
+                              <div className="label-qr-box">
+                                <QRCodeSVG value={item.qrCodeValue} size={180} level="M" includeMargin />
                               </div>
                             </div>
 
-                            <div className="label-meta">
-                              <p>Mã lô: {issuedJob.batchCode}</p>
-                              <p>Cửa hàng: {issuedJob.storeName}</p>
-                              <p>Đơn vị: {issuedJob.unit}</p>
-                              <p>Ngày nhập: {formatDate(issuedJob.receivedAt)}</p>
-                              <p>Hạn dùng: {formatDate(issuedJob.expiredAt)}</p>
-                            </div>
-
-                            <div className="label-qr">
-                              <QRCodeSVG value={item.qrCodeValue} size={96} level="M" includeMargin />
+                            <div className="label-info">
+                              <p className="label-eyebrow">Tem nguyên liệu</p>
+                              <h2 className="label-title">{issuedJob.ingredientName}</h2>
+                              <div className="label-meta">
+                                <p>Mã tem: {item.sequenceNumber}</p>
+                                <p>Lô: {issuedJob.batchCode}</p>
+                                <p>Cửa hàng: {issuedJob.storeName}</p>
+                                <p>Ngày nhập: {formatShortDate(issuedJob.receivedAt)}</p>
+                                {issuedJob.expiredAt ? <p>HSD: {formatShortDate(issuedJob.expiredAt)}</p> : null}
+                              </div>
                             </div>
                           </article>
                         ))}
