@@ -4,6 +4,7 @@ import { Prisma, UserRole } from '@prisma/client';
 import { ERROR_CODES } from '../../common/constants/error-codes';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { appException } from '../../common/utils/app-exception';
+import { comparePassword } from '../../common/utils/password';
 import {
   buildPagination,
   buildPaginationMeta,
@@ -12,6 +13,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateStoreDto } from './dto/create-store.dto';
+import { DeleteStoreDto } from './dto/delete-store.dto';
 import { QueryStoresDto } from './dto/query-stores.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 
@@ -125,6 +127,8 @@ export class StoresService {
   }
 
   async update(actorUserId: string, id: string, dto: UpdateStoreDto) {
+    this.assertDoesNotSoftDeleteThroughUpdate(dto.isActive);
+
     const existing = await this.getById(id);
 
     const updated = await this.prisma.store.update({
@@ -147,5 +151,68 @@ export class StoresService {
     });
 
     return updated;
+  }
+
+  async softDelete(actorUserId: string, id: string, dto: DeleteStoreDto) {
+    const actor = await this.prisma.user.findUnique({
+      where: { id: actorUserId },
+      select: {
+        id: true,
+        role: true,
+        passwordHash: true
+      }
+    });
+
+    if (!actor || actor.role !== UserRole.ADMIN) {
+      throw appException(
+        HttpStatus.FORBIDDEN,
+        ERROR_CODES.AUTH_FORBIDDEN,
+        'Không có quyền xóa cửa hàng'
+      );
+    }
+
+    const isValidPassword = await comparePassword(dto.adminPassword, actor.passwordHash);
+    if (!isValidPassword) {
+      throw appException(
+        HttpStatus.BAD_REQUEST,
+        ERROR_CODES.ADMIN_ERROR_INVALID_ADMIN_PASSWORD,
+        'Mật khẩu Admin không đúng'
+      );
+    }
+
+    const existing = await this.getById(id);
+    if (!existing.isActive) {
+      return existing;
+    }
+
+    const updated = await this.prisma.store.update({
+      where: { id },
+      data: {
+        isActive: false
+      }
+    });
+
+    await this.auditService.createLog({
+      actorUserId,
+      action: 'SOFT_DELETE_STORE',
+      entityType: 'Store',
+      entityId: id,
+      oldData: existing,
+      newData: updated
+    });
+
+    return updated;
+  }
+
+  private assertDoesNotSoftDeleteThroughUpdate(isActive?: boolean) {
+    if (isActive !== false) {
+      return;
+    }
+
+    throw appException(
+      HttpStatus.BAD_REQUEST,
+      ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
+      'Dùng chức năng xóa để vô hiệu hóa cửa hàng'
+    );
   }
 }

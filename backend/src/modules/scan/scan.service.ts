@@ -690,6 +690,32 @@ export class ScanService {
       };
     }
 
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        id: true,
+        isActive: true
+      }
+    });
+
+    if (!store) {
+      throw appException(
+        HttpStatus.NOT_FOUND,
+        ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
+        'Không tìm thấy cửa hàng'
+      );
+    }
+
+    if (!store.isActive) {
+      return this.createErrorResultV2(params, {
+        storeId,
+        batchId: null,
+        resultCode: ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
+        message: 'Chi nhánh đã ngừng hoạt động, không thể tạo lượt quét mới',
+        operationType
+      });
+    }
+
     try {
       await this.devicesService.upsert({
         deviceId: params.deviceId,

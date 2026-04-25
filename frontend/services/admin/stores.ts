@@ -17,3 +17,11 @@ export const updateStore = (id: string, payload: unknown) =>
       body: JSON.stringify(payload)
     })
   );
+
+export const deleteStore = (id: string, adminPassword: string) =>
+  unwrapData(
+    apiClient(`/admin/stores/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ adminPassword })
+    })
+  );

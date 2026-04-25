@@ -85,7 +85,7 @@ export default function AdminUsersPage() {
 
   const storesQuery = useQuery({
     queryKey: ['stores-selector'],
-    queryFn: () => listStores('')
+    queryFn: () => listStores('?isActive=true')
   });
   const usersQuery = useQuery({
     queryKey: ['users'],

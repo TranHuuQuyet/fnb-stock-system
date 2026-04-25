@@ -138,7 +138,8 @@ export class TransfersService {
         destinationStore: {
           select: {
             id: true,
-            name: true
+            name: true,
+            isActive: true
           }
         },
         createdByUser: {
@@ -174,6 +175,14 @@ export class TransfersService {
         HttpStatus.FORBIDDEN,
         ERROR_CODES.AUTH_FORBIDDEN,
         'Bạn chỉ có thể xác nhận phiếu chuyển kho của chi nhánh mình'
+      );
+    }
+
+    if (!existing.destinationStore.isActive) {
+      throw appException(
+        HttpStatus.BAD_REQUEST,
+        ERROR_CODES.ERROR_TRANSFER_STORE_NOT_FOUND,
+        'Chi nhánh nhận đã ngừng hoạt động, không thể xác nhận phiếu chuyển'
       );
     }
 

@@ -80,14 +80,7 @@ export class UsersService {
     this.assertStoreAssignment(dto.role, dto.storeId ?? null);
 
     if (dto.storeId) {
-      const store = await this.prisma.store.findUnique({ where: { id: dto.storeId } });
-      if (!store) {
-        throw appException(
-          HttpStatus.NOT_FOUND,
-          ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
-          'Không tìm thấy cửa hàng'
-        );
-      }
+      await this.assertActiveStore(dto.storeId);
     }
 
     assertPasswordPolicy(dto.temporaryPassword);
@@ -209,14 +202,7 @@ export class UsersService {
     this.assertStoreAssignment(nextRole, nextStoreId ?? null);
 
     if (nextStoreId) {
-      const store = await this.prisma.store.findUnique({ where: { id: nextStoreId } });
-      if (!store) {
-        throw appException(
-          HttpStatus.NOT_FOUND,
-          ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
-          'Không tìm thấy cửa hàng'
-        );
-      }
+      await this.assertActiveStore(nextStoreId);
     }
 
     const updated = await this.prisma.user.update({
@@ -417,6 +403,24 @@ export class UsersService {
     });
 
     return sanitizeUser(updated);
+  }
+
+  private async assertActiveStore(storeId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        id: true,
+        isActive: true
+      }
+    });
+
+    if (!store || !store.isActive) {
+      throw appException(
+        HttpStatus.NOT_FOUND,
+        ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
+        'Không tìm thấy cửa hàng đang hoạt động'
+      );
+    }
   }
 
   private assertStoreAssignment(role: UserRole, storeId: string | null) {

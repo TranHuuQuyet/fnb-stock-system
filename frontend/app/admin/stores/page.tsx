@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -12,7 +13,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/table';
 import { localizeUserStatus } from '@/lib/localization';
-import { createStore, listStores, updateStore } from '@/services/admin/stores';
+import { createStore, deleteStore, listStores, updateStore } from '@/services/admin/stores';
 
 const schema = z.object({
   code: z.string().min(1),
@@ -23,7 +24,17 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+type StoreRow = {
+  id: string;
+  code: string;
+  name: string;
+  timezone: string;
+  isActive: boolean;
+};
+
 export default function AdminStoresPage() {
+  const [deleteTarget, setDeleteTarget] = useState<StoreRow | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
   const storesQuery = useQuery({
     queryKey: ['stores'],
     queryFn: () => listStores('')
@@ -46,17 +57,36 @@ export default function AdminStoresPage() {
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      updateStore(id, { isActive: !isActive }),
+      updateStore(id, { isActive }),
     onSuccess: () => storesQuery.refetch()
   });
 
-  const stores = (storesQuery.data?.data ?? []) as Array<{
-    id: string;
-    code: string;
-    name: string;
-    timezone: string;
-    isActive: boolean;
-  }>;
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, adminPassword }: { id: string; adminPassword: string }) =>
+      deleteStore(id, adminPassword),
+    onSuccess: () => {
+      setDeleteTarget(null);
+      setDeletePassword('');
+      storesQuery.refetch();
+    }
+  });
+
+  const openDeleteDialog = (store: StoreRow) => {
+    deleteMutation.reset();
+    setDeleteTarget(store);
+    setDeletePassword('');
+  };
+
+  const closeDeleteDialog = () => {
+    if (deleteMutation.isPending) {
+      return;
+    }
+
+    setDeleteTarget(null);
+    setDeletePassword('');
+  };
+
+  const stores = (storesQuery.data?.data ?? []) as StoreRow[];
 
   return (
     <ProtectedPage title="Quản lý cửa hàng" allowedRoles={['ADMIN']}>
@@ -91,15 +121,70 @@ export default function AdminStoresPage() {
               />,
               <Button
                 key={`${store.id}-toggle`}
-                variant="secondary"
-                onClick={() => toggleMutation.mutate({ id: store.id, isActive: store.isActive })}
+                variant={store.isActive ? 'danger' : 'secondary'}
+                onClick={() => {
+                  if (store.isActive) {
+                    openDeleteDialog(store);
+                    return;
+                  }
+
+                  toggleMutation.mutate({ id: store.id, isActive: true });
+                }}
+                disabled={deleteMutation.isPending || toggleMutation.isPending}
               >
-                {store.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                {store.isActive ? 'Xóa' : 'Kích hoạt'}
               </Button>
             ])}
           />
         </Card>
       </div>
+      {deleteTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-store-title"
+        >
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h3 id="delete-store-title" className="text-lg font-semibold text-brand-900">
+              Xóa mềm cửa hàng
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Cửa hàng <span className="font-semibold text-brand-900">{deleteTarget.name}</span> sẽ chuyển sang không hoạt động. Lịch sử lô, quét, audit và dữ liệu cũ vẫn được giữ lại.
+            </p>
+            <div className="mt-4">
+              <Input
+                label="Mật khẩu Admin"
+                type="password"
+                value={deletePassword}
+                onChange={(event) => setDeletePassword(event.target.value)}
+                autoComplete="current-password"
+                autoFocus
+              />
+            </div>
+            {deleteMutation.error ? (
+              <p className="mt-3 text-sm text-danger">{deleteMutation.error.message}</p>
+            ) : null}
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <Button variant="secondary" onClick={closeDeleteDialog} disabled={deleteMutation.isPending}>
+                Hủy
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() =>
+                  deleteMutation.mutate({
+                    id: deleteTarget.id,
+                    adminPassword: deletePassword
+                  })
+                }
+                disabled={deleteMutation.isPending || deletePassword.trim().length === 0}
+              >
+                {deleteMutation.isPending ? 'Đang xóa...' : 'Xác nhận xóa'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </ProtectedPage>
   );
 }

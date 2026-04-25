@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
@@ -6,6 +6,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { CreateStoreDto } from './dto/create-store.dto';
+import { DeleteStoreDto } from './dto/delete-store.dto';
 import { QueryStoresDto } from './dto/query-stores.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { StoresService } from './stores.service';
@@ -46,6 +47,18 @@ export class StoresController {
     return {
       data: await this.storesService.update(user.userId, id, dto),
       message: 'Cập nhật cửa hàng thành công'
+    };
+  }
+
+  @Delete(':id')
+  async softDelete(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Body() dto: DeleteStoreDto
+  ) {
+    return {
+      data: await this.storesService.softDelete(user.userId, id, dto),
+      message: 'Xóa cửa hàng thành công'
     };
   }
 }

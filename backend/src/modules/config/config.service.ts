@@ -88,7 +88,7 @@ export class ConfigService {
 
   async createWhitelist(actorUserId: string, dto: CreateWhitelistDto) {
     const store = await this.prisma.store.findUnique({ where: { id: dto.storeId } });
-    if (!store) {
+    if (!store || !store.isActive) {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
@@ -313,6 +313,7 @@ export class ConfigService {
         id: true,
         code: true,
         name: true,
+        isActive: true,
         networkBypassEnabled: true,
         networkBypassExpiresAt: true,
         networkBypassReason: true
@@ -344,6 +345,7 @@ export class ConfigService {
         id: true,
         code: true,
         name: true,
+        isActive: true,
         networkBypassEnabled: true,
         networkBypassExpiresAt: true,
         networkBypassReason: true
@@ -355,6 +357,14 @@ export class ConfigService {
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
         'Không tìm thấy cửa hàng'
+      );
+    }
+
+    if (!existing.isActive && dto.enabled) {
+      throw appException(
+        HttpStatus.BAD_REQUEST,
+        ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,
+        'Không tìm thấy cửa hàng đang hoạt động'
       );
     }
 

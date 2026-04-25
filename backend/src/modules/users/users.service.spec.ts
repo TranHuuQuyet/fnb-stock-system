@@ -16,8 +16,12 @@ describe('UsersService', () => {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       count: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn()
+    },
+    store: {
+      findUnique: jest.fn()
     },
     $transaction: jest.fn()
   };
@@ -142,6 +146,32 @@ describe('UsersService', () => {
     });
 
     expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects assigning a new user to an inactive store', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.store.findUnique.mockResolvedValue({
+      id: 'store-1',
+      isActive: false
+    });
+
+    await expect(
+      service.create('admin-1', {
+        username: 'staff-new',
+        fullName: 'Staff New',
+        role: UserRole.STAFF,
+        storeId: 'store-1',
+        temporaryPassword: 'StaffPass1',
+        permissions: []
+      })
+    ).rejects.toMatchObject({
+      response: {
+        code: 'ADMIN_ERROR_STORE_NOT_FOUND'
+      },
+      status: 404
+    });
+
+    expect(prisma.user.create).not.toHaveBeenCalled();
   });
 
   it('locks another user normally', async () => {

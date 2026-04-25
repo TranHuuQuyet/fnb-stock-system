@@ -56,7 +56,7 @@ export class BatchesService {
         'Không tìm thấy nguyên liệu'
       );
     }
-    if (!store) {
+    if (!store || !store.isActive) {
       throw appException(
         HttpStatus.NOT_FOUND,
         ERROR_CODES.ADMIN_ERROR_STORE_NOT_FOUND,

@@ -107,7 +107,12 @@ export default function AdminBatchesPageContent() {
     onSuccess: () => batchesQuery.refetch()
   });
 
-  const stores = (storesQuery.data?.data ?? []) as Array<{ id: string; name: string }>;
+  const stores = (storesQuery.data?.data ?? []) as Array<{
+    id: string;
+    name: string;
+    isActive: boolean;
+  }>;
+  const activeStores = stores.filter((store) => store.isActive);
   const ingredients = (ingredientsQuery.data?.data ?? []) as Array<{
     id: string;
     name: string;
@@ -146,8 +151,8 @@ export default function AdminBatchesPageContent() {
     return [...grouped.values()].sort((a, b) => a.ingredientName.localeCompare(b.ingredientName));
   }, [batches]);
 
-  const selectedStoreName =
-    stores.find((store) => store.id === selectedListStoreId)?.name ?? 'Tất cả chi nhánh';
+  const selectedListStore = stores.find((store) => store.id === selectedListStoreId);
+  const selectedStoreName = selectedListStore?.name ?? 'Tất cả chi nhánh';
 
   return (
     <ProtectedPage title="Quản lý lô hàng" allowedRoles={['ADMIN']}>
@@ -165,7 +170,7 @@ export default function AdminBatchesPageContent() {
                 {...register('storeId')}
               >
                 <option value="">Chọn cửa hàng</option>
-                {stores.map((store) => (
+                {activeStores.map((store) => (
                   <option key={store.id} value={store.id}>
                     {store.name}
                   </option>
@@ -190,7 +195,7 @@ export default function AdminBatchesPageContent() {
             <Input label="Ngày nhập" type="datetime-local" error={errors.receivedAt?.message} {...register('receivedAt')} />
             <Input label="Ngày hết hạn" type="datetime-local" {...register('expiredAt')} />
             <Input label="Số lượng ban đầu" type="number" step="0.001" error={errors.initialQty?.message} {...register('initialQty')} />
-            {selectedListStoreId ? (
+            {selectedListStore?.isActive ? (
               <button
                 type="button"
                 className="text-sm font-medium text-brand-700"

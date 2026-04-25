@@ -193,6 +193,23 @@ export class PosService {
     const results = [];
 
     for (const record of dto.records) {
+      const store = await this.prisma.store.findUnique({
+        where: {
+          id: record.storeId
+        },
+        select: {
+          id: true,
+          isActive: true
+        }
+      });
+      if (!store || !store.isActive) {
+        throw appException(
+          HttpStatus.BAD_REQUEST,
+          ERROR_CODES.POS_IMPORT_ERROR,
+          'Không tìm thấy cửa hàng đang hoạt động'
+        );
+      }
+
       const product = await this.prisma.posProduct.findUnique({
         where: {
           code: record.productCode

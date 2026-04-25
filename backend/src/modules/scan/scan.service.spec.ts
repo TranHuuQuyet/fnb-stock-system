@@ -13,6 +13,9 @@ describe('ScanService', () => {
     scanLog: {
       findUnique: jest.fn()
     },
+    store: {
+      findUnique: jest.fn()
+    },
     runInTransaction: jest.fn(),
     isUniqueConstraintError: jest.fn().mockReturnValue(false)
   };
@@ -63,6 +66,10 @@ describe('ScanService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.store.findUnique.mockResolvedValue({
+      id: 'store-1',
+      isActive: true
+    });
   });
 
   it('returns duplicate result without reprocessing stock', async () => {
@@ -193,6 +200,43 @@ describe('ScanService', () => {
 
     expect(result.data[0]?.resultStatus).toBe(ScanResultStatus.ERROR);
     expect(result.data[0]?.resultCode).toBe('ERROR_LABEL_ALREADY_SCANNED');
+  });
+
+  it('rejects new scans for an inactive store without touching stock', async () => {
+    prisma.scanLog.findUnique.mockResolvedValue(null);
+    prisma.store.findUnique.mockResolvedValue({
+      id: 'store-1',
+      isActive: false
+    });
+    prisma.runInTransaction.mockImplementation(async (callback: Function) =>
+      callback({
+        scanLog: {
+          create: jest.fn().mockResolvedValue({
+            id: 'scan-inactive-store'
+          })
+        }
+      })
+    );
+
+    const result = await service.sync(
+      currentUser,
+      [
+        {
+          batchCode: 'BATCH-002',
+          quantityUsed: 1,
+          scannedAt: new Date().toISOString(),
+          clientEventId: 'event-inactive-store',
+          entryMethod: ScanEntryMethod.CAMERA
+        }
+      ],
+      'device-1',
+      '127.0.0.1'
+    );
+
+    expect(result.data[0]?.resultStatus).toBe(ScanResultStatus.ERROR);
+    expect(result.data[0]?.resultCode).toBe('ADMIN_ERROR_STORE_NOT_FOUND');
+    expect(devicesService.upsert).not.toHaveBeenCalled();
+    expect(batchesService.findByBatchCode).not.toHaveBeenCalled();
   });
 
   it('normalizes ipv4-mapped addresses when checking current network status', async () => {

@@ -39,7 +39,7 @@ type BypassFormValues = z.infer<typeof bypassSchema>;
 export default function AdminWhitelistsPage() {
   const storesQuery = useQuery({
     queryKey: ['whitelist-stores'],
-    queryFn: () => listStores('')
+    queryFn: () => listStores('?isActive=true')
   });
   const whitelistsQuery = useQuery({
     queryKey: ['whitelists'],
