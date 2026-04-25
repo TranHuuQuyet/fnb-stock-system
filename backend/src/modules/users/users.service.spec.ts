@@ -51,4 +51,66 @@ describe('UsersService', () => {
       })
     );
   });
+
+  it('rejects locking the currently signed-in admin account', async () => {
+    await expect(service.lock('admin-1', 'admin-1')).rejects.toMatchObject({
+      response: {
+        code: 'AUTH_FORBIDDEN'
+      },
+      status: 403
+    });
+
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects self-lock through user status update', async () => {
+    await expect(
+      service.update('admin-1', 'admin-1', { status: UserStatus.LOCKED })
+    ).rejects.toMatchObject({
+      response: {
+        code: 'AUTH_FORBIDDEN'
+      },
+      status: 403
+    });
+
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('locks another user normally', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'staff-1',
+      username: 'staff1',
+      fullName: 'Staff 1',
+      role: UserRole.STAFF,
+      storeId: 'store-1',
+      passwordHash: 'hash',
+      status: UserStatus.ACTIVE,
+      store: null
+    });
+    prisma.user.update.mockResolvedValue({
+      id: 'staff-1',
+      username: 'staff1',
+      fullName: 'Staff 1',
+      role: UserRole.STAFF,
+      storeId: 'store-1',
+      passwordHash: 'hash',
+      status: UserStatus.LOCKED,
+      store: null
+    });
+
+    const result = await service.lock('admin-1', 'staff-1');
+
+    expect(result.status).toBe(UserStatus.LOCKED);
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'staff-1' },
+        data: expect.objectContaining({
+          status: UserStatus.LOCKED,
+          sessionVersion: {
+            increment: 1
+          }
+        })
+      })
+    );
+  });
 });

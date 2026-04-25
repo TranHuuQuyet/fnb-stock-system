@@ -184,6 +184,8 @@ export class UsersService {
   }
 
   async update(actorUserId: string, id: string, dto: UpdateUserDto) {
+    this.assertCanLockUser(actorUserId, id, dto.status);
+
     const existing = await this.findById(id);
     if (!existing) {
       throw appException(
@@ -245,6 +247,8 @@ export class UsersService {
   }
 
   async lock(actorUserId: string, id: string) {
+    this.assertCanLockUser(actorUserId, id, UserStatus.LOCKED);
+
     return this.updateStatus(actorUserId, id, UserStatus.LOCKED, 'LOCK_USER');
   }
 
@@ -351,6 +355,18 @@ export class UsersService {
         'MANAGER và STAFF phải được gắn chi nhánh'
       );
     }
+  }
+
+  private assertCanLockUser(actorUserId: string, id: string, status?: UserStatus) {
+    if (actorUserId !== id || status !== UserStatus.LOCKED) {
+      return;
+    }
+
+    throw appException(
+      HttpStatus.FORBIDDEN,
+      ERROR_CODES.AUTH_FORBIDDEN,
+      'Admin không thể tự khóa tài khoản đang đăng nhập'
+    );
   }
 
   private generateTemporaryPassword() {

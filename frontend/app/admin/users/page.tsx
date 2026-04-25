@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/table';
+import { useResolvedSession } from '@/hooks/use-resolved-session';
 import { localizeRole, localizeUserStatus } from '@/lib/localization';
 import {
   PASSWORD_MIN_LENGTH,
@@ -72,6 +73,7 @@ type UserRow = {
 };
 
 export default function AdminUsersPage() {
+  const sessionQuery = useResolvedSession();
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [lastResetResult, setLastResetResult] = useState<{
     username: string;
@@ -184,6 +186,7 @@ export default function AdminUsersPage() {
 
   const stores = (storesQuery.data?.data ?? []) as Array<{ id: string; name: string }>;
   const users = (usersQuery.data?.data ?? []) as UserRow[];
+  const currentUserId = sessionQuery.session?.user.id;
 
   return (
     <ProtectedPage title="Quản lý người dùng" allowedRoles={['ADMIN']}>
@@ -291,6 +294,7 @@ export default function AdminUsersPage() {
             ]}
             rows={users.map((user) => {
               const hasTransferPermission = user.permissions.includes('scan_transfer');
+              const isCurrentUser = user.id === currentUserId;
               const nextPermissions = hasTransferPermission
                 ? user.permissions.filter((permission) => permission !== 'scan_transfer')
                 : [...user.permissions, 'scan_transfer'];
@@ -363,7 +367,12 @@ export default function AdminUsersPage() {
                           username: user.username
                         })
                       }
-                      disabled={actionMutation.isPending}
+                      disabled={actionMutation.isPending || isCurrentUser}
+                      title={
+                        isCurrentUser
+                          ? 'Không thể tự khóa tài khoản đang đăng nhập'
+                          : undefined
+                      }
                     >
                       Khóa
                     </Button>
