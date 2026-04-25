@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -80,6 +80,11 @@ type NetworkStatus = {
 };
 
 type ScanTone = 'idle' | 'success' | 'warning' | 'error';
+type ScanFeedback = {
+  tone: ScanTone;
+  title: string;
+  message: string;
+};
 
 type BrowserAudioContext = typeof AudioContext;
 type WindowWithWebkitAudio = Window &
@@ -88,6 +93,11 @@ type WindowWithWebkitAudio = Window &
   };
 
 let successAudioContext: AudioContext | null = null;
+const idleFeedback: ScanFeedback = {
+  tone: 'idle',
+  title: 'San sang',
+  message: 'Dua tem QR vao camera. Quet thanh cong se tu tru 1 nguyen lieu.'
+};
 
 const quantityFormatter = new Intl.NumberFormat('vi-VN', {
   minimumFractionDigits: 0,
@@ -125,20 +135,20 @@ const playSuccessBeep = async () => {
 
     const beepPlan = [
       { startOffset: 0, frequency: 880 },
-      { startOffset: 0.18, frequency: 1100 }
+      { startOffset: 0.2, frequency: 1100 }
     ];
 
     for (const beep of beepPlan) {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       const startAt = audioContext.currentTime + beep.startOffset;
-      const endAt = startAt + 0.12;
+      const endAt = startAt + 0.16;
 
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      oscillator.type = 'sine';
+      oscillator.type = 'triangle';
       oscillator.frequency.setValueAtTime(beep.frequency, startAt);
-      gainNode.gain.setValueAtTime(0.08, startAt);
+      gainNode.gain.setValueAtTime(0.18, startAt);
       gainNode.gain.exponentialRampToValueAtTime(0.00001, endAt);
       oscillator.start(startAt);
       oscillator.stop(endAt);
@@ -157,21 +167,15 @@ const toStoreQuery = (storeId: string) => `?storeId=${encodeURIComponent(storeId
 export default function ScanPageContent() {
   const sessionQuery = useResolvedSession();
   const session = sessionQuery.session;
+  const queryClient = useQueryClient();
   const { isOnline } = useNetworkStatus();
   const isAdmin = session?.user.role === 'ADMIN';
   const isManager = session?.user.role === 'MANAGER';
   const canTransfer =
     isAdmin || isManager || (session?.user.permissions ?? []).includes('scan_transfer');
 
-  const [feedback, setFeedback] = useState<{
-    tone: ScanTone;
-    title: string;
-    message: string;
-  }>({
-    tone: 'idle',
-    title: 'San sang',
-    message: 'Dua tem QR vao camera. Quet thanh cong se tu tru 1 nguyen lieu.'
-  });
+  const [feedback, setFeedback] = useState<ScanFeedback>(idleFeedback);
+  const [activeAlert, setActiveAlert] = useState<ScanFeedback | null>(null);
 
   const getPersistedStoreId = (key: string, defaultValue: string | undefined) => {
     if (typeof window === 'undefined') {
@@ -457,6 +461,23 @@ export default function ScanPageContent() {
     }
   }, [feedback.tone]);
 
+  useEffect(() => {
+    if (!activeAlert) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setActiveAlert(null);
+    }, 3200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeAlert]);
+
+  const pushFeedback = (nextFeedback: ScanFeedback, showAlert = true) => {
+    setFeedback(nextFeedback);
+    setActiveAlert(showAlert && nextFeedback.tone !== 'idle' ? nextFeedback : null);
+  };
+
   const buildStoreUsageMessage = (data: ScanResponse) => {
     const details = [
       data.ingredientName ? `Nguyen lieu: ${data.ingredientName}.` : null,
@@ -515,7 +536,7 @@ export default function ScanPageContent() {
       }
     },
     onSuccess: async (data, variables) => {
-      setFeedback({
+      pushFeedback({
         tone: data.resultStatus === 'WARNING' ? 'warning' : 'success',
         title: localizeResultCode(data.resultCode),
         message:
@@ -532,6 +553,22 @@ export default function ScanPageContent() {
 
       void playSuccessBeep();
 
+      const invalidations = [
+        queryClient.invalidateQueries({ queryKey: ['ingredient-stock-board'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-batches'] })
+      ];
+
+      if (variables.operationType === 'STORE_USAGE') {
+        invalidations.push(
+          queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
+          queryClient.invalidateQueries({ queryKey: ['scan-logs'] })
+        );
+      } else {
+        invalidations.push(queryClient.invalidateQueries({ queryKey: ['transfers'] }));
+      }
+
+      await Promise.all(invalidations);
+
       if (variables.operationType !== 'STORE_USAGE') {
         setValue('batchCode', '');
       }
@@ -541,7 +578,7 @@ export default function ScanPageContent() {
       }
     },
     onError: (error: Error) => {
-      setFeedback({
+      pushFeedback({
         tone: 'error',
         title: 'Tu choi quet',
         message: error.message
@@ -556,7 +593,7 @@ export default function ScanPageContent() {
 
     const parsed = parseBatchQrValue(value);
     if (!parsed) {
-      setFeedback({
+      pushFeedback({
         tone: 'error',
         title: 'QR khong hop le',
         message: 'Ma QR khong dung dinh dang tem nguyen lieu.'
@@ -566,7 +603,7 @@ export default function ScanPageContent() {
 
     if (isQuickStoreUsageMode) {
       if (!parsed.batchId || parsed.sequenceNumber === null) {
-        setFeedback({
+        pushFeedback({
           tone: 'error',
           title: 'Tem chua hop le',
           message:
@@ -591,18 +628,18 @@ export default function ScanPageContent() {
       shouldDirty: true,
       shouldValidate: true
     });
-    setFeedback({
+    pushFeedback({
       tone: 'idle',
       title: 'Da nhan dien lo',
       message:
         operationType === 'TRANSFER'
           ? `Da doc lo ${parsed.batchCode}. Chon chi nhanh nhan va so luong roi bam chuyen kho.`
           : `Da doc lo ${parsed.batchCode}. Dieu chinh thong tin neu can roi bam ghi nhan.`
-    });
+    }, false);
   };
 
   const handleCameraError = (message: string) => {
-    setFeedback({
+    pushFeedback({
       tone: 'error',
       title: 'Camera quet gap loi',
       message
@@ -611,6 +648,46 @@ export default function ScanPageContent() {
 
   return (
     <ProtectedPage title="Quet nguyen lieu" allowedRoles={['STAFF', 'MANAGER', 'ADMIN']}>
+      {activeAlert ? (
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4">
+          <div
+            role="alert"
+            aria-live="assertive"
+            className={`pointer-events-auto w-full max-w-2xl rounded-3xl border px-5 py-4 shadow-2xl backdrop-blur ${
+              activeAlert.tone === 'success'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-950'
+                : activeAlert.tone === 'warning'
+                  ? 'border-amber-300 bg-amber-50 text-amber-950'
+                  : 'border-rose-300 bg-rose-50 text-rose-950'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`mt-1 h-3 w-3 rounded-full ${
+                  activeAlert.tone === 'success'
+                    ? 'bg-emerald-500'
+                    : activeAlert.tone === 'warning'
+                      ? 'bg-amber-500'
+                      : 'bg-rose-500'
+                }`}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em]">Thong bao quet</p>
+                <h2 className="mt-1 text-xl font-semibold">{activeAlert.title}</h2>
+                <p className="mt-2 text-sm leading-6">{activeAlert.message}</p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full px-3 py-1 text-sm font-semibold text-current/80 transition hover:bg-black/5 hover:text-current"
+                onClick={() => setActiveAlert(null)}
+              >
+                Dong
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className={`rounded-3xl bg-gradient-to-br ${backgroundClass} p-4 md:p-6`}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <Badge
