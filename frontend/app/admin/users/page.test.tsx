@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createUser: vi.fn(),
+  deleteUser: vi.fn(),
   listStores: vi.fn(),
   listUsers: vi.fn(),
   lockUser: vi.fn(),
@@ -50,6 +51,7 @@ vi.mock('@/services/admin/stores', () => ({
 
 vi.mock('@/services/admin/users', () => ({
   createUser: mocks.createUser,
+  deleteUser: mocks.deleteUser,
   listUsers: mocks.listUsers,
   lockUser: mocks.lockUser,
   resetPassword: mocks.resetPassword,
@@ -81,6 +83,7 @@ const renderPage = () => {
 describe('AdminUsersPage', () => {
   beforeEach(() => {
     mocks.createUser.mockReset();
+    mocks.deleteUser.mockReset();
     mocks.listStores.mockReset();
     mocks.listUsers.mockReset();
     mocks.lockUser.mockReset();
@@ -114,6 +117,7 @@ describe('AdminUsersPage', () => {
       ]
     });
     mocks.lockUser.mockResolvedValue({ id: 'staff-1', status: 'LOCKED' });
+    mocks.deleteUser.mockResolvedValue({ id: 'staff-1', status: 'INACTIVE' });
   });
 
   afterEach(() => {
@@ -139,6 +143,31 @@ describe('AdminUsersPage', () => {
     fireEvent.click(lockButtons[1]);
     await waitFor(() => {
       expect(mocks.lockUser).toHaveBeenCalledWith('staff-1');
+    });
+  });
+
+  it('requires admin password before soft deleting staff', async () => {
+    renderPage();
+
+    const deleteButtons = await screen.findAllByRole('button', { name: 'Xóa' });
+
+    expect(deleteButtons).toHaveLength(1);
+    fireEvent.click(deleteButtons[0]);
+
+    const passwordInput = screen.getByLabelText('Mật khẩu Admin');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận xóa' });
+
+    expect(confirmButton).toBeDisabled();
+
+    fireEvent.change(passwordInput, {
+      target: {
+        value: 'AdminPass1'
+      }
+    });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(mocks.deleteUser).toHaveBeenCalledWith('staff-1', 'AdminPass1');
     });
   });
 });

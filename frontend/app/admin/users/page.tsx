@@ -21,6 +21,7 @@ import {
 } from '@/lib/password-policy';
 import {
   createUser,
+  deleteUser,
   listUsers,
   lockUser,
   resetPassword,
@@ -79,6 +80,8 @@ export default function AdminUsersPage() {
     username: string;
     temporaryPassword: string;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
 
   const storesQuery = useQuery({
     queryKey: ['stores-selector'],
@@ -183,6 +186,32 @@ export default function AdminUsersPage() {
     }) => updateUser(id, { permissions }),
     onSuccess: () => usersQuery.refetch()
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, adminPassword }: { id: string; adminPassword: string }) =>
+      deleteUser(id, adminPassword),
+    onSuccess: () => {
+      setDeleteTarget(null);
+      setDeletePassword('');
+      setLastResetResult(null);
+      usersQuery.refetch();
+    }
+  });
+
+  const openDeleteDialog = (user: UserRow) => {
+    deleteMutation.reset();
+    setDeleteTarget(user);
+    setDeletePassword('');
+  };
+
+  const closeDeleteDialog = () => {
+    if (deleteMutation.isPending) {
+      return;
+    }
+
+    setDeleteTarget(null);
+    setDeletePassword('');
+  };
 
   const stores = (storesQuery.data?.data ?? []) as Array<{ id: string; name: string }>;
   const users = (usersQuery.data?.data ?? []) as UserRow[];
@@ -377,12 +406,68 @@ export default function AdminUsersPage() {
                       Khóa
                     </Button>
                   )}
+                  {user.role !== 'ADMIN' ? (
+                    <Button
+                      variant="danger"
+                      onClick={() => openDeleteDialog(user)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      Xóa
+                    </Button>
+                  ) : null}
                 </div>
               ];
             })}
           />
         </Card>
       </div>
+      {deleteTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-user-title"
+        >
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h3 id="delete-user-title" className="text-lg font-semibold text-brand-900">
+              Xóa mềm tài khoản
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Tài khoản <span className="font-semibold text-brand-900">{deleteTarget.username}</span> sẽ bị vô hiệu hóa và ẩn khỏi danh sách đang hoạt động. Lịch sử dữ liệu vẫn được giữ lại.
+            </p>
+            <div className="mt-4">
+              <Input
+                label="Mật khẩu Admin"
+                type="password"
+                value={deletePassword}
+                onChange={(event) => setDeletePassword(event.target.value)}
+                autoComplete="current-password"
+                autoFocus
+              />
+            </div>
+            {deleteMutation.error ? (
+              <p className="mt-3 text-sm text-danger">{deleteMutation.error.message}</p>
+            ) : null}
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <Button variant="secondary" onClick={closeDeleteDialog} disabled={deleteMutation.isPending}>
+                Hủy
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() =>
+                  deleteMutation.mutate({
+                    id: deleteTarget.id,
+                    adminPassword: deletePassword
+                  })
+                }
+                disabled={deleteMutation.isPending || deletePassword.trim().length === 0}
+              >
+                {deleteMutation.isPending ? 'Đang xóa...' : 'Xác nhận xóa'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </ProtectedPage>
   );
 }

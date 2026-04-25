@@ -41,3 +41,11 @@ export const resetPassword = (id: string, temporaryPassword?: string) =>
       body: JSON.stringify({ temporaryPassword })
     })
   );
+
+export const deleteUser = (id: string, adminPassword: string) =>
+  unwrapData(
+    apiClient(`/admin/users/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ adminPassword })
+    })
+  );

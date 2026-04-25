@@ -84,6 +84,7 @@ const apiErrorLabels: Record<string, string> = {
   VALIDATION_ERROR: 'Dữ liệu chưa hợp lệ',
   VALIDATION_INVALID_PAYLOAD: 'Dữ liệu gửi lên chưa hợp lệ',
   VALIDATION_INVALID_QUERY: 'Điều kiện tìm kiếm chưa hợp lệ',
+  ADMIN_ERROR_INVALID_ADMIN_PASSWORD: 'Mật khẩu Admin không đúng',
   ADMIN_ERROR_INGREDIENT_UNIT_NOT_FOUND: 'Không tìm thấy đơn vị',
   ADMIN_ERROR_INGREDIENT_NOT_FOUND: 'Không tìm thấy nguyên liệu',
   ADMIN_ERROR_STORE_NOT_FOUND: 'Không tìm thấy chi nhánh',

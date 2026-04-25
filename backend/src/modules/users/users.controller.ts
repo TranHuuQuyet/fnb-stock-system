@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
@@ -6,6 +6,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { JwtUser } from '../../common/types/request-with-user';
 import { CreateUserDto } from './dto/create-user.dto';
+import { DeleteUserDto } from './dto/delete-user.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -75,6 +76,18 @@ export class UsersController {
     return {
       data: await this.usersService.resetPassword(user.userId, id, dto),
       message: 'Đặt lại mật khẩu thành công'
+    };
+  }
+
+  @Delete(':id')
+  async softDelete(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Body() dto: DeleteUserDto
+  ) {
+    return {
+      data: await this.usersService.softDelete(user.userId, id, dto),
+      message: 'Xóa người dùng thành công'
     };
   }
 }

@@ -9,10 +9,15 @@ import {
   buildPaginationMeta,
   resolveSortField
 } from '../../common/utils/pagination';
-import { assertPasswordPolicy, hashPassword } from '../../common/utils/password';
+import {
+  assertPasswordPolicy,
+  comparePassword,
+  hashPassword
+} from '../../common/utils/password';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { DeleteUserDto } from './dto/delete-user.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -127,7 +132,9 @@ export class UsersService {
     const sortField = resolveSortField(query.sortBy, USER_SORT_FIELDS, 'createdAt');
     const where: Prisma.UserWhereInput = {
       ...(query.role ? { role: query.role } : {}),
-      ...(query.status ? { status: query.status } : {}),
+      ...(query.status
+        ? { status: query.status }
+        : { status: { not: UserStatus.INACTIVE } }),
       ...(query.storeId ? { storeId: query.storeId } : {}),
       ...(query.keyword
         ? {
@@ -185,6 +192,7 @@ export class UsersService {
 
   async update(actorUserId: string, id: string, dto: UpdateUserDto) {
     this.assertCanLockUser(actorUserId, id, dto.status);
+    this.assertDoesNotSoftDeleteThroughUpdate(dto.status);
 
     const existing = await this.findById(id);
     if (!existing) {
@@ -240,6 +248,70 @@ export class UsersService {
       entityType: 'User',
       entityId: id,
       oldData: sanitizeUser(existing),
+      newData: sanitizeUser(updated)
+    });
+
+    return sanitizeUser(updated);
+  }
+
+  async softDelete(actorUserId: string, id: string, dto: DeleteUserDto) {
+    const actor = await this.findById(actorUserId);
+    if (!actor || actor.role !== UserRole.ADMIN) {
+      throw appException(
+        HttpStatus.FORBIDDEN,
+        ERROR_CODES.AUTH_FORBIDDEN,
+        'Không có quyền xóa người dùng'
+      );
+    }
+
+    const isValidPassword = await comparePassword(dto.adminPassword, actor.passwordHash);
+    if (!isValidPassword) {
+      throw appException(
+        HttpStatus.BAD_REQUEST,
+        ERROR_CODES.ADMIN_ERROR_INVALID_ADMIN_PASSWORD,
+        'Mật khẩu Admin không đúng'
+      );
+    }
+
+    const user = await this.findById(id);
+    if (!user) {
+      throw appException(
+        HttpStatus.NOT_FOUND,
+        ERROR_CODES.ADMIN_ERROR_USER_NOT_FOUND,
+        'Không tìm thấy người dùng'
+      );
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      throw appException(
+        HttpStatus.FORBIDDEN,
+        ERROR_CODES.AUTH_FORBIDDEN,
+        'Không thể xóa tài khoản ADMIN'
+      );
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: {
+        status: UserStatus.INACTIVE,
+        sessionVersion: {
+          increment: 1
+        },
+        failedLoginAttempts: 0,
+        lastFailedLoginAt: null,
+        lockoutUntil: null
+      },
+      include: {
+        store: true
+      }
+    });
+
+    await this.auditService.createLog({
+      actorUserId,
+      action: 'SOFT_DELETE_USER',
+      entityType: 'User',
+      entityId: id,
+      oldData: sanitizeUser(user),
       newData: sanitizeUser(updated)
     });
 
@@ -366,6 +438,18 @@ export class UsersService {
       HttpStatus.FORBIDDEN,
       ERROR_CODES.AUTH_FORBIDDEN,
       'Admin không thể tự khóa tài khoản đang đăng nhập'
+    );
+  }
+
+  private assertDoesNotSoftDeleteThroughUpdate(status?: UserStatus) {
+    if (status !== UserStatus.INACTIVE) {
+      return;
+    }
+
+    throw appException(
+      HttpStatus.BAD_REQUEST,
+      ERROR_CODES.VALIDATION_INVALID_PAYLOAD,
+      'Dùng chức năng xóa để vô hiệu hóa tài khoản'
     );
   }
 
