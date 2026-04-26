@@ -129,9 +129,6 @@ export class IngredientStockBoardService {
           storeId: store.id,
           remainingQty: {
             gt: 0
-          },
-          status: {
-            in: ['ACTIVE', 'SOFT_LOCKED']
           }
         },
         select: {
