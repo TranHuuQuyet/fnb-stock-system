@@ -8,6 +8,16 @@ import ScanPageContent from './scan-page-content';
 const submitScanMock = vi.fn();
 const getScanNetworkStatusMock = vi.fn();
 const parseBatchQrValueMock = vi.fn();
+const listBatchesMock = vi.fn();
+const listTransferStoresMock = vi.fn();
+let mockSessionUser = {
+  role: 'STAFF',
+  permissions: [] as string[],
+  store: {
+    id: 'store-1',
+    name: 'Chi nhanh 1'
+  }
+};
 
 vi.mock('@/components/layout/protected-page', () => ({
   ProtectedPage: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
@@ -29,14 +39,7 @@ vi.mock('@/hooks/use-resolved-session', () => ({
   useResolvedSession: () => ({
     isSuccess: true,
     session: {
-      user: {
-        role: 'STAFF',
-        permissions: [],
-        store: {
-          id: 'store-1',
-          name: 'Chi nhanh 1'
-        }
-      }
+      user: mockSessionUser
     }
   })
 }));
@@ -54,7 +57,7 @@ vi.mock('@/lib/localization', () => ({
 }));
 
 vi.mock('@/services/batches', () => ({
-  listBatches: vi.fn()
+  listBatches: (...args: unknown[]) => listBatchesMock(...args)
 }));
 
 vi.mock('@/services/scan', () => ({
@@ -63,7 +66,7 @@ vi.mock('@/services/scan', () => ({
 }));
 
 vi.mock('@/services/transfers', () => ({
-  listTransferStores: vi.fn()
+  listTransferStores: (...args: unknown[]) => listTransferStoresMock(...args)
 }));
 
 describe('ScanPageContent', () => {
@@ -72,6 +75,17 @@ describe('ScanPageContent', () => {
     parseBatchQrValueMock.mockReset();
     submitScanMock.mockReset();
     getScanNetworkStatusMock.mockReset();
+    listBatchesMock.mockReset();
+    listTransferStoresMock.mockReset();
+
+    mockSessionUser = {
+      role: 'STAFF',
+      permissions: [],
+      store: {
+        id: 'store-1',
+        name: 'Chi nhanh 1'
+      }
+    };
 
     parseBatchQrValueMock.mockReturnValue({
       rawValue: 'FNBBATCH:BATCH-001|BATCH:batch-1|SEQ:1',
@@ -104,6 +118,11 @@ describe('ScanPageContent', () => {
       bypassReason: null,
       canAccessBusinessOperations: true
     });
+    listBatchesMock.mockResolvedValue({ data: [] });
+    listTransferStoresMock.mockResolvedValue([
+      { id: 'store-1', name: 'Chi nhanh 1' },
+      { id: 'store-2', name: 'Chi nhanh 2' }
+    ]);
 
     Object.defineProperty(globalThis, 'crypto', {
       configurable: true,
@@ -156,5 +175,145 @@ describe('ScanPageContent', () => {
       expect(invalidatedKeys).toContain(JSON.stringify(['dashboard-summary']));
       expect(invalidatedKeys).toContain(JSON.stringify(['scan-logs']));
     });
+  });
+
+  it('blocks admin store usage scans until a store is selected', async () => {
+    mockSessionUser = {
+      role: 'ADMIN',
+      permissions: [],
+      store: {
+        id: '',
+        name: ''
+      }
+    };
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false
+        },
+        mutations: {
+          retry: false
+        }
+      }
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ScanPageContent />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fake Scan' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Vui lòng chọn chi nhánh sử dụng');
+    });
+    expect(submitScanMock).not.toHaveBeenCalled();
+  });
+
+  it('blocks transfer scans when source and destination stores match', async () => {
+    mockSessionUser = {
+      role: 'ADMIN',
+      permissions: [],
+      store: {
+        id: 'store-1',
+        name: 'Chi nhanh 1'
+      }
+    };
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false
+        },
+        mutations: {
+          retry: false
+        }
+      }
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ScanPageContent />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Chuyển kho' }));
+    await waitFor(() => {
+      expect(screen.getAllByRole('option', { name: 'Chi nhanh 2' }).length).toBeGreaterThan(0);
+    });
+    const destinationSelect = await screen.findByRole('combobox', { name: 'Chi nhánh nhận' });
+    (destinationSelect as HTMLSelectElement).value = 'store-1';
+    fireEvent.change(destinationSelect, {
+      target: { value: 'store-1' }
+    });
+    await waitFor(() => {
+      expect(destinationSelect).toHaveValue('store-1');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Fake Scan' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Chi nhánh gửi và chi nhánh nhận không được trùng nhau'
+      );
+    });
+    expect(submitScanMock).not.toHaveBeenCalled();
+  });
+
+  it('submits transfer scans with quantity one from the selected source to destination', async () => {
+    mockSessionUser = {
+      role: 'ADMIN',
+      permissions: [],
+      store: {
+        id: 'store-1',
+        name: 'Chi nhanh 1'
+      }
+    };
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false
+        },
+        mutations: {
+          retry: false
+        }
+      }
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ScanPageContent />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Chuyển kho' }));
+    await waitFor(() => {
+      expect(screen.getAllByRole('option', { name: 'Chi nhanh 2' }).length).toBeGreaterThan(0);
+    });
+    const destinationSelect = await screen.findByRole('combobox', { name: 'Chi nhánh nhận' });
+    (destinationSelect as HTMLSelectElement).value = 'store-2';
+    fireEvent.change(destinationSelect, {
+      target: { value: 'store-2' }
+    });
+    await waitFor(() => {
+      expect(destinationSelect).toHaveValue('store-2');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Fake Scan' }));
+
+    await waitFor(() => {
+      expect(submitScanMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(submitScanMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationType: 'TRANSFER',
+        batchCode: 'BATCH-001',
+        quantityUsed: 1,
+        storeId: 'store-1',
+        destinationStoreId: 'store-2'
+      })
+    );
   });
 });

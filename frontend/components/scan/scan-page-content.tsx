@@ -1,17 +1,14 @@
 "use client";
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 import { ProtectedPage } from '@/components/layout/protected-page';
 import { QrScanner } from '@/components/scan/qr-scanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { useNetworkStatus } from '@/hooks/use-network-status';
 import { useResolvedSession } from '@/hooks/use-resolved-session';
 import { getDeviceId } from '@/lib/auth';
@@ -21,26 +18,13 @@ import { listBatches } from '@/services/batches';
 import { getScanNetworkStatus, submitScan } from '@/services/scan';
 import { listTransferStores } from '@/services/transfers';
 
-const schema = z
-  .object({
-    batchCode: z.string().min(1, 'Vui lòng nhập mã lô'),
-    quantityUsed: z.coerce.number().positive('Số lượng phải lớn hơn 0'),
-    operationType: z.enum(['STORE_USAGE', 'TRANSFER']),
-    storeId: z.string().optional(),
-    sourceStoreId: z.string().optional(),
-    destinationStoreId: z.string().optional()
-  })
-  .superRefine((value, ctx) => {
-    if (value.operationType === 'TRANSFER' && !value.destinationStoreId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Vui lòng chọn chi nhánh nhận',
-        path: ['destinationStoreId']
-      });
-    }
-  });
-
-type FormValues = z.infer<typeof schema>;
+type OperationType = 'STORE_USAGE' | 'TRANSFER';
+type FormValues = {
+  operationType: OperationType;
+  storeId?: string;
+  sourceStoreId?: string;
+  destinationStoreId?: string;
+};
 
 type ScanResponse = {
   resultStatus: 'SUCCESS' | 'WARNING' | 'ERROR';
@@ -205,14 +189,9 @@ export default function ScanPageContent() {
   const {
     register,
     setValue,
-    handleSubmit,
-    watch,
-    formState: { errors }
+    watch
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
     defaultValues: {
-      batchCode: '',
-      quantityUsed: 1,
       operationType: 'STORE_USAGE',
       storeId: getPersistedStoreId('usage-store', session?.user.store?.id),
       sourceStoreId: getPersistedStoreId('transfer-source', session?.user.store?.id),
@@ -225,7 +204,6 @@ export default function ScanPageContent() {
   const sourceStoreId = watch('sourceStoreId');
   const destinationStoreId = watch('destinationStoreId');
   const networkStatusStoreId = operationType === 'TRANSFER' ? sourceStoreId : storeId;
-  const isQuickStoreUsageMode = !isAdmin && operationType === 'STORE_USAGE';
 
   useEffect(() => {
     if (!canTransfer && operationType === 'TRANSFER') {
@@ -564,14 +542,13 @@ export default function ScanPageContent() {
           queryClient.invalidateQueries({ queryKey: ['scan-logs'] })
         );
       } else {
-        invalidations.push(queryClient.invalidateQueries({ queryKey: ['transfers'] }));
+        invalidations.push(
+          queryClient.invalidateQueries({ queryKey: ['scan-logs'] }),
+          queryClient.invalidateQueries({ queryKey: ['transfers'] })
+        );
       }
 
       await Promise.all(invalidations);
-
-      if (variables.operationType !== 'STORE_USAGE') {
-        setValue('batchCode', '');
-      }
 
       if (variables.operationType === 'TRANSFER' && variables.destinationStoreId) {
         void destinationInventoryQuery.refetch();
@@ -601,7 +578,16 @@ export default function ScanPageContent() {
       return;
     }
 
-    if (isQuickStoreUsageMode) {
+    if (operationType === 'STORE_USAGE') {
+      if (isAdmin && !storeId) {
+        pushFeedback({
+          tone: 'error',
+          title: 'Chưa chọn chi nhánh',
+          message: 'Vui lòng chọn chi nhánh sử dụng trước khi quét.'
+        });
+        return;
+      }
+
       if (!parsed.batchId || parsed.sequenceNumber === null) {
         pushFeedback({
           tone: 'error',
@@ -624,18 +610,43 @@ export default function ScanPageContent() {
       return;
     }
 
-    setValue('batchCode', parsed.batchCode, {
-      shouldDirty: true,
-      shouldValidate: true
+    if (!sourceStoreId) {
+      pushFeedback({
+        tone: 'error',
+        title: 'Chưa chọn chi nhánh gửi',
+        message: 'Vui lòng chọn chi nhánh gửi trước khi quét chuyển kho.'
+      });
+      return;
+    }
+
+    if (!destinationStoreId) {
+      pushFeedback({
+        tone: 'error',
+        title: 'Chưa chọn chi nhánh nhận',
+        message: 'Vui lòng chọn chi nhánh nhận trước khi quét chuyển kho.'
+      });
+      return;
+    }
+
+    if (sourceStoreId === destinationStoreId) {
+      pushFeedback({
+        tone: 'error',
+        title: 'Chi nhánh không hợp lệ',
+        message: 'Chi nhánh gửi và chi nhánh nhận không được trùng nhau.'
+      });
+      return;
+    }
+
+    scanMutation.mutate({
+      operationType: 'TRANSFER',
+      batchCode: parsed.batchCode,
+      quantityUsed: 1,
+      sourceStoreId,
+      destinationStoreId,
+      scannedLabelValue: parsed.rawValue,
+      scannedLabelBatchId: parsed.batchId ?? undefined,
+      scannedLabelSequenceNumber: parsed.sequenceNumber ?? undefined
     });
-    pushFeedback({
-      tone: 'idle',
-      title: 'Đã nhận diện lô',
-      message:
-        operationType === 'TRANSFER'
-          ? `Đã đọc lô ${parsed.batchCode}. Chọn chi nhánh nhận và số lượng rồi bấm chuyển kho.`
-          : `Đã đọc lô ${parsed.batchCode}. Điều chỉnh thông tin nếu cần rồi bấm ghi nhận.`
-    }, false);
   };
 
   const handleCameraError = (message: string) => {
@@ -694,7 +705,7 @@ export default function ScanPageContent() {
             label={isOnline ? 'Trực tuyến' : 'Offline'}
             tone={isOnline ? 'success' : 'neutral'}
           />
-          {isQuickStoreUsageMode ? (
+          {operationType === 'STORE_USAGE' ? (
             <Badge label="Tự trừ 1" tone="success" />
           ) : operationType === 'TRANSFER' ? (
             <Badge label="Chuyển kho" tone="warning" />
@@ -740,14 +751,67 @@ export default function ScanPageContent() {
           </div>
           <p className="mt-3 text-sm text-slate-600">
             {operationType === 'TRANSFER'
-              ? `Chi nhánh thực hiện: ${session?.user.store?.name ?? 'Chưa xác định'}. Sau khi quét, hệ thống sẽ trừ tồn ở chi nhánh gửi và tạo phiếu chuyển kho.`
-              : isQuickStoreUsageMode
-                ? `Quét thành công là hệ thống tự trừ ngay 1 đơn vị tại ${session?.user.store?.name ?? 'chi nhánh hiện tại'}. Không cần nhập tay, không cần bấm gửi.`
+              ? `Chi nhánh gửi: ${selectedSourceStoreName || session?.user.store?.name || 'Chưa xác định'}. Sau khi quét, hệ thống sẽ trừ tồn ở chi nhánh gửi và tạo phiếu chuyển kho.`
+              : operationType === 'STORE_USAGE'
+                ? `Quét thành công là hệ thống tự trừ ngay 1 đơn vị tại ${selectedUsageStoreName || session?.user.store?.name || 'chi nhánh hiện tại'}. Không cần nhập tay, không cần bấm gửi.`
                 : `Quét để ghi nhận nguyên liệu vừa được sử dụng tại quầy. ${isAdmin && selectedUsageStoreName && selectedUsageStoreName !== session?.user.store?.name ? `Chi nhánh sử dụng: ${selectedUsageStoreName}.` : ''}`}
           </p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {isAdmin && operationType === 'STORE_USAGE' ? (
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-brand-900">Chi nhánh sử dụng</span>
+                <select
+                  className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
+                  {...register('storeId')}
+                >
+                  <option value="">Chọn chi nhánh sử dụng</option>
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {canTransfer && operationType === 'TRANSFER' ? (
+              <>
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium text-brand-900">Chi nhánh gửi</span>
+                  <select
+                    className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
+                    disabled={!isAdmin}
+                    {...register('sourceStoreId')}
+                  >
+                    <option value="">Chọn chi nhánh gửi</option>
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium text-brand-900">Chi nhánh nhận</span>
+                  <select
+                    className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
+                    {...register('destinationStoreId')}
+                  >
+                    <option value="">Chọn chi nhánh nhận</option>
+                    {stores.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : null}
+          </div>
         </Card>
 
-        {isQuickStoreUsageMode ? (
+        {operationType === 'STORE_USAGE' ? (
           <Card className="mb-4 border border-emerald-200 bg-emerald-50">
             <p className="text-sm font-medium text-emerald-900">
               Mỗi tem đã phát hành chỉ được quét 1 lần. Hệ thống chỉ chấp nhận tem có số thứ tự
@@ -768,173 +832,60 @@ export default function ScanPageContent() {
         <Card className="mb-4">
           <h3 className="mb-3 text-lg font-semibold text-brand-900">Quét bằng camera</h3>
           <p className="mb-4 text-sm text-slate-600">
-            {isQuickStoreUsageMode
+            {operationType === 'STORE_USAGE' || operationType === 'TRANSFER'
               ? 'Đưa tem vào khung quét. Khi QR hợp lệ, hệ thống sẽ xử lý ngay không cần bấm nút.'
               : 'Quét để điền mã lô vào form bên dưới, sau đó xác nhận thao tác.'}
           </p>
           <QrScanner onDetected={handleQrDetected} onError={handleCameraError} />
         </Card>
 
-        {isQuickStoreUsageMode ? (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),360px]">
           <Card>
             <h3 className="text-lg font-semibold text-brand-900">Chế độ quét nhanh</h3>
             <p className="mt-2 text-sm text-slate-600">
-              Scan thành công sẽ trừ ngay 1 đơn vị. Nếu quét lại cùng một tem, backend sẽ từ chối để
-              tránh trùng lặp.
+              Scan thành công sẽ xử lý ngay 1 đơn vị. Muốn sử dụng hoặc chuyển nhiều đơn vị thì
+              quét nhiều lần.
             </p>
           </Card>
-        ) : (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),360px]">
+
+          {isAdmin && operationType === 'TRANSFER' ? (
             <Card>
-              <form
-                className="space-y-4"
-                onSubmit={handleSubmit((values) =>
-                  scanMutation.mutate({
-                    operationType: values.operationType,
-                    batchCode: values.batchCode,
-                    quantityUsed: values.quantityUsed,
-                    storeId: values.storeId,
-                    sourceStoreId: values.sourceStoreId,
-                    destinationStoreId: values.destinationStoreId
-                  })
-                )}
-              >
-                <Input
-                  label="Mã lô"
-                  placeholder="BATCH-TRA-001"
-                  error={errors.batchCode?.message}
-                  {...register('batchCode')}
-                />
-
-                {isAdmin && operationType === 'STORE_USAGE' ? (
-                  <label className="block space-y-2">
-                    <span className="text-sm font-medium text-brand-900">Chi nhánh sử dụng</span>
-                    <select
-                      className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
-                      {...register('storeId')}
+              <h3 className="text-lg font-semibold text-brand-900">Tồn kho chi nhánh nhận</h3>
+              <p className="mt-2 text-sm text-slate-600">
+                {selectedDestinationStoreName
+                  ? `Đang xem tồn của ${selectedDestinationStoreName}.`
+                  : 'Chọn chi nhánh để xem nguyên liệu và số lượng hiện có.'}
+              </p>
+              <div className="mt-4 space-y-3">
+                {destinationInventoryQuery.isLoading ? (
+                  <p className="text-sm text-slate-500">Đang tải tồn kho...</p>
+                ) : destinationInventory.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    Chưa có dữ liệu tồn kho cho chi nhánh này.
+                  </p>
+                ) : (
+                  destinationInventory.map((item) => (
+                    <div
+                      key={item.ingredientName}
+                      className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3"
                     >
-                      <option value="">Chọn chi nhánh sử dụng</option>
-                      {stores.map((store) => (
-                        <option key={store.id} value={store.id}>
-                          {store.name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.storeId ? (
-                      <span className="text-xs text-danger">{errors.storeId.message}</span>
-                    ) : null}
-                  </label>
-                ) : null}
-
-                {canTransfer && operationType === 'TRANSFER' ? (
-                  <>
-                    <label className="block space-y-2">
-                      <span className="text-sm font-medium text-brand-900">Chi nhánh gửi</span>
-                      <select
-                        className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
-                        disabled={!isAdmin}
-                        {...register('sourceStoreId')}
-                      >
-                        <option value="">Chọn chi nhánh gửi</option>
-                        {stores
-                          .filter((store) =>
-                            isAdmin
-                              ? store.id !== destinationStoreId
-                              : store.id === session?.user.store?.id
-                          )
-                          .map((store) => (
-                            <option key={store.id} value={store.id}>
-                              {store.name}
-                            </option>
-                          ))}
-                      </select>
-                      {errors.sourceStoreId ? (
-                        <span className="text-xs text-danger">{errors.sourceStoreId.message}</span>
-                      ) : null}
-                    </label>
-
-                    <label className="block space-y-2">
-                      <span className="text-sm font-medium text-brand-900">Chi nhánh nhận</span>
-                      <select
-                        className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
-                        {...register('destinationStoreId')}
-                      >
-                        <option value="">Chọn chi nhánh nhận</option>
-                        {stores
-                          .filter((store) => store.id !== sourceStoreId)
-                          .map((store) => (
-                            <option key={store.id} value={store.id}>
-                              {store.name}
-                            </option>
-                          ))}
-                      </select>
-                      {errors.destinationStoreId ? (
-                        <span className="text-xs text-danger">
-                          {errors.destinationStoreId.message}
-                        </span>
-                      ) : null}
-                    </label>
-                  </>
-                ) : null}
-
-                <Input
-                  label={operationType === 'TRANSFER' ? 'Số lượng chuyển' : 'Số lượng sử dụng'}
-                  type="number"
-                  min={1}
-                  step={1}
-                  error={errors.quantityUsed?.message}
-                  {...register('quantityUsed')}
-                />
-
-                <Button type="submit" fullWidth disabled={scanMutation.isPending}>
-                  {scanMutation.isPending
-                    ? 'Đang xử lý lượt quét...'
-                    : operationType === 'TRANSFER'
-                      ? 'Chuyển kho bằng lượt quét'
-                      : 'Ghi nhận lượt quét'}
-                </Button>
-              </form>
-            </Card>
-
-            {isAdmin && operationType === 'TRANSFER' ? (
-              <Card>
-                <h3 className="text-lg font-semibold text-brand-900">Tồn kho chi nhánh nhận</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  {selectedDestinationStoreName
-                    ? `Đang xem tồn của ${selectedDestinationStoreName}.`
-                    : 'Chọn chi nhánh để xem nguyên liệu và số lượng hiện có.'}
-                </p>
-                <div className="mt-4 space-y-3">
-                  {destinationInventoryQuery.isLoading ? (
-                    <p className="text-sm text-slate-500">Đang tải tồn kho...</p>
-                  ) : destinationInventory.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                      Chưa có dữ liệu tồn kho cho chi nhánh này.
-                    </p>
-                  ) : (
-                    destinationInventory.map((item) => (
-                      <div
-                        key={item.ingredientName}
-                        className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="font-medium text-brand-900">{item.ingredientName}</p>
-                            <p className="text-xs text-slate-500">{item.batchCount} lô đang có tồn</p>
-                          </div>
-                          <p className="text-sm font-semibold text-brand-900">
-                            {quantityFormatter.format(item.totalQty)}
-                            {item.unit ? ` ${item.unit}` : ''}
-                          </p>
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-medium text-brand-900">{item.ingredientName}</p>
+                          <p className="text-xs text-slate-500">{item.batchCount} lô đang có tồn</p>
                         </div>
+                        <p className="text-sm font-semibold text-brand-900">
+                          {quantityFormatter.format(item.totalQty)}
+                          {item.unit ? ` ${item.unit}` : ''}
+                        </p>
                       </div>
-                    ))
-                  )}
-                </div>
-              </Card>
-            ) : null}
-          </div>
-        )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          ) : null}
+        </div>
       </div>
     </ProtectedPage>
   );
