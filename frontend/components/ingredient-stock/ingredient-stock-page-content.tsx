@@ -161,6 +161,8 @@ const formatDayLabel = (day: number, month: number) =>
 const getCellQuantity = (item: BoardItem, day: number, shiftKey: string) =>
   item.dailyTotals.find((cell) => cell.day === day && cell.shiftKey === shiftKey)?.quantity ?? 0;
 
+const normalizeSearchText = (value: string) => value.trim().toLocaleLowerCase('vi-VN');
+
 export function IngredientStockPageContent() {
   const sessionQuery = useResolvedSession();
   const session = sessionQuery.session;
@@ -174,8 +176,10 @@ export function IngredientStockPageContent() {
   const [editorState, setEditorState] = useState<EditableState | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedDayFilter, setSelectedDayFilter] = useState('all');
   const [selectedGroupFilterId, setSelectedGroupFilterId] = useState('all');
   const [focusedIngredientId, setFocusedIngredientId] = useState('all');
+  const [ingredientSearch, setIngredientSearch] = useState('');
   const [expandedIngredientId, setExpandedIngredientId] = useState<string | null>(null);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [showAllDaysOnMobile, setShowAllDaysOnMobile] = useState(false);
@@ -266,6 +270,10 @@ export function IngredientStockPageContent() {
   const totalDays =
     boardQuery.data?.daysInMonth ?? new Date(selectedYear, selectedMonth, 0).getDate();
   const days = useMemo(() => Array.from({ length: totalDays }, (_, index) => index + 1), [totalDays]);
+  const visibleDays = useMemo(() => {
+    const selectedDay = Number(selectedDayFilter);
+    return selectedDayFilter === 'all' || !days.includes(selectedDay) ? days : [selectedDay];
+  }, [days, selectedDayFilter]);
   const shifts = boardQuery.data?.shifts ?? [];
   const canEdit = Boolean(boardQuery.data?.canEdit && editorState);
   const lowStockThreshold = boardQuery.data?.lowStockThreshold ?? 2;
@@ -312,6 +320,12 @@ export function IngredientStockPageContent() {
   );
 
   useEffect(() => {
+    if (selectedDayFilter !== 'all' && !days.includes(Number(selectedDayFilter))) {
+      setSelectedDayFilter('all');
+    }
+  }, [days, selectedDayFilter]);
+
+  useEffect(() => {
     if (
       selectedGroupFilterId !== 'all' &&
       !boardGroupFilters.some((group) => group.id === selectedGroupFilterId)
@@ -351,6 +365,7 @@ export function IngredientStockPageContent() {
 
   const filteredGroups = useMemo(() => {
     let groups = editorState?.groups ?? [];
+    const searchText = normalizeSearchText(ingredientSearch);
 
     if (selectedGroupFilterId !== 'all') {
       groups = groups.filter((group) => group.groupId === selectedGroupFilterId);
@@ -365,6 +380,17 @@ export function IngredientStockPageContent() {
         .filter((group) => group.items.length > 0);
     }
 
+    if (searchText) {
+      groups = groups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) =>
+            normalizeSearchText(`${item.ingredientName} ${item.ingredientCode}`).includes(searchText)
+          )
+        }))
+        .filter((group) => group.items.length > 0);
+    }
+
     if (showLowStockOnly) {
       groups = groups
         .map((group) => ({
@@ -375,7 +401,14 @@ export function IngredientStockPageContent() {
     }
 
     return groups;
-  }, [editorState, focusedIngredientId, lowStockThreshold, selectedGroupFilterId, showLowStockOnly]);
+  }, [
+    editorState,
+    focusedIngredientId,
+    ingredientSearch,
+    lowStockThreshold,
+    selectedGroupFilterId,
+    showLowStockOnly
+  ]);
 
   const flatVisibleItems = useMemo(
     () => filteredGroups.flatMap((group) => group.items),
@@ -415,17 +448,20 @@ export function IngredientStockPageContent() {
           const activeDays = days.filter((day) =>
             shifts.some((shift) => getCellQuantity(item, day, shift.key) > 0)
           );
+          const visibleActiveDays = visibleDays.filter((day) => activeDays.includes(day));
 
           return {
             ...item,
             groupName: group.groupName,
-            activeDays,
-            renderedDays: showAllDaysOnMobile ? days : activeDays,
-            totalScannedQty: item.dailyTotals.reduce((total, cell) => total + cell.quantity, 0)
+            activeDays: visibleActiveDays,
+            renderedDays: showAllDaysOnMobile ? visibleDays : visibleActiveDays,
+            totalScannedQty: item.dailyTotals
+              .filter((cell) => visibleDays.includes(cell.day))
+              .reduce((total, cell) => total + cell.quantity, 0)
           };
         })
       ),
-    [days, shifts, showAllDaysOnMobile, visibleGroups]
+    [days, shifts, showAllDaysOnMobile, visibleDays, visibleGroups]
   );
 
   const storeName =
@@ -624,7 +660,23 @@ export function IngredientStockPageContent() {
             <Badge label={`${flatVisibleItems.length} nguyên liệu đang hiển thị`} tone="neutral" />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-brand-900">Ngày trong tháng</span>
+              <select
+                className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
+                value={selectedDayFilter}
+                onChange={(event) => setSelectedDayFilter(event.target.value)}
+              >
+                <option value="all">Tất cả ngày trong tháng</option>
+                {days.map((day) => (
+                  <option key={day} value={day}>
+                    Ngày {formatDayLabel(day, selectedMonth)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <label className="block space-y-2">
               <span className="text-sm font-medium text-brand-900">Loại nguyên liệu</span>
               <select
@@ -668,6 +720,13 @@ export function IngredientStockPageContent() {
               </select>
             </label>
 
+            <Input
+              label="Tìm tên/mã nguyên liệu"
+              value={ingredientSearch}
+              onChange={(event) => setIngredientSearch(event.target.value)}
+              placeholder="Nhập tên hoặc mã"
+            />
+
             {isMobile ? (
               <div className="space-y-2">
                 <span className="text-sm font-medium text-brand-900">Hiển thị ngày trên mobile</span>
@@ -701,8 +760,10 @@ export function IngredientStockPageContent() {
                 type="button"
                 variant="ghost"
                 onClick={() => {
+                  setSelectedDayFilter('all');
                   setSelectedGroupFilterId('all');
                   setFocusedIngredientId('all');
+                  setIngredientSearch('');
                   setExpandedIngredientId(null);
                   setShowLowStockOnly(false);
                 }}
@@ -1178,7 +1239,7 @@ export function IngredientStockPageContent() {
                             Ngày quét
                           </p>
                           <p className="mt-1 text-sm font-semibold text-brand-900">
-                            {item.activeDays.length}/{days.length}
+                            {item.activeDays.length}/{visibleDays.length}
                           </p>
                         </div>
                         <div className="rounded-2xl bg-white px-3 py-2 text-center ring-1 ring-brand-100">
@@ -1326,19 +1387,19 @@ export function IngredientStockPageContent() {
                     <th rowSpan={3} className={clsx('min-w-[110px] border border-brand-100 bg-brand-900 px-3 py-3 text-center text-xs font-semibold uppercase tracking-[0.14em] text-white', !isMobile && 'sticky left-[560px] z-30')}>
                       Đơn vị
                     </th>
-                    <th colSpan={days.length * shifts.length} className="border border-brand-100 bg-brand-900 px-3 py-3 text-center text-xs font-semibold uppercase tracking-[0.14em] text-white">
+                    <th colSpan={visibleDays.length * shifts.length} className="border border-brand-100 bg-brand-900 px-3 py-3 text-center text-xs font-semibold uppercase tracking-[0.14em] text-white">
                       Ngày trong tháng
                     </th>
                   </tr>
                   <tr>
-                    {days.map((day) => (
+                    {visibleDays.map((day) => (
                       <th key={`day-${day}`} colSpan={Math.max(shifts.length, 1)} className="border border-brand-100 bg-brand-700 px-2 py-3 text-center text-xs font-semibold text-white">
                         {String(day).padStart(2, '0')}
                       </th>
                     ))}
                   </tr>
                   <tr>
-                    {days.flatMap((day) =>
+                    {visibleDays.flatMap((day) =>
                       shifts.map((shift) => (
                         <th key={`shift-${day}-${shift.key}`} className="border border-brand-100 bg-brand-50 px-2 py-3 text-center text-xs font-semibold text-brand-900">
                           {shift.code}
@@ -1378,7 +1439,7 @@ export function IngredientStockPageContent() {
                             <td className={clsx('border border-brand-100 px-3 py-3 text-center text-slate-600', surfaceClass, !isMobile && 'sticky left-[560px] z-10')}>
                               {item.unit}
                             </td>
-                            {days.flatMap((day) =>
+                            {visibleDays.flatMap((day) =>
                               shifts.map((shift) => {
                                 const quantity = getCellQuantity(item, day, shift.key);
                                 const hasValue = quantity > 0;
