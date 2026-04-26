@@ -649,131 +649,6 @@ export function IngredientStockPageContent() {
           </p>
         ) : null}
 
-        <Card className="space-y-4 border border-brand-100 bg-white">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-brand-900">Bộ lọc quan sát</h3>
-              <p className="text-sm text-slate-500">
-                Chọn loại nguyên liệu hoặc nguyên liệu cụ thể để bảng gọn hơn và dễ quan sát hơn.
-              </p>
-            </div>
-            <Badge label={`${flatVisibleItems.length} nguyên liệu đang hiển thị`} tone="neutral" />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
-            <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Ngày trong tháng</span>
-              <select
-                className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
-                value={selectedDayFilter}
-                onChange={(event) => setSelectedDayFilter(event.target.value)}
-              >
-                <option value="all">Tất cả ngày trong tháng</option>
-                {days.map((day) => (
-                  <option key={day} value={day}>
-                    Ngày {formatDayLabel(day, selectedMonth)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Loại nguyên liệu</span>
-              <select
-                className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
-                value={selectedGroupFilterId}
-                onChange={(event) => {
-                  setSelectedGroupFilterId(event.target.value);
-                  setFocusedIngredientId('all');
-                  setExpandedIngredientId(null);
-                }}
-              >
-                <option value="all">Tất cả loại nguyên liệu</option>
-                {boardGroupFilters.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name} ({group.ingredientCount})
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block space-y-2">
-              <span className="text-sm font-medium text-brand-900">Nguyên liệu</span>
-              <select
-                className="w-full rounded-xl border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900"
-                value={focusedIngredientId}
-                onChange={(event) => {
-                  setFocusedIngredientId(event.target.value);
-                  setExpandedIngredientId(event.target.value === 'all' ? null : event.target.value);
-                }}
-              >
-                <option value="all">
-                  {selectedGroupFilterId === 'all'
-                    ? 'Tất cả nguyên liệu'
-                    : 'Hiện tất cả nguyên liệu của loại đã chọn'}
-                </option>
-                {ingredientFilterOptions.map((item) => (
-                  <option key={item.ingredientId} value={item.ingredientId}>
-                    {item.ingredientName} ({item.ingredientCode})
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <Input
-              label="Tìm tên/mã nguyên liệu"
-              value={ingredientSearch}
-              onChange={(event) => setIngredientSearch(event.target.value)}
-              placeholder="Nhập tên hoặc mã"
-            />
-
-            {isMobile ? (
-              <div className="space-y-2">
-                <span className="text-sm font-medium text-brand-900">Hiển thị ngày trên mobile</span>
-                <Button
-                  type="button"
-                  variant={showAllDaysOnMobile ? 'primary' : 'secondary'}
-                  fullWidth
-                  onClick={() => setShowAllDaysOnMobile((current) => !current)}
-                >
-                  {showAllDaysOnMobile ? 'Chỉ xem ngày có phát sinh' : 'Hiện đủ ngày trong tháng'}
-                </Button>
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-brand-50 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.16em] text-brand-700">Mẹo quan sát</p>
-                <p className="mt-2 text-sm text-brand-900">
-                  Khi chọn một loại nguyên liệu, bảng desktop sẽ gọn hơn rất nhiều và dễ đọc hơn.
-                </p>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2 lg:justify-end">
-              <Button
-                type="button"
-                variant={showLowStockOnly ? 'primary' : 'secondary'}
-                onClick={() => setShowLowStockOnly((current) => !current)}
-              >
-                {showLowStockOnly ? 'Bỏ lọc tồn thấp' : 'Chỉ xem tồn thấp'}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setSelectedDayFilter('all');
-                  setSelectedGroupFilterId('all');
-                  setFocusedIngredientId('all');
-                  setIngredientSearch('');
-                  setExpandedIngredientId(null);
-                  setShowLowStockOnly(false);
-                }}
-              >
-                Xóa bộ lọc
-              </Button>
-            </div>
-          </div>
-        </Card>
-
         {editorState && isConfigOpen ? (
           <Card className="space-y-4 border border-brand-100 bg-white">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1170,6 +1045,119 @@ export function IngredientStockPageContent() {
               <p className="font-semibold">Nguyên liệu đang hiển thị</p>
               <p className="mt-1 text-2xl font-semibold text-brand-900">{flatVisibleItems.length}</p>
             </div>
+          </div>
+
+          <div className="space-y-3 border-y border-brand-100 bg-brand-50/40 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-semibold text-brand-900">Bộ lọc quan sát</h3>
+                <Badge label={`${flatVisibleItems.length} nguyên liệu đang hiển thị`} tone="neutral" />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={showLowStockOnly ? 'primary' : 'secondary'}
+                  className="px-3 py-2"
+                  onClick={() => setShowLowStockOnly((current) => !current)}
+                >
+                  {showLowStockOnly ? 'Bỏ lọc tồn thấp' : 'Chỉ xem tồn thấp'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="px-3 py-2"
+                  onClick={() => {
+                    setSelectedDayFilter('all');
+                    setSelectedGroupFilterId('all');
+                    setFocusedIngredientId('all');
+                    setIngredientSearch('');
+                    setExpandedIngredientId(null);
+                    setShowLowStockOnly(false);
+                  }}
+                >
+                  Xóa bộ lọc
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[0.9fr_1fr_1fr_1.2fr]">
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-brand-900">Ngày</span>
+                <select
+                  className="w-full rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm text-brand-900"
+                  value={selectedDayFilter}
+                  onChange={(event) => setSelectedDayFilter(event.target.value)}
+                >
+                  <option value="all">Tất cả ngày</option>
+                  {days.map((day) => (
+                    <option key={day} value={day}>
+                      Ngày {formatDayLabel(day, selectedMonth)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-brand-900">Loại nguyên liệu</span>
+                <select
+                  className="w-full rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm text-brand-900"
+                  value={selectedGroupFilterId}
+                  onChange={(event) => {
+                    setSelectedGroupFilterId(event.target.value);
+                    setFocusedIngredientId('all');
+                    setExpandedIngredientId(null);
+                  }}
+                >
+                  <option value="all">Tất cả loại</option>
+                  {boardGroupFilters.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name} ({group.ingredientCount})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-brand-900">Nguyên liệu</span>
+                <select
+                  className="w-full rounded-xl border border-brand-100 bg-white px-3 py-2 text-sm text-brand-900"
+                  value={focusedIngredientId}
+                  onChange={(event) => {
+                    setFocusedIngredientId(event.target.value);
+                    setExpandedIngredientId(event.target.value === 'all' ? null : event.target.value);
+                  }}
+                >
+                  <option value="all">
+                    {selectedGroupFilterId === 'all' ? 'Tất cả nguyên liệu' : 'Tất cả trong loại đã chọn'}
+                  </option>
+                  {ingredientFilterOptions.map((item) => (
+                    <option key={item.ingredientId} value={item.ingredientId}>
+                      {item.ingredientName} ({item.ingredientCode})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <Input
+                label="Tìm tên/mã"
+                value={ingredientSearch}
+                onChange={(event) => setIngredientSearch(event.target.value)}
+                placeholder="Nhập tên hoặc mã"
+                className="px-3 py-2"
+              />
+            </div>
+
+            {isMobile ? (
+              <Button
+                type="button"
+                variant={showAllDaysOnMobile ? 'primary' : 'secondary'}
+                fullWidth
+                className="py-2"
+                onClick={() => setShowAllDaysOnMobile((current) => !current)}
+              >
+                {showAllDaysOnMobile ? 'Chỉ xem ngày có phát sinh' : 'Hiện đủ ngày trong tháng'}
+              </Button>
+            ) : null}
           </div>
 
           {boardQuery.isPending || !editorState ? (
