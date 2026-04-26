@@ -174,7 +174,7 @@ export function IngredientStockPageContent() {
   const [selectedStoreId, setSelectedStoreId] = useState(baseStoreId);
   const [operationType, setOperationType] = useState<OperationType>('STORE_USAGE');
   const [editorState, setEditorState] = useState<EditableState | null>(null);
-  const [isConfigOpen, setIsConfigOpen] = useState(true);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedDayFilter, setSelectedDayFilter] = useState('all');
   const [selectedGroupFilterId, setSelectedGroupFilterId] = useState('all');

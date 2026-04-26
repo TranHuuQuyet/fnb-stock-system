@@ -683,7 +683,7 @@ export function WorkSchedulesPageContent() {
   const [selectedMonth, setSelectedMonth] = useState(Number(defaultMonthString));
   const [selectedStoreId, setSelectedStoreId] = useState(baseStoreId);
   const [editorState, setEditorState] = useState<EditableState | null>(null);
-  const [isConfigOpen, setIsConfigOpen] = useState(true);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [focusedEmployeeId, setFocusedEmployeeId] = useState('all');
 
