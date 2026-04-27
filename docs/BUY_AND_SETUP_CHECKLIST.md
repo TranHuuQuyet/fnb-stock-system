@@ -265,7 +265,7 @@ npm run bootstrap:admin
 5. Tao batch test
 6. In tem
 7. Quet online
-8. Quet offline roi sync
+8. Thu ngat mang de xac nhan quick scan web bi chan; neu con client legacy thi kiem tra them `scan/sync`
 9. Tao transfer A -> B
 10. Xac nhan nhan o B
 11. Test ca lam va bao cao admin

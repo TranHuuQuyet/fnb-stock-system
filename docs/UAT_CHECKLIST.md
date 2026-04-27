@@ -61,7 +61,7 @@ Không nên go-live nếu còn lỗi `Fail` ở các nhóm sau:
    - Kỳ vọng: có ghi nhận log đăng nhập thất bại
 6. Kiểm tra quyền theo role:
    - `ADMIN`: truy cập toàn bộ màn hình
-   - `MANAGER`: tạo batch, in tem, xem dashboard, quản lý ca làm, tạo và xác nhận chuyển kho
+   - `MANAGER`: xem lịch sử quét, kho nguyên liệu, quản lý ca làm, tạo và xác nhận chuyển kho
    - `STAFF`: scan sử dụng tại quán; chỉ chuyển kho nếu được cấp permission `Chuyển kho`
 
 ### 4.2 Cấu hình ban đầu
@@ -94,8 +94,8 @@ Không nên go-live nếu còn lỗi `Fail` ở các nhóm sau:
 3. Quét batch đã soft lock hoặc hết hạn
    - Kỳ vọng: bị reject đúng rule
 4. Tắt mạng trên thiết bị rồi scan ở chế độ `Sử dụng tại quán`
-   - Kỳ vọng: lưu vào offline queue
-5. Bật mạng lại
+   - Kỳ vọng: UI chặn quick scan và báo cần online đúng mạng chi nhánh
+5. Nếu còn client legacy dùng `scan/sync`, bật mạng lại
    - Kỳ vọng: event sync thành công, không tạo bản ghi trùng
 
 ### 4.5 Chuyển kho 2 chiều

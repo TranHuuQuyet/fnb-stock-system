@@ -100,7 +100,7 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
 2. Tao hoac kiem tra store, user, ingredient unit, ingredient group, ingredient
 3. Tao 1 batch test va in tem
 4. Quet 1 luot `Su dung tai quan`
-5. Thu scan offline roi sync lai
+5. Thu ngat mang de xac nhan quick scan web bi chan; neu con client legacy thi kiem tra them `scan/sync`
 6. Tao 1 phieu `Chuyen kho` tu chi nhanh A sang B
 7. Dang nhap manager hoac admin o chi nhanh B de xac nhan nhan
 8. Mo `Control > Kho nguyen lieu` va kiem tra so lieu
@@ -114,14 +114,14 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
 1. Theo doi:
    - login that bai
    - scan reject
-   - sync offline loi
+   - sync legacy/offline loi (neu con client cu)
    - chuyen kho cho xac nhan qua lau
    - loi mo bang luong hoac export Excel
 2. Kiem tra dinh ky:
-   - dashboard
+   - admin reports
    - scan logs
    - kho nguyen lieu
-   - admin reports
+   - work schedules
 3. Ghi lai tat ca loi phat sinh va workaround
 
 ## 7. Quy trinh du phong khi co su co

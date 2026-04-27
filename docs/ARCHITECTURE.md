@@ -12,14 +12,25 @@
 - `stock-adjustments`: manual inventory adjustment with audit
 - `scan`: online scan, quick store-usage consume, transfer, scan logs
 - `devices`: device upsert and last-seen tracking
-- `pos`: POS product CRUD, recipe CRUD, sales import, reconciliation
-- `anomalies`: threshold-based anomaly generation from reconciliation
-- `dashboard`: summary cards, reconciliation, recent fraud/scans/alerts
+- `pos`: POS product CRUD, recipe CRUD, sales import, reconciliation APIs
+- `anomalies`: threshold-based anomaly generation from reconciliation APIs
+- `dashboard`: summary API cho reconciliation, fraud/scans/alerts; route web `/dashboard` hiện không còn là luồng chính
 - `audit`: structured admin audit logs
 - `config`: app config, store network whitelist, emergency bypass, business network status
 - `work-schedules`: bảng chấm công theo tháng, ca làm việc, đơn giá thử việc/chính thức, phụ cấp, đi trễ/về sớm, bảng lương
 - `reports`: báo cáo quản trị cho tồn kho hiện tại, hao hụt, lịch sử batch, top nguyên liệu dùng nhiều và lương tháng
 - `health`: liveness and readiness checks
+
+## Current Web Surface
+
+- Route gốc `/` tự redirect theo role:
+  - `ADMIN -> /admin/reports`
+  - `MANAGER/STAFF -> /scan`
+- Navigation web hiện tại tập trung vào các màn:
+  - `Scan`, `Scan logs`, `Ingredient stock`, `Work schedules`, `Profile`
+  - `Admin users`, `Admin stores`, `Admin ingredients`, `Admin batches`, `Admin batch adjustments`, `Admin config`, `Admin whitelists`, `Admin reports`, `Admin audit logs`
+- Hai route `/dashboard` và `/admin/recipes` vẫn còn file/page để redirect tương thích, nhưng không còn được dùng như màn vận hành chính.
+- Backend vẫn giữ các API `dashboard`, `recipes`, `pos`, `anomalies` cho nhu cầu tích hợp hoặc mở lại UI về sau.
 
 ## Core Data Notes
 
@@ -54,10 +65,21 @@
 ## Auth And User Management Flow
 
 1. User login bằng `username/password`.
-2. Backend kiểm tra trạng thái `ACTIVE | MUST_CHANGE_PASSWORD | LOCKED | INACTIVE`.
-3. JWT payload được refresh lại trạng thái user ở `JwtStrategy`.
-4. Nếu `MUST_CHANGE_PASSWORD`, frontend bắt buộc redirect sang `/change-password`.
-5. Admin tạo user với temporary password, reset password và lock/unlock đều ghi `AuditLog`.
+2. Backend kiểm tra trạng thái `ACTIVE | MUST_CHANGE_PASSWORD | LOCKED | INACTIVE`, lockout tạm thời và số lần login sai.
+3. Login response chỉ trả `user + mustChangePassword`; `accessToken` được đặt trong `HttpOnly cookie`.
+4. Frontend chỉ giữ metadata session cho UI; route guard sẽ gọi `auth/me` để resolve phiên hiện tại.
+5. Nếu `MUST_CHANGE_PASSWORD`, frontend bắt buộc redirect sang `/change-password`.
+6. `sessionVersion` được nhúng trong JWT để logout, reset password, đổi password, lock/unlock hoặc soft delete có thể revoke session cũ ngay.
+7. Admin tạo user với temporary password, reset password và lock/unlock đều ghi `AuditLog`.
+
+## User And Store Soft Delete Flow
+
+1. Admin gọi `DELETE /admin/users/:id` hoặc `DELETE /admin/stores/:id` kèm `adminPassword`.
+2. Backend không hard-delete dữ liệu nghiệp vụ:
+   - user bị chuyển sang `INACTIVE`
+   - store bị chuyển `isActive = false`
+3. Lịch sử batch, scan, transfer, audit và work schedule vẫn được giữ nguyên để tra cứu.
+4. Soft delete user còn reset lockout counters và tăng `sessionVersion` để chặn phiên cũ tiếp tục dùng.
 
 ## Business Network Control Flow
 
@@ -99,8 +121,9 @@
 ## Offline Sync Flow
 
 1. Hạ tầng `/scan/sync` vẫn còn cho compatibility cũ.
-2. UI scan hiện tại cho `STAFF` và `MANAGER` không còn dùng offline queue ở quick mode.
-3. Nếu cần đồng bộ offline cho luồng cũ, event vẫn giữ nguyên `clientEventId` để idempotent.
+2. Hook `useOfflineSync` vẫn theo dõi IndexedDB để đồng bộ backlog legacy nếu thiết bị cũ còn tạo event offline.
+3. UI scan hiện tại cho `STAFF` và `MANAGER` không còn dùng offline queue ở quick mode; mất mạng sẽ bị chặn ngay trên màn scan.
+4. Nếu cần đồng bộ offline cho luồng cũ, event vẫn giữ nguyên `clientEventId` để idempotent.
 
 ## QR And Label Printing Flow
 
@@ -156,3 +179,4 @@
    - top nguyên liệu dùng nhiều từ `ScanLog`
    - tổng hợp bảng lương tháng từ `WorkSchedule`
 3. Frontend render các bảng tổng hợp và cho phép `Xuất Excel` để admin gửi cho chủ hoặc kế toán.
+4. Đây là màn landing mặc định của `ADMIN` trong web UI hiện tại, thay cho dashboard cũ.

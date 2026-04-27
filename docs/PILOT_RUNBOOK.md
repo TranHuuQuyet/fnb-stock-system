@@ -79,7 +79,7 @@ Moi ngay nen ghi lai:
 
 - so lan login loi
 - so scan bi reject
-- so scan offline chua sync
+- so client legacy con sync error hoac offline backlog
 - so phieu chuyen kho cho xac nhan qua lau
 - sai lech ton kho ro rang
 - loi bang luong hoac export Excel
@@ -103,7 +103,7 @@ Moi ngay nen ghi lai:
 ### Cuoi ca
 
 1. Kiem tra scan logs
-2. Kiem tra offline queue da sync het neu co mang
+2. Kiem tra khong con sync error hoac offline backlog neu van con client legacy
 3. Kiem tra ton kho cac nguyen lieu chinh
 4. Kiem tra su co phat sinh trong ca
 

@@ -155,4 +155,4 @@ pg_restore -d "postgresql://fnb_user:strong-password@db-direct-host:5432/fnb_sto
 4. Kiem tra danh sach batch
 5. Kiem tra scan logs
 6. Kiem tra work schedules
-7. Kiem tra dashboard co ban
+7. Kiem tra admin reports hoac ingredient stock co ban

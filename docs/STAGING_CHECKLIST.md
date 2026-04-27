@@ -80,7 +80,7 @@ Tai lieu nay dung de dung moi truong staging gan giong production nhat co the tr
 5. Tao manager va staff cho moi chi nhanh
 6. Tao ingredient unit, ingredient group, ingredient
 7. Tao batch, in tem, quet online
-8. Thu scan offline o che do `Su dung tai quan`
+8. Thu ngat mang o che do `Su dung tai quan`, xac nhan quick scan web bi chan; neu con client legacy thi kiem tra them `scan/sync`
 9. Thu chuyen kho:
    - tao phieu o chi nhanh A
    - xac nhan nhan o chi nhanh B

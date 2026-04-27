@@ -1,6 +1,6 @@
 ﻿# FNB Stock Control System
 
-Hệ thống kiểm soát sử dụng nguyên liệu theo lô cho chuỗi F&B, gồm backend NestJS + Prisma + PostgreSQL và frontend Next.js PWA có offline queue bằng IndexedDB.
+Hệ thống kiểm soát sử dụng nguyên liệu theo lô cho chuỗi F&B, gồm backend NestJS + Prisma + PostgreSQL và frontend Next.js PWA ưu tiên quét camera, có lớp IndexedDB để đồng bộ luồng legacy khi cần.
 
 ## Tech Stack
 
@@ -12,12 +12,13 @@ Hệ thống kiểm soát sử dụng nguyên liệu theo lô cho chuỗi F&B, g
 
 ```text
 backend/     NestJS API + Prisma schema + seed + tests
-frontend/    Next.js PWA + IndexedDB offline queue + admin/dashboard UI
+frontend/    Next.js PWA + camera-first scan UI + admin/control UI + legacy IndexedDB sync support
 docs/        Architecture, API overview, operation manual, production deployment
 ```
 
 ## Operational Docs
 
+- `docs/USECASE_OVERVIEW.md`: use case hiện tại theo role và các luồng nghiệp vụ chính
 - `docs/ARCHITECTURE.md`: kiến trúc module và luồng dữ liệu
 - `docs/API_OVERVIEW.md`: tổng hợp API chính
 - `docs/OPERATION_MANUAL.md`: hướng dẫn vận hành hằng ngày
@@ -45,15 +46,16 @@ docs/        Architecture, API overview, operation manual, production deployment
 - Quản lý lô hàng nguyên liệu theo cửa hàng
 - Quản lý danh mục nguyên liệu có `đơn vị` và `nhóm nguyên liệu`
 - Quản lý `đơn vị nguyên liệu` riêng để tái sử dụng trong form admin
-- Quét nguyên liệu bằng camera hoặc nhập tay
+- Quét nguyên liệu bằng camera theo quick mode; API `manual/sync` vẫn còn để tương thích luồng cũ
 - Hỗ trợ `Sử dụng tại quán` và `Chuyển kho` giữa các chi nhánh theo mô hình `in transit -> xác nhận nhận`
 - FIFO validation, soft lock, expired/depleted checks
-- Offline queue bằng IndexedDB và auto sync khi có mạng
+- Quick scan web hiện tại yêu cầu online đúng mạng chi nhánh; IndexedDB sync layer chỉ còn cho compatibility cũ
 - Màn `Kho nguyên liệu` theo tháng/chi nhánh/phạm vi, tự cộng số lượng theo ngày và ca
 - Bộ lọc `Loại nguyên liệu / Nguyên liệu` trên cả desktop và mobile để quan sát nhanh hơn
 - Giao diện mobile cho `Kho nguyên liệu` dùng thẻ tóm tắt, chạm để bung chi tiết ngày/ca
 - Màn `Ca làm việc` để sắp ca theo tháng, theo dõi giờ thử việc/chính thức, phụ cấp, đi trễ/về sớm, in bảng chấm công và bảng lương
 - Màn `Báo cáo admin` để xem tồn kho hiện tại, hao hụt, lịch sử batch, top nguyên liệu dùng nhiều và tổng hợp bảng lương
+- Xóa mềm `user/store` có xác thực lại mật khẩu admin để giữ nguyên lịch sử batch, scan và audit
 - In tem theo từng lô với `Number` tuần tự
 - Mỗi tem có QR riêng để giảm rủi ro gian lận
 - `MANAGER` được chuyển kho theo role; `ADMIN` có thể cấp quyền `scan_transfer` cho `STAFF` khi cần thao tác chuyển kho
@@ -182,6 +184,7 @@ Các tài khoản dưới đây chỉ áp dụng cho local/demo khi dùng seed. 
 
 - Frontend (Docker Compose): `http://localhost:3001`
 - Frontend (local dev): `http://localhost:3000`
+- Default route sau login: `ADMIN -> /admin/reports`, `MANAGER/STAFF -> /scan`
 - Backend API: `http://localhost:4000/api/v1`
 - Swagger: `http://localhost:4000/api/docs`
 - Health: `http://localhost:4000/api/v1/health`
@@ -206,11 +209,11 @@ Các tài khoản dưới đây chỉ áp dụng cho local/demo khi dùng seed. 
 5. Bấm `Tạo tem và mở in`
 6. Kiểm tra mỗi tem có `Number` riêng và QR riêng
 7. Mở frontend ở `http://localhost:3001` và đăng nhập `staff1 / 123456`
-8. Vào màn scan, quét QR trên tem vừa in hoặc nhập tay batch code
-9. Tắt mạng để thử offline queue, bật lại để auto sync
+8. Vào màn `Scan`, quét tem vừa in để quick consume `1 đơn vị`
+9. Kiểm tra banner mạng, phản hồi lần quét gần nhất và số lượng còn lại của lô
 10. Đăng nhập `manager1 / 123456`
-11. Mở dashboard, xem reconciliation, fraud attempts và anomaly alerts
-12. Mở `Control > Ca làm việc`, kiểm tra bảng chấm công tháng hiện tại, thử `In bảng lương` hoặc `Xuất Excel`
+11. Thử chuyển sang chế độ `Chuyển kho`, tạo một phiếu chuyển thử rồi mở `Scan logs` để kiểm tra phiếu `IN_TRANSIT`
+12. Mở `Kho nguyên liệu`, `Ca làm việc`; đăng nhập lại `admin` để mở `Admin reports`
 
 ## QR Formats
 
@@ -224,7 +227,7 @@ Scanner frontend sẽ tự tách `batchCode` từ cả hai định dạng trên.
 ## Notes
 
 - Luồng web hiện tại ưu tiên `IP whitelist` và `Emergency bypass`; `SSID` chỉ là field optional trong browser flow.
-- Frontend queue scan offline bằng IndexedDB thật, giữ nguyên `clientEventId` để sync idempotent.
+- IndexedDB sync layer vẫn giữ nguyên `clientEventId` để idempotent, nhưng quick scan web hiện tại không tạo queue mới khi mất mạng.
 - Phiếu chuyển kho chỉ cộng tồn ở chi nhánh nhận sau khi bên nhận xác nhận số lượng thực nhận.
 - Tính năng in tem mới phụ thuộc migration thêm field `printedLabelCount` vào `IngredientBatch`.
 - Tính năng `Kho nguyên liệu` phụ thuộc các bảng `IngredientGroup`, `IngredientStockLayout`, `IngredientStockLayoutGroup`, `IngredientStockLayoutItem`.
@@ -233,9 +236,11 @@ Scanner frontend sẽ tự tách `batchCode` từ cả hai định dạng trên.
 - Bảng `Kho nguyên liệu` lấy dữ liệu từ `ScanLog` thành công/cảnh báo, cộng theo `ngày / ca / phạm vi sử dụng`.
 - `Số lượng tồn` trên `Kho nguyên liệu` là tổng tồn của tất cả lô còn lại của cùng nguyên liệu trong chi nhánh đang chọn.
 - Route frontend preview cũ `/admin/batches/[id]/label` hiện redirect sang màn in mới.
+- Trang chủ hiện redirect `ADMIN` sang `Admin reports`, còn `MANAGER/STAFF` sang `Scan`; `/dashboard` và `/admin/recipes` không còn là route web vận hành chính.
 
 Chi tiết triển khai và vận hành nằm trong:
 
+- `docs/USECASE_OVERVIEW.md`
 - `docs/ARCHITECTURE.md`
 - `docs/API_OVERVIEW.md`
 - `docs/OPERATION_MANUAL.md`

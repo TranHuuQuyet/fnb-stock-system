@@ -12,6 +12,7 @@
 | GET | `/api/v1/admin/users` | ADMIN | List users |
 | GET | `/api/v1/admin/users/:id` | ADMIN | Get user detail |
 | PATCH | `/api/v1/admin/users/:id` | ADMIN | Update user |
+| DELETE | `/api/v1/admin/users/:id` | ADMIN | Soft delete user with admin password confirmation |
 | POST | `/api/v1/admin/users/:id/lock` | ADMIN | Lock user |
 | POST | `/api/v1/admin/users/:id/unlock` | ADMIN | Unlock user |
 | POST | `/api/v1/admin/users/:id/reset-password` | ADMIN | Reset user password |
@@ -19,6 +20,7 @@
 | GET | `/api/v1/admin/stores` | ADMIN | List stores |
 | GET | `/api/v1/admin/stores/:id` | ADMIN | Get store detail |
 | PATCH | `/api/v1/admin/stores/:id` | ADMIN | Update store |
+| DELETE | `/api/v1/admin/stores/:id` | ADMIN | Soft delete store with admin password confirmation |
 | GET | `/api/v1/stores/accessible` | ADMIN, MANAGER, STAFF | List stores available for scoped selectors |
 | POST | `/api/v1/admin/ingredients/units` | ADMIN | Create ingredient unit |
 | GET | `/api/v1/admin/ingredients/units` | ADMIN | List ingredient units |
@@ -80,6 +82,46 @@
 | GET | `/api/v1/health` | Public | Liveness check |
 | GET | `/api/v1/health/ready` | Public | Readiness check with DB check |
 
+## Auth Notes
+
+- `POST /api/v1/auth/login` trả `user` + `mustChangePassword`; JWT thật chỉ nằm trong `HttpOnly cookie`.
+- `POST /api/v1/auth/logout`, `POST /api/v1/auth/change-password`, reset password, lock/unlock và soft delete đều có thể làm cũ session trước đó nhờ `sessionVersion`.
+
+## User And Store Soft Delete Notes
+
+### `DELETE /api/v1/admin/users/:id`
+
+Request body:
+
+```json
+{
+  "adminPassword": "AdminPassword123"
+}
+```
+
+Quy tắc nghiệp vụ:
+
+- Chỉ `ADMIN` được gọi.
+- Không cho soft delete tài khoản `ADMIN`.
+- User bị chuyển sang `INACTIVE`, giữ nguyên lịch sử batch/scan/audit.
+- Session cũ của user bị revoke ngay.
+
+### `DELETE /api/v1/admin/stores/:id`
+
+Request body:
+
+```json
+{
+  "adminPassword": "AdminPassword123"
+}
+```
+
+Quy tắc nghiệp vụ:
+
+- Chỉ `ADMIN` được gọi.
+- Store bị chuyển `isActive = false`, không hard-delete dữ liệu cũ.
+- Các selector phạm vi cửa hàng chỉ còn trả store active.
+
 ## Batch Label API Notes
 
 ### `GET /api/v1/admin/batches/:id/label`
@@ -140,6 +182,7 @@ Lưu ý cho UI hiện tại:
 - `STAFF` và `MANAGER` ở mode `Sử dụng tại quán` chỉ auto-consume khi QR là tem mới có `SEQ`
 - mỗi tem mới chỉ được dùng một lần nhờ `consumedLabelKey`
 - route `scan/manual` và `scan/sync` vẫn còn cho compatibility cũ nhưng không còn là flow chính của màn scan
+- quick-scan web hiện tại yêu cầu online; offline sync chỉ còn phục vụ client legacy có backlog IndexedDB
 
 ## Ingredient Stock Board API Notes
 
@@ -285,6 +328,7 @@ Response data chính:
 Quy tắc nghiệp vụ:
 
 - Luồng web hiện tại ưu tiên `IP whitelist` và `Emergency bypass`; `SSID` không phải cơ chế chính trong browser flow.
+- Response hiện tại được quyết định theo `IP whitelist + bypass`; query `ssid` được giữ chủ yếu cho compatibility/chẩn đoán.
 - Nếu `bypassActive = true`, chi nhánh vẫn được phép thao tác nghiệp vụ dù IP hiện tại chưa được whitelist.
 - Endpoint này phù hợp cho màn admin lấy chính xác IP mà backend đang nhìn thấy trước khi thêm whitelist.
 
@@ -388,3 +432,9 @@ Quy tắc nghiệp vụ:
 - Endpoint hiện trả `tồn kho hiện tại` theo snapshot lúc mở báo cáo, không phải snapshot lịch sử đã lưu sẵn theo từng ngày.
 - `wastage` được tổng hợp từ các phiếu `StockAdjustment` loại `DECREASE`.
 - `workScheduleSummary` dùng tháng/năm được chọn để tổng hợp lương theo giờ, phụ cấp, đi trễ và về sớm.
+- Đây là data source cho landing page hiện tại của `ADMIN`.
+
+## Hidden Web Routes
+
+- API `dashboard`, `recipes`, `pos`, `anomalies` vẫn còn hoạt động ở backend.
+- Tuy nhiên web UI hiện tại redirect khỏi `/dashboard` và `/admin/recipes`, nên không nên coi hai route này là màn vận hành chính trong runbook/checklist.

@@ -525,12 +525,12 @@ Thực hiện toàn bộ trước khi mở cho người dùng thật:
 2. Kiểm tra `GET /api/v1/health` và `GET /api/v1/health/ready` đều trả `ok/ready`.
 3. Tạo chi nhánh, user, ingredient unit, ingredient group, ingredient.
 4. Tạo batch, in tem, quét online.
-5. Thử offline queue rồi bật mạng lại để sync.
+5. Thử ngắt mạng khi đang ở màn scan để xác nhận quick-scan web bị chặn; chỉ kiểm thử `scan/sync` riêng nếu còn client legacy.
 6. Mở `Control > Kho nguyên liệu` và xác nhận số liệu cập nhật đúng.
 7. Mở `Control > Ca làm việc`, lưu tháng hiện tại, nhập thử `phụ cấp / đi trễ / về sớm`, rồi thử `In bảng lương` hoặc `Xuất Excel`.
 8. Cấu hình `IP whitelist`, thử `Lấy IP hiện tại`, kiểm tra `scan/network-status`.
 9. Thử bật `Emergency bypass` có thời hạn cho một chi nhánh test.
-10. Kiểm tra dashboard, reconciliation, anomaly alerts, audit logs.
+10. Kiểm tra admin reports, scan logs, ingredient stock, audit logs; nếu đang dùng tích hợp POS thì gọi thêm reconciliation/anomaly APIs.
 
 ## 10. Backup và restore
 
@@ -577,7 +577,7 @@ Nên theo dõi thêm:
 
 - scan reject do network policy
 - fraud attempts
-- sync offline thất bại
+- sync legacy/offline thất bại (nếu còn client cũ)
 - import POS lỗi
 - tăng trưởng bất thường của `ScanLog`, `AuditLog`
 
