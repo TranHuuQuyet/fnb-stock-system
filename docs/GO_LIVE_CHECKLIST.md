@@ -14,7 +14,7 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
   - hang vao trang thai `IN_TRANSIT`
   - chi nhanh B xac nhan nhan
   - chi khi do kho B moi tang
-- Offline chi ap dung cho `Su dung tai quan`
+- Quick scan web hien tai yeu cau online dung mang chi nhanh; offline sync chi con phuc vu client legacy neu con backlog cu
 - Chinh sach backup:
   - `14` ban daily
   - `8` ban weekly
@@ -128,10 +128,11 @@ Tai lieu nay dung cho ngay mo he thong thuc te tai `fnbstore.store`. Nen chay th
 
 ### Khi mat mang tai chi nhanh
 
-1. Tiep tuc dung che do `Su dung tai quan` tren thiet bi da dang nhap
+1. Dung quick scan web cho den khi thiet bi online lai dung mang chi nhanh
 2. Khong thuc hien `Chuyen kho` trong luc offline
-3. Khi co mang lai, mo man scan de he thong tu sync
-4. Quan ly chi nhanh kiem tra lai `Scan Logs`
+3. Khi co mang lai, mo man scan va quet lai tem can xu ly
+4. Neu don vi con client legacy co backlog IndexedDB, mo lai man scan de backlog duoc dong bo qua `scan/sync`
+5. Quan ly chi nhanh kiem tra lai `Scan Logs`
 
 ### Khi backend production loi
 

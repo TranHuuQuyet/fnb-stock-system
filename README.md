@@ -36,9 +36,11 @@ docs/        Architecture, API overview, operation manual, production deployment
 
 ## Current Rollout Status
 
-- Cập nhật gần nhất `2026-04-22`: admin production đầu tiên đã được tạo và đã đổi mật khẩu sau lần đăng nhập đầu tiên.
-- `https://fnbstore.store` đã trả `HTTP 200` và `https://fnbstore.store/api/v1/health` đã trả `status=ok`.
+- Cập nhật tài liệu gần nhất `2026-04-29`: README và docs vận hành đã được đồng bộ với bề mặt web hiện tại của repo.
+- Mốc production đã xác nhận gần nhất `2026-04-22`: admin production đầu tiên đã được tạo và đã đổi mật khẩu sau lần đăng nhập đầu tiên.
+- `https://fnbstore.store` đã trả `HTTP 200` và `https://fnbstore.store/api/v1/health` đã trả `status=ok` ở lần xác nhận ngày `2026-04-22`.
 - Repo đã có thêm `./ops.sh` và [docs/VPS_OPERATIONS.md](docs/VPS_OPERATIONS.md) để vận hành production hằng ngày trên VPS.
+- Bề mặt web hiện tại: `ADMIN -> /admin/reports`, `MANAGER/STAFF -> /scan`; `/dashboard` và `/admin/recipes` chỉ còn redirect tương thích.
 - Các bước còn lại nên tiếp tục chốt ở `docs/DEPLOYMENT_STATUS.md`: smoke test production đầy đủ, backup/restore, release gate, monitoring và alerting.
 
 ## Main Features

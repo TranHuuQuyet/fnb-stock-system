@@ -4,7 +4,8 @@ Tai lieu nay dung de ghi lai trang thai rollout thuc te tren VPS va production. 
 
 ## Cap nhat gan nhat
 
-- Ngay cap nhat: `2026-04-22`
+- Ngay cap nhat tai lieu: `2026-04-29`
+- Moc production da xac nhan gan nhat: `2026-04-22`
 - Moi truong dang theo doi: `production rollout tren VPS`
 - SSH vao VPS: `da xac nhan`
 - Admin production dau tien: `da tao`
@@ -12,6 +13,7 @@ Tai lieu nay dung de ghi lai trang thai rollout thuc te tren VPS va production. 
 - Frontend public qua `https://fnbstore.store`: `da xac nhan`
 - Backend health `https://fnbstore.store/api/v1/health`: `da xac nhan`
 - Prisma migrate production: `da chay thanh cong`
+- README va docs van hanh: `da dong bo voi be mat web hien tai cua repo ngay 2026-04-29`
 
 ## Da hoan thanh
 
@@ -25,6 +27,7 @@ Tai lieu nay dung de ghi lai trang thai rollout thuc te tren VPS va production. 
 - [x] Xac nhan domain public, DNS va TLS dang tra ve app production
 - [x] Xac nhan frontend public va backend `health` dang tra `ok`
 - [x] Them `ops.sh`, `deploy/scripts/prod-ops.sh` va `docs/VPS_OPERATIONS.md` de van hanh production hang ngay
+- [x] Dong bo docs ngay `2026-04-29` de phan anh web UI hien tai: `ADMIN -> /admin/reports`, `MANAGER/STAFF -> /scan`, `/dashboard` va `/admin/recipes` chi con redirect tuong thich
 
 ## Viec con lai can chot
 
@@ -32,6 +35,7 @@ Tai lieu nay dung de ghi lai trang thai rollout thuc te tren VPS va production. 
 - [ ] Xac nhan PostgreSQL production va backup off-host dang hoat dong
 - [ ] Chay `preflight-check.ps1` hoac checklist tuong duong tren may deploy thuc te
 - [ ] Chay smoke test production sau deploy
+- [ ] Xac nhan lai public URL va health tren production sau dot docs/code sync gan nhat
 - [ ] Tao them store, manager, staff va danh muc van hanh ban dau
 - [ ] Chot tai khoan admin rieng cho smoke test, khong dung tai khoan ca nhan
 
